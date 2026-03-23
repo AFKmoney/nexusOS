@@ -263,7 +263,7 @@ export class PuterService {
     try {
       const relevantMem = memory.recall(prompt);
       const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
-      const toolCtx = toolForge.getSystemToolContext();
+      const toolCtx = await toolForge.getSystemToolContext();
       const fullSystemPrompt = systemPrompt + toolCtx;
       const contextualPrompt = (mode === 'chat' || mode === 'coder' || mode === 'architect') 
         ? this.getContextualPrompt(prompt) 
@@ -281,7 +281,7 @@ export class PuterService {
       }
 
       // Post-process: register any new tools the AI created
-      toolForge.parseAndRegister(response);
+      await toolForge.parseAndRegister(response);
 
       // Post-process: execute native OS actions from AI response
       const osActionResults = await toolForge.executeOsActions(response);
@@ -316,7 +316,7 @@ export class PuterService {
     try {
       const relevantMem = memory.recall(processedPrompt);
       const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
-      const toolCtx = toolForge.getSystemToolContext();
+      const toolCtx = await toolForge.getSystemToolContext();
       const stPrompt = systemPrompt + toolCtx;
 
       // ─── 100% OFFLINE LOCAL INFERENCE ────────────────────────────────
@@ -334,7 +334,7 @@ export class PuterService {
       });
 
       // Post-Processing 1: Register any new tools DAEMON created
-      if (toolForge.parseAndRegister(fullResponse)) {
+      if (await toolForge.parseAndRegister(fullResponse)) {
         onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
       }
 
@@ -403,8 +403,8 @@ export class PuterService {
     let retries = 0;
     let code = '';
 
-    const buildPrompt = (desc: string, previousCode?: string) => {
-      const toolCtx = toolForge.getSystemToolContext();
+    const buildPrompt = async (desc: string, previousCode?: string) => {
+      const toolCtx = await toolForge.getSystemToolContext();
       if (previousCode) {
         return `${STRICT_CODER_DNA}${toolCtx}\n\n[CONTINUATION TASK]\nThe previous generation was INCOMPLETE (HTML was truncated).\nHere is what was generated so far:\n\`\`\`\n${previousCode.slice(-500)}\n\`\`\`\nCONTINUE from where it stopped and complete the HTML. Output ONLY the remaining HTML to complete the file. End with </body></html>.`;
       }
@@ -425,7 +425,7 @@ export class PuterService {
       onStatus(retries === 0 ? 'ARCHITECTING' : `RETRY_${retries}`);
       
       let buffer = retries === 0 ? '' : code;
-      const prompt = buildPrompt(description, retries > 0 ? code : undefined);
+      const prompt = await buildPrompt(description, retries > 0 ? code : undefined);
 
       // ─── 100% OFFLINE LOCAL INFERENCE ─────────────────────────────────
       try {

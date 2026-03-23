@@ -17,37 +17,41 @@ export class ToolForge {
   private tools: Map<string, DaemonTool> = new Map();
   // Callback for OS-level actions (set by App.tsx to avoid circular deps)
   private _osActionHandler: ((action: ParsedOsAction) => Promise<string>) | null = null;
-  private _loaded = false;
   private _saveTimeout: any = null;
+  private _loadPromise: Promise<void>;
 
   constructor() {
-    // Defer initialization to avoid blocking critical rendering path
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => this.ensureLoaded());
-    } else {
-      setTimeout(() => this.ensureLoaded(), 0);
-    }
+    // True deferred async initialization to avoid blocking critical rendering path
+    this._loadPromise = new Promise((resolve) => {
+      const load = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as DaemonTool[];
+            for (const t of parsed) this.tools.set(t.name, t);
+          }
+        } catch(e) {} finally {
+          resolve();
+        }
+      };
+
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(load);
+      } else {
+        setTimeout(load, 0);
+      }
+    });
   }
 
   public bindOsActions(handler: (action: ParsedOsAction) => Promise<string>) {
     this._osActionHandler = handler;
   }
 
-  private ensureLoaded() {
-    if (this._loaded) return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as DaemonTool[];
-        for (const t of parsed) this.tools.set(t.name, t);
-      }
-    } catch(e) {} finally {
-      this._loaded = true;
-    }
+  private ensureLoadedAsync(): Promise<void> {
+    return this._loadPromise;
   }
 
   private save() {
-    this.ensureLoaded();
     if (this._saveTimeout) clearTimeout(this._saveTimeout);
     this._saveTimeout = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.tools.values())));
@@ -56,8 +60,8 @@ export class ToolForge {
 
   // Parse and register user-created tools
   // Format: ```javascript\n// @tool ToolName\n// @desc Description\nfunction ToolName...```
-  public parseAndRegister(text: string): boolean {
-    this.ensureLoaded();
+  public async parseAndRegister(text: string): Promise<boolean> {
+    await this.ensureLoadedAsync();
     const rx = /```javascript\s*\/\/\s*@tool\s+([a-zA-Z0-9_]+)\s*\n\/\/\s*@desc\s+(.+)\n([\s\S]+?)```/g;
     let match;
     let registered = false;
@@ -73,8 +77,8 @@ export class ToolForge {
   }
 
   // Returns context string for system prompt
-  public getSystemToolContext(): string {
-    this.ensureLoaded();
+  public async getSystemToolContext(): Promise<string> {
+    await this.ensureLoadedAsync();
     if (this.tools.size === 0) return '';
     let ctx = '\n\n[FORGED TOOLS — User-created, callable with <CALL_TOOL>]\n';
     for (const t of this.tools.values()) {
@@ -85,7 +89,7 @@ export class ToolForge {
 
   // Executes a forged user tool
   public async executeTool(name: string, argsString: string): Promise<string> {
-    this.ensureLoaded();
+    await this.ensureLoadedAsync();
     const t = this.tools.get(name);
     if (!t) return `[TOOL ERROR: Tool '${name}' not found. Define it first using // @tool syntax]`;
     try {
@@ -249,19 +253,19 @@ export class ToolForge {
     return results.length > 0 ? '\n\n' + results.join('\n') : '';
   }
 
-  public getAllTools(): DaemonTool[] {
-    this.ensureLoaded();
+  public async getAllTools(): Promise<DaemonTool[]> {
+    await this.ensureLoadedAsync();
     return Array.from(this.tools.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 
-  public deleteTool(name: string) {
-    this.ensureLoaded();
+  public async deleteTool(name: string): Promise<void> {
+    await this.ensureLoadedAsync();
     this.tools.delete(name);
     this.save();
   }
 
-  public toolCount(): number {
-    this.ensureLoaded();
+  public async toolCount(): Promise<number> {
+    await this.ensureLoadedAsync();
     return this.tools.size;
   }
 }
