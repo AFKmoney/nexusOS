@@ -14,7 +14,7 @@
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
-import { localBrain } from '../services/localBrain';
+import { localBrain } from '../services/localBrain.ts';
 
 // ─── Valid App Registry ────────────────────────────────────────────────────────
 // Used by the hallucination detector to catch fake app IDs
