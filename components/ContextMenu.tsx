@@ -426,9 +426,11 @@ export default function ContextMenu() {
       try {
           const res = await aiService.generateOnce(prompt, kernelRules, 'json');
           const plan = JSON.parse(res.replace(/```json|```/g, '').trim());
-          Object.keys(plan).forEach(folder => {
-              vfs.createDir(`${targetDir}/${folder}`);
-              plan[folder].forEach((f: string) => vfs.move(`${targetDir}/${f}`, `${targetDir}/${folder}/${f}`));
+          vfs.batch(() => {
+              Object.keys(plan).forEach(folder => {
+                  vfs.createDir(`${targetDir}/${folder}`);
+                  plan[folder].forEach((f: string) => vfs.move(`${targetDir}/${f}`, `${targetDir}/${folder}/${f}`));
+              });
           });
           addNotification({ title: 'Organized', message: 'Directory structure optimized.', type: 'success' });
       } catch(e) { console.error(e); }

@@ -85,6 +85,7 @@ const INITIAL_FS: { [key: string]: FileNode } = {
 
 export class VirtualFileSystem {
   private root: { [key: string]: FileNode };
+  private isBatching = false;
 
   constructor() {
     try {
@@ -100,7 +101,18 @@ export class VirtualFileSystem {
     }
   }
 
+  public batch(fn: () => void) {
+    this.isBatching = true;
+    try {
+        fn();
+    } finally {
+        this.isBatching = false;
+        this.save();
+    }
+  }
+
   private save() {
+    if (this.isBatching) return;
     localStorage.setItem(VFS_STORAGE_KEY, JSON.stringify(this.root));
   }
 
