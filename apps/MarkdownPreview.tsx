@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Eye, Edit, Download, Copy, Check } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 export default function MarkdownPreviewApp() {
   const [md, setMd] = useState(`# Welcome to Markdown Preview
@@ -14,7 +15,7 @@ export default function MarkdownPreviewApp() {
 ## Code Example
 \`\`\`javascript
 function hello() {
-  console.log("NexusOS");
+  return "NexusOS";
 }
 \`\`\`
 
@@ -53,7 +54,7 @@ function hello() {
       return `<tr>${cells.map(c => `<td class="border border-white/10 px-3 py-1 text-xs text-zinc-300">${c}</td>`).join('')}</tr>`;
     });
     html = html.replace(/(<tr>[\s\S]*?<\/tr>)/g, '<table class="w-full border-collapse my-2">$1</table>');
-    return html;
+    return DOMPurify.sanitize(html);
   };
 
   const copyMd = () => { navigator.clipboard.writeText(md); setCopied(true); setTimeout(() => setCopied(false), 1500); };

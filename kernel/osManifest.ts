@@ -15,6 +15,7 @@
  */
 
 import { vfs } from './fileSystem';
+import { MemoryEntry } from '../types';
 
 // ─── App Registry (kept in sync via dynamic import to avoid circular deps) ──────
 // The manifest uses a lazy getter so it always gets the latest state.
@@ -157,7 +158,7 @@ OS::NOTIFY:Project Ready:myapp project created and opened in HyperIDE
 ═════════════════════════════════════════════════════════════`;
 
 // ─── Main Manifest Generator ─────────────────────────────────────────────────
-export function generateOSManifest(memoryEntries: string[] = []): string {
+export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
   const store = getStore();
   const now = new Date().toLocaleString();
   
@@ -176,9 +177,13 @@ export function generateOSManifest(memoryEntries: string[] = []): string {
     : '📁 /home/user/ (empty)';
 
   // Memory context
-  const memCtx = memoryEntries.length > 0
-    ? memoryEntries.map(m => `  • ${m}`).join('\n')
-    : '  (no relevant memory)';
+  let memCtx = '  (no relevant memory)';
+  if (memoryEntries.length > 0) {
+    memCtx = '  • ' + memoryEntries[0].content;
+    for (let i = 1; i < memoryEntries.length; i++) {
+      memCtx += '\n  • ' + memoryEntries[i].content;
+    }
+  }
 
   return `
 ╔══════════════════════════════════════════════════════════════════╗

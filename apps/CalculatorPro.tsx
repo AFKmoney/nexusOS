@@ -1,6 +1,73 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Calculator, Delete, CornerDownLeft, History, Percent, Divide, X, Minus, Plus, Equal } from 'lucide-react';
 
+function evaluateMath(expr: string): number {
+  const sanitized = expr.replace(/[^0-9+\-*/().% ]/g, '');
+  const processed = sanitized.replace(/%/g, '/100');
+  const tokens = processed.match(/(?:\d+\.?\d*|\.\d+|[+\-*/()])/g);
+  if (!tokens) throw new Error('Invalid expression');
+
+  let pos = 0;
+
+  function parseExpression(): number {
+    let left = parseTerm();
+    while (pos < tokens!.length) {
+      const op = tokens![pos];
+      if (op === '+' || op === '-') {
+        pos++;
+        const right = parseTerm();
+        left = op === '+' ? left + right : left - right;
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  function parseTerm(): number {
+    let left = parseFactor();
+    while (pos < tokens!.length) {
+      const op = tokens![pos];
+      if (op === '*' || op === '/') {
+        pos++;
+        const right = parseFactor();
+        left = op === '*' ? left * right : left / right;
+      } else {
+        break;
+      }
+    }
+    return left;
+  }
+
+  function parseFactor(): number {
+    if (pos >= tokens!.length) throw new Error('Unexpected end of expression');
+
+    const token = tokens![pos++];
+
+    if (token === '(') {
+      const value = parseExpression();
+      if (pos >= tokens!.length || tokens![pos++] !== ')') {
+        throw new Error('Missing closing parenthesis');
+      }
+      return value;
+    }
+
+    if (token === '-') return -parseFactor();
+    if (token === '+') return parseFactor();
+
+    const num = parseFloat(token);
+    if (isNaN(num)) throw new Error(`Invalid token: ${token}`);
+    return num;
+  }
+
+  const result = parseExpression();
+  if (pos < tokens!.length) {
+    throw new Error('Unexpected tokens at end of expression');
+  }
+
+  return result;
+}
+
 export default function CalculatorProApp() {
   const [display, setDisplay] = useState('0');
   const [equation, setEquation] = useState('');
@@ -26,9 +93,7 @@ export default function CalculatorProApp() {
   const calculate = () => {
     const expr = equation + display;
     try {
-      // Safe eval replacement for basic math
-      const sanitized = expr.replace(/[^0-9+\-*/().% ]/g, '');
-      const result = Function('"use strict"; return (' + sanitized + ')')();
+      const result = evaluateMath(expr);
       const rStr = String(parseFloat(result.toFixed(10)));
       setHistory(prev => [`${expr} = ${rStr}`, ...prev].slice(0, 30));
       setDisplay(rStr);

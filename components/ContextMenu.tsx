@@ -426,9 +426,11 @@ export default function ContextMenu() {
       try {
           const res = await aiService.generateOnce(prompt, kernelRules, 'json');
           const plan = JSON.parse(res.replace(/```json|```/g, '').trim());
-          Object.keys(plan).forEach(folder => {
-              vfs.createDir(`${targetDir}/${folder}`);
-              plan[folder].forEach((f: string) => vfs.move(`${targetDir}/${f}`, `${targetDir}/${folder}/${f}`));
+          vfs.batch(() => {
+              Object.keys(plan).forEach(folder => {
+                  vfs.createDir(`${targetDir}/${folder}`);
+                  plan[folder].forEach((f: string) => vfs.move(`${targetDir}/${f}`, `${targetDir}/${folder}/${f}`));
+              });
           });
           addNotification({ title: 'Organized', message: 'Directory structure optimized.', type: 'success' });
       } catch(e) { console.error(e); }
@@ -650,7 +652,6 @@ export default function ContextMenu() {
                 <MenuItem icon={ArrowDownFromLine} label="Minimize All" onClick={() => { windows.forEach(w => minimizeWindow(w.id)); closeContextMenu(); }} />
                 <MenuItem icon={ArrowUpFromLine} label="Restore All" onClick={() => { windows.forEach(w => restoreWindow(w.id)); closeContextMenu(); }} />
                 <NeuralItem icon={Sparkles} label="Neural Arrange" onClick={() => { 
-                    // @ts-ignore
                     useOS.getState().autoArrangeWindows(); 
                     closeContextMenu(); 
                 }} />
