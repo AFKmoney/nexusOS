@@ -20,26 +20,12 @@ export class ToolForge {
   private _loaded = false;
   private _loadPromise: Promise<void> | null = null;
   private _saveTimeout: any = null;
+  private _loadPromise: Promise<void>;
 
   constructor() {
-    // Defer initialization to avoid blocking critical rendering path
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(() => this.ensureLoaded());
-    } else {
-      setTimeout(() => this.ensureLoaded(), 0);
-    }
-  }
-
-  public bindOsActions(handler: (action: ParsedOsAction) => Promise<string>) {
-    this._osActionHandler = handler;
-  }
-
-  private async ensureLoaded(): Promise<void> {
-    if (this._loaded) return;
-    if (this._loadPromise) return this._loadPromise;
-
-    this._loadPromise = new Promise(resolve => {
-      const doLoad = () => {
+    // True deferred async initialization to avoid blocking critical rendering path
+    this._loadPromise = new Promise((resolve) => {
+      const load = () => {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           if (raw) {
@@ -47,20 +33,27 @@ export class ToolForge {
             for (const t of parsed) this.tools.set(t.name, t);
           }
         } catch(e) {} finally {
-          this._loaded = true;
           resolve();
         }
       };
 
-      // Wrap in setTimeout to ensure it doesn't block the current tick
-      setTimeout(doLoad, 0);
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(load);
+      } else {
+        setTimeout(load, 0);
+      }
     });
+  }
 
+  public bindOsActions(handler: (action: ParsedOsAction) => Promise<string>) {
+    this._osActionHandler = handler;
+  }
+
+  private ensureLoadedAsync(): Promise<void> {
     return this._loadPromise;
   }
 
-  private async save() {
-    await this.ensureLoaded();
+  private save() {
     if (this._saveTimeout) clearTimeout(this._saveTimeout);
     this._saveTimeout = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.tools.values())));
@@ -70,7 +63,7 @@ export class ToolForge {
   // Parse and register user-created tools
   // Format: ```javascript\n// @tool ToolName\n// @desc Description\nfunction ToolName...```
   public async parseAndRegister(text: string): Promise<boolean> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     const rx = /```javascript\s*\/\/\s*@tool\s+([a-zA-Z0-9_]+)\s*\n\/\/\s*@desc\s+(.+)\n([\s\S]+?)```/g;
     let match;
     let registered = false;
@@ -87,7 +80,7 @@ export class ToolForge {
 
   // Returns context string for system prompt
   public async getSystemToolContext(): Promise<string> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     if (this.tools.size === 0) return '';
     let ctx = '\n\n[FORGED TOOLS — User-created, callable with <CALL_TOOL>]\n';
     for (const t of this.tools.values()) {
@@ -98,7 +91,7 @@ export class ToolForge {
 
   // Executes a forged user tool
   public async executeTool(name: string, argsString: string): Promise<string> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     const t = this.tools.get(name);
     if (!t) return `[TOOL ERROR: Tool '${name}' not found. Define it first using // @tool syntax]`;
     try {
@@ -263,18 +256,18 @@ export class ToolForge {
   }
 
   public async getAllTools(): Promise<DaemonTool[]> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     return Array.from(this.tools.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   public async deleteTool(name: string): Promise<void> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     this.tools.delete(name);
     this.save();
   }
 
   public async toolCount(): Promise<number> {
-    await this.ensureLoaded();
+    await this.ensureLoadedAsync();
     return this.tools.size;
   }
 }
