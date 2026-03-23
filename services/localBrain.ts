@@ -1,4 +1,4 @@
-import { Wllama } from '@wllama/wllama';
+import { Wllama } from '@wllama/wllama/esm/index.js';
 
 export interface ModelConfig {
   id: string;
@@ -46,8 +46,10 @@ export class LocalBrain {
 
   private constructor() {
     this.loadStoredModels();
-    const savedActive = localStorage.getItem(ACTIVE_MODEL_KEY);
-    if (savedActive) this.activeModelId = savedActive;
+    if (typeof localStorage !== 'undefined') {
+      const savedActive = localStorage.getItem(ACTIVE_MODEL_KEY);
+      if (savedActive) this.activeModelId = savedActive;
+    }
   }
 
   public static getInstance(): LocalBrain {
@@ -59,6 +61,10 @@ export class LocalBrain {
 
   private loadStoredModels() {
     try {
+      if (typeof localStorage === 'undefined') {
+        this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
+        return;
+      }
       const raw = localStorage.getItem(STORED_MODELS_KEY);
       if (raw) {
         const parsed: ModelConfig[] = JSON.parse(raw);

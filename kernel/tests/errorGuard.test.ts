@@ -11,9 +11,12 @@ global.localStorage = {
   key: (index: number) => null,
 } as any;
 
-global.navigator = {
-  hardwareConcurrency: 4,
-} as any;
+Object.defineProperty(global, 'navigator', {
+  value: {
+    hardwareConcurrency: 4,
+  },
+  writable: true
+});
 
 // Node 22 has fetch, but if not we could mock it
 if (typeof global.fetch === 'undefined') {
