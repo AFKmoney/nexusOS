@@ -70,7 +70,8 @@ export class LocalBrain {
         const parsed: ModelConfig[] = JSON.parse(raw);
         // Ensure LM Studio definition is always loaded
         const filtered = parsed.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
-        this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL, ...filtered];
+        filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
+        this.storedModels = filtered;
       }
     } catch {
       this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
