@@ -283,8 +283,13 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         try {
             // simple eval just for fun
             if (args.length > 1 && args[1] === '-c') {
-                const res = Function(`"use strict";return (${args[2]})`)();
-                print(String(res));
+                const input = args[2];
+                if (/^[0-9+\-*/().\s]+$/.test(input)) {
+                    const res = Function(`"use strict";return (${input})`)();
+                    print(String(res));
+                } else {
+                    print("NameError: name 'eval' is not defined (or restricted input for security)");
+                }
             } else {
                 print("Pass -c 'expression' to evaluate.");
             }
