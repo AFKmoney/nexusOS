@@ -24,6 +24,7 @@ Object.defineProperty(global, 'navigator', {
 async function runAll() {
   await import('./errorGuard.test.ts');
   await import('./osManifest.test.ts');
+  await import('./fileSystem.test.ts');
 }
 
 runAll().catch(e => {
