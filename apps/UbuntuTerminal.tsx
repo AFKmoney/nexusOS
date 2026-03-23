@@ -3,19 +3,21 @@ import { vfs } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
 import { Info, Terminal as TerminalIcon } from 'lucide-react';
 
+type TerminalLine = { type: 'text'; content: string } | { type: 'html'; content: string };
+
 export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
   const { addNotification } = useOS();
-  const [history, setHistory] = useState<string[]>([
-    'Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-89-generic x86_64)',
-    '',
-    ' * Documentation:  https://help.ubuntu.com',
-    ' * Management:     https://landscape.canonical.com',
-    ' * Support:        https://ubuntu.com/pro',
-    '',
-    'System information as of ' + new Date().toUTCString(),
-    '',
-    '0 updates can be applied immediately.',
-    '',
+  const [history, setHistory] = useState<TerminalLine[]>([
+    { type: 'text', content: 'Welcome to Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-89-generic x86_64)' },
+    { type: 'text', content: '' },
+    { type: 'text', content: ' * Documentation:  https://help.ubuntu.com' },
+    { type: 'text', content: ' * Management:     https://landscape.canonical.com' },
+    { type: 'text', content: ' * Support:        https://ubuntu.com/pro' },
+    { type: 'text', content: '' },
+    { type: 'text', content: 'System information as of ' + new Date().toUTCString() },
+    { type: 'text', content: '' },
+    { type: 'text', content: '0 updates can be applied immediately.' },
+    { type: 'text', content: '' },
   ]);
   
   const [input, setInput] = useState('');
@@ -23,12 +25,27 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
   const [installedPackages, setInstalledPackages] = useState<string[]>(['coreutils', 'apt']);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const escapeHtml = (text: string): string => {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  };
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [history]);
 
-  const print = (text: string) => {
-    setHistory(prev => [...prev, text]);
+  const print = (line: string | TerminalLine) => {
+    if (typeof line === 'string') {
+      setHistory(prev => [...prev, { type: 'text', content: line }]);
+    } else {
+      setHistory(prev => [...prev, line]);
+    }
   };
 
   const getPrompt = () => {
@@ -104,11 +121,17 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
               const perms = cstat?.type === 'directory' ? 'drwxr-xr-x' : '-rw-r--r--';
               const size = cstat?.type === 'directory' ? 4096 : (vfs.readFile(`${targetDir === '/' ? '' : targetDir}/${c}`)?.length || 0);
               const date = new Date(cstat?.modified || Date.now()).toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-              print(`${perms} 1 user user ${size.toString().padStart(6)} ${date} ${cstat?.type === 'directory' ? `<span class="text-[#729fcf] font-bold">${c}</span>` : c}`);
+              const escapedName = escapeHtml(c);
+              const nameHtml = cstat?.type === 'directory' ? `<span class="text-[#729fcf] font-bold">${escapedName}</span>` : escapedName;
+              print({ type: 'html', content: `${perms} 1 user user ${size.toString().padStart(6)} ${date} ${nameHtml}` });
             });
           } else {
-            const out = children.map(c => vfs.stat(`${targetDir === '/' ? '' : targetDir}/${c}`)?.type === 'directory' ? `<span class="text-[#729fcf] font-bold">${c}</span>` : c).join('  ');
-            print(out);
+            const out = children.map(c => {
+              const cstat = vfs.stat(`${targetDir === '/' ? '' : targetDir}/${c}`);
+              const escapedName = escapeHtml(c);
+              return cstat?.type === 'directory' ? `<span class="text-[#729fcf] font-bold">${escapedName}</span>` : escapedName;
+            }).join('  ');
+            print({ type: 'html', content: out });
           }
         }
         break;
@@ -169,8 +192,10 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
             gcontent.split('\n').forEach(line => {
                 if (line.includes(term)) {
                     // Highlight term
-                    const highlighted = line.replace(new RegExp(term, 'g'), `<span class="text-red-500 font-bold">${term}</span>`);
-                    print(highlighted);
+                    const escapedLine = escapeHtml(line);
+                    const escapedTerm = escapeHtml(term);
+                    const highlighted = escapedLine.replace(new RegExp(escapedTerm, 'g'), `<span class="text-red-500 font-bold">${escapedTerm}</span>`);
+                    print({ type: 'html', content: highlighted });
                 }
             });
         }
@@ -205,8 +230,8 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
             print("sudo apt install neofetch");
             break;
         }
-        print('<div class="flex gap-4">');
-        print('<pre class="text-[#E95420]">');
+        print({ type: 'html', content: '<div class="flex gap-4">' });
+        print({ type: 'html', content: '<pre class="text-[#E95420]">' });
         print('            .-/+oossssoo+/-.               ');
         print('        `:+ssssssssssssssssss+:`           ');
         print('      -+ssssssssssssssssssyyssss+-         ');
@@ -227,23 +252,23 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         print('      -+sssssssssssssssssyyyssss+-         ');
         print('        `:+ssssssssssssssssss+:`           ');
         print('            .-/+oossssoo+/-.               ');
-        print('</pre>');
-        print('<div class="flex flex-col gap-1 mt-4">');
-        print('<div><span class="text-[#E95420] font-bold">user</span>@<span class="text-[#E95420] font-bold">nexus-ubuntu</span></div>');
+        print({ type: 'html', content: '</pre>' });
+        print({ type: 'html', content: '<div class="flex flex-col gap-1 mt-4">' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">user</span>@<span class="text-[#E95420] font-bold">nexus-ubuntu</span></div>' });
         print('<div>-----------------</div>');
-        print('<div><span class="text-[#E95420] font-bold">OS</span>: Ubuntu 22.04.3 LTS x86_64</div>');
-        print('<div><span class="text-[#E95420] font-bold">Host</span>: Nexus VFS Subsystem v10.5</div>');
-        print('<div><span class="text-[#E95420] font-bold">Kernel</span>: 5.15.0-89-generic</div>');
-        print('<div><span class="text-[#E95420] font-bold">Uptime</span>: 1 hour, 23 mins</div>');
-        print('<div><span class="text-[#E95420] font-bold">Packages</span>: ' + installedPackages.length + ' (dpkg)</div>');
-        print('<div><span class="text-[#E95420] font-bold">Shell</span>: bash 5.1.16</div>');
-        print('<div><span class="text-[#E95420] font-bold">Terminal</span>: nexus-pty</div>');
-        print('<div><span class="text-[#E95420] font-bold">CPU</span>: Virtual Processor (16) @ 3.4GHz</div>');
-        print('<div><span class="text-[#E95420] font-bold">Memory</span>: 142MB / 8192MB</div>');
-        print('<div class="flex mt-2">');
-        print('<div class="w-4 h-4 bg-[#2e3436]"></div><div class="w-4 h-4 bg-[#cc0000]"></div><div class="w-4 h-4 bg-[#4e9a06]"></div><div class="w-4 h-4 bg-[#c4a000]"></div><div class="w-4 h-4 bg-[#3465a4]"></div><div class="w-4 h-4 bg-[#75507b]"></div><div class="w-4 h-4 bg-[#06989a]"></div><div class="w-4 h-4 bg-[#d3d7cf]"></div>');
-        print('</div>');
-        print('</div></div>');
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">OS</span>: Ubuntu 22.04.3 LTS x86_64</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Host</span>: Nexus VFS Subsystem v10.5</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Kernel</span>: 5.15.0-89-generic</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Uptime</span>: 1 hour, 23 mins</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Packages</span>: ' + escapeHtml(installedPackages.length.toString()) + ' (dpkg)</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Shell</span>: bash 5.1.16</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Terminal</span>: nexus-pty</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">CPU</span>: Virtual Processor (16) @ 3.4GHz</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Memory</span>: 142MB / 8192MB</div>' });
+        print({ type: 'html', content: '<div class="flex mt-2">' });
+        print({ type: 'html', content: '<div class="w-4 h-4 bg-[#2e3436]"></div><div class="w-4 h-4 bg-[#cc0000]"></div><div class="w-4 h-4 bg-[#4e9a06]"></div><div class="w-4 h-4 bg-[#c4a000]"></div><div class="w-4 h-4 bg-[#3465a4]"></div><div class="w-4 h-4 bg-[#75507b]"></div><div class="w-4 h-4 bg-[#06989a]"></div><div class="w-4 h-4 bg-[#d3d7cf]"></div>' });
+        print({ type: 'html', content: '</div>' });
+        print({ type: 'html', content: '</div></div>' });
         break;
         
       case 'python3':
@@ -276,7 +301,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const cmd = input;
-      setHistory(prev => [...prev, `${constructPromptString()} ${cmd}`]);
+      setHistory(prev => [...prev, { type: 'text', content: `${constructPromptString()} ${cmd}` }]);
       setInput('');
       if (cmd.trim()) handleCommand(cmd);
     }
@@ -298,7 +323,13 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         onClick={() => document.getElementById('ubuntu-cli-input')?.focus()}
       >
         {history.map((line, i) => (
-          <div key={i} className="min-h-[20px] whitespace-pre-wrap break-all" dangerouslySetInnerHTML={{ __html: line || ' ' }} />
+          <div key={i} className="min-h-[20px] whitespace-pre-wrap break-all">
+            {line.type === 'text' ? (
+              line.content || ' '
+            ) : (
+              <div dangerouslySetInnerHTML={{ __html: line.content || ' ' }} />
+            )}
+          </div>
         ))}
         
         <div className="flex">
