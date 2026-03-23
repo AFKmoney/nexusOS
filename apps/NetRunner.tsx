@@ -8,6 +8,7 @@ import {
   Star, Home, Shield, Wifi, Clock
 } from 'lucide-react';
 import { aiService } from '../services/puterService';
+import DOMPurify from 'dompurify';
 
 // ─── Quick-links ───────────────────────────────────────────────
 const QUICK_LINKS = [
@@ -312,7 +313,7 @@ Be realistic and detailed. The user should feel like they got real information.`
                   <div
                     className="prose prose-invert max-w-none text-sm leading-relaxed prose-headings:text-white prose-p:text-zinc-300 prose-a:text-emerald-400 prose-strong:text-white prose-code:text-emerald-300 prose-li:text-zinc-300"
                     style={{ lineHeight: '1.8' }}
-                    dangerouslySetInnerHTML={{ __html: aiContent }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(aiContent) }}
                   />
 
                   {/* Sources */}
