@@ -281,7 +281,7 @@ export class PuterService {
       }
 
       // Post-process: register any new tools the AI created
-      toolForge.parseAndRegister(response);
+      await toolForge.parseAndRegister(response);
 
       // Post-process: execute native OS actions from AI response
       const osActionResults = await toolForge.executeOsActions(response);
@@ -334,7 +334,7 @@ export class PuterService {
       });
 
       // Post-Processing 1: Register any new tools DAEMON created
-      if (toolForge.parseAndRegister(fullResponse)) {
+      if (await toolForge.parseAndRegister(fullResponse)) {
         onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
       }
 
