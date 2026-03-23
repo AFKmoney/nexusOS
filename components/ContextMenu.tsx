@@ -431,12 +431,12 @@ export default function ContextMenu() {
               const folders = Object.keys(plan);
               for (let i = 0; i < folders.length; i++) {
                   const folder = folders[i];
-                  const destDir = `${targetDir}/${folder}`;
-                  vfs.createDir(destDir);
+                  const folderPath = `${targetDir}/${folder}`;
+                  vfs.createDir(folderPath);
 
                   const files = plan[folder];
                   for (let j = 0; j < files.length; j++) {
-                      vfs.move(`${targetDir}/${files[j]}`, `${destDir}/${files[j]}`);
+                      vfs.move(`${targetDir}/${files[j]}`, `${folderPath}/${files[j]}`);
                   }
               }
           });
