@@ -14,6 +14,21 @@ import {
 import { aiService } from '../services/puterService';
 import { vfs } from '../kernel/fileSystem';
 
+interface MenuItemProps {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void | Promise<void>;
+  danger?: boolean;
+  disabled?: boolean;
+  shortcut?: string;
+}
+
+interface NeuralItemProps {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void | Promise<void>;
+}
+
 export default function ContextMenu() {
   const { 
     contextMenu, closeContextMenu, 
@@ -423,7 +438,7 @@ export default function ContextMenu() {
 
   const Separator = () => <div className="h-px bg-white/10 my-1 mx-2" />;
   
-  const MenuItem = ({ icon: Icon, label, onClick, danger = false, disabled = false, shortcut }: any) => (
+  const MenuItem = ({ icon: Icon, label, onClick, danger = false, disabled = false, shortcut }: MenuItemProps) => (
     <button 
         onClick={onClick} 
         disabled={disabled}
@@ -440,7 +455,7 @@ export default function ContextMenu() {
     </button>
   );
 
-  const NeuralItem = ({ icon: Icon, label, onClick }: any) => (
+  const NeuralItem = ({ icon: Icon, label, onClick }: NeuralItemProps) => (
       <button 
         onClick={onClick}
         className="w-full flex items-center gap-3 px-3 py-1.5 text-[13px] text-left transition-colors text-purple-200 hover:bg-purple-500/20 hover:text-white group relative overflow-hidden"
