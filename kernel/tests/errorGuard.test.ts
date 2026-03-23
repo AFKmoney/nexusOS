@@ -55,3 +55,59 @@ test('ErrorGuard - validate WRITE_FILE missing content', () => {
 
   assert.ok(hasMissingContentError, 'Should report error for WRITE_FILE missing content');
 });
+
+test('ErrorGuard - validateHTML: ignores plain text', () => {
+  const errorGuard = ErrorGuard.getInstance();
+  const validText = "Just some plain text without any HTML tags.";
+  const result = errorGuard.validate(validText);
+
+  const hasMissingDoctypeError = result.errors.some(e => e.type === 'HTML_MISSING_DOCTYPE');
+  const hasIncompleteHtmlError = result.errors.some(e => e.type === 'HTML_INCOMPLETE');
+
+  assert.ok(!hasMissingDoctypeError, 'Should not report HTML_MISSING_DOCTYPE for plain text');
+  assert.ok(!hasIncompleteHtmlError, 'Should not report HTML_INCOMPLETE for plain text');
+});
+
+test('ErrorGuard - validateHTML: valid HTML', () => {
+  const errorGuard = ErrorGuard.getInstance();
+  const validHtml = "<!DOCTYPE html>\n<html>\n<head></head>\n<body>\n<h1>Hello</h1>\n</body>\n</html>";
+  const result = errorGuard.validate(validHtml);
+
+  const hasMissingDoctypeError = result.errors.some(e => e.type === 'HTML_MISSING_DOCTYPE');
+  const hasIncompleteHtmlError = result.errors.some(e => e.type === 'HTML_INCOMPLETE');
+
+  assert.ok(!hasMissingDoctypeError, 'Should not report HTML_MISSING_DOCTYPE for valid HTML');
+  assert.ok(!hasIncompleteHtmlError, 'Should not report HTML_INCOMPLETE for valid HTML');
+});
+
+test('ErrorGuard - validateHTML: missing DOCTYPE', () => {
+  const errorGuard = ErrorGuard.getInstance();
+  const invalidHtml = "<html>\n<head></head>\n<body>\n<h1>Hello</h1>\n</body>\n</html>";
+  const result = errorGuard.validate(invalidHtml);
+
+  const hasMissingDoctypeError = result.errors.some(e => e.type === 'HTML_MISSING_DOCTYPE');
+
+  assert.ok(hasMissingDoctypeError, 'Should report HTML_MISSING_DOCTYPE when missing <!DOCTYPE html>');
+});
+
+test('ErrorGuard - validateHTML: incomplete HTML', () => {
+  const errorGuard = ErrorGuard.getInstance();
+  const invalidHtml = "<!DOCTYPE html>\n<html>\n<head></head>\n<body>\n<h1>Hello</h1>";
+  const result = errorGuard.validate(invalidHtml);
+
+  const hasIncompleteHtmlError = result.errors.some(e => e.type === 'HTML_INCOMPLETE');
+
+  assert.ok(hasIncompleteHtmlError, 'Should report HTML_INCOMPLETE when missing </html> and </body>');
+});
+
+test('ErrorGuard - validateHTML: missing DOCTYPE and incomplete', () => {
+  const errorGuard = ErrorGuard.getInstance();
+  const invalidHtml = "<html>\n<head></head>\n<body>\n<h1>Hello</h1>";
+  const result = errorGuard.validate(invalidHtml);
+
+  const hasMissingDoctypeError = result.errors.some(e => e.type === 'HTML_MISSING_DOCTYPE');
+  const hasIncompleteHtmlError = result.errors.some(e => e.type === 'HTML_INCOMPLETE');
+
+  assert.ok(hasMissingDoctypeError, 'Should report HTML_MISSING_DOCTYPE');
+  assert.ok(hasIncompleteHtmlError, 'Should report HTML_INCOMPLETE');
+});
