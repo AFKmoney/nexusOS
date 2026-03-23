@@ -20,10 +20,29 @@ export class ToolForge {
   private _loaded = false;
   private _loadPromise: Promise<void> | null = null;
   private _saveTimeout: any = null;
+  private _loadPromise: Promise<void>;
 
   constructor() {
-    // Start async initialization immediately without blocking constructor
-    this.ensureLoadedAsync();
+    // True deferred async initialization to avoid blocking critical rendering path
+    this._loadPromise = new Promise((resolve) => {
+      const load = () => {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as DaemonTool[];
+            for (const t of parsed) this.tools.set(t.name, t);
+          }
+        } catch(e) {} finally {
+          resolve();
+        }
+      };
+
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(load);
+      } else {
+        setTimeout(load, 0);
+      }
+    });
   }
 
   public bindOsActions(handler: (action: ParsedOsAction) => Promise<string>) {
@@ -31,34 +50,10 @@ export class ToolForge {
   }
 
   private ensureLoadedAsync(): Promise<void> {
-    if (this._loaded) return Promise.resolve();
-    if (!this._loadPromise) {
-      this._loadPromise = new Promise(resolve => {
-        const load = () => {
-          try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-              const parsed = JSON.parse(raw) as DaemonTool[];
-              for (const t of parsed) this.tools.set(t.name, t);
-            }
-          } catch(e) {} finally {
-            this._loaded = true;
-            resolve();
-          }
-        };
-
-        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(load);
-        } else {
-          setTimeout(load, 0);
-        }
-      });
-    }
     return this._loadPromise;
   }
 
-  private async save() {
-    await this.ensureLoadedAsync();
+  private save() {
     if (this._saveTimeout) clearTimeout(this._saveTimeout);
     this._saveTimeout = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.tools.values())));
@@ -84,7 +79,8 @@ export class ToolForge {
   }
 
   // Returns context string for system prompt
-  public getSystemToolContext(): string {
+  public async getSystemToolContext(): Promise<string> {
+    await this.ensureLoadedAsync();
     if (this.tools.size === 0) return '';
     let ctx = '\n\n[FORGED TOOLS — User-created, callable with <CALL_TOOL>]\n';
     for (const t of this.tools.values()) {
@@ -259,17 +255,19 @@ export class ToolForge {
     return results.length > 0 ? '\n\n' + results.join('\n') : '';
   }
 
-  public getAllTools(): DaemonTool[] {
+  public async getAllTools(): Promise<DaemonTool[]> {
+    await this.ensureLoadedAsync();
     return Array.from(this.tools.values()).sort((a, b) => b.createdAt - a.createdAt);
   }
 
-  public async deleteTool(name: string) {
+  public async deleteTool(name: string): Promise<void> {
     await this.ensureLoadedAsync();
     this.tools.delete(name);
     this.save();
   }
 
-  public toolCount(): number {
+  public async toolCount(): Promise<number> {
+    await this.ensureLoadedAsync();
     return this.tools.size;
   }
 }

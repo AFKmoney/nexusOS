@@ -195,11 +195,8 @@ test('generateOSManifest - with relevant memory', () => {
   vfs.listDir = (path: string) => [];
 
   try {
-    const memory = [
-      { id: '1', content: 'User likes dark mode.', tags: [], timestamp: 0, embeddingVector: [] },
-      { id: '2', content: 'Project is named "NexusOS"', tags: [], timestamp: 0, embeddingVector: [] }
-    ];
-    const manifest = generateOSManifest(memory);
+    const memory = [{ content: 'User likes dark mode.' }, { content: 'Project is named "NexusOS"' }];
+    const manifest = generateOSManifest(memory as any);
 
     assert.match(manifest, /\[RELEVANT MEMORY\]\n  • User likes dark mode\.\n  • Project is named "NexusOS"/);
   } finally {
