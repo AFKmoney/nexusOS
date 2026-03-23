@@ -3,7 +3,6 @@ import { useOS } from '../store/osStore';
 import { vfs } from '../kernel/fileSystem';
 import { getSmartIcon } from '../utils/smartIcons';
 import { format } from 'date-fns';
-// Fix: Added missing 'Settings' icon import from lucide-react
 import { X, HardDrive, Folder, File, Image as ImageIcon, Trash2, Settings } from 'lucide-react';
 
 const formatDate = (ts: number) => {
