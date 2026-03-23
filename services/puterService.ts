@@ -4,7 +4,7 @@ import { memory } from '../kernel/memory';
 import { toolForge } from '../kernel/toolForge';
 import { generateOSManifest, bindOsStore } from '../kernel/osManifest';
 import { errorGuard } from '../kernel/errorGuard';
-import { KernelRules } from '../types';
+import { KernelRules, MemoryEntry } from '../types';
 
 // Expose bindOsStore for App.tsx to call on boot
 export { bindOsStore };
@@ -194,7 +194,7 @@ export class PuterService {
     return true;
   }
 
-  private buildSystemPrompt(rules: KernelRules, mode: ChatMode, memoryEntries?: string[]): string {
+  private buildSystemPrompt(rules: KernelRules, mode: ChatMode, memoryEntries?: MemoryEntry[]): string {
     if (mode === 'raw') return '';
 
     // Model-specific personas
@@ -245,7 +245,10 @@ export class PuterService {
   private getContextualPrompt(prompt: string): string {
     const relevant = memory.recall(prompt);
     if (relevant.length === 0) return prompt;
-    const contextStr = relevant.map(e => `[MEMORY]: ${e.content}`).join('\n');
+    let contextStr = '[MEMORY]: ' + relevant[0].content;
+    for (let i = 1; i < relevant.length; i++) {
+      contextStr += '\n[MEMORY]: ' + relevant[i].content;
+    }
     return `[SYSTEM_MEMORY_DUMP]\n${contextStr}\n\n[USER_QUERY]\n${prompt}`;
   }
 
@@ -258,7 +261,7 @@ export class PuterService {
       }
     }
     try {
-      const relevantMem = memory.recall(prompt).map(e => e.content);
+      const relevantMem = memory.recall(prompt);
       const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
       const toolCtx = toolForge.getSystemToolContext();
       const fullSystemPrompt = systemPrompt + toolCtx;
@@ -311,7 +314,7 @@ export class PuterService {
     }
 
     try {
-      const relevantMem = memory.recall(processedPrompt).map(e => e.content);
+      const relevantMem = memory.recall(processedPrompt);
       const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
       const toolCtx = toolForge.getSystemToolContext();
       const stPrompt = systemPrompt + toolCtx;
