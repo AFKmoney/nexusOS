@@ -92,11 +92,11 @@ export class VirtualFileSystem {
         if (saved) {
             this.root = JSON.parse(saved);
         } else {
-            this.root = JSON.parse(JSON.stringify(INITIAL_FS));
+            this.root = structuredClone(INITIAL_FS);
             this.save();
         }
     } catch (e) {
-        this.root = JSON.parse(JSON.stringify(INITIAL_FS));
+        this.root = structuredClone(INITIAL_FS);
     }
   }
 
