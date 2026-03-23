@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder",
+    "test": "npx tsx --test kernel/tests/runTests.ts"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",

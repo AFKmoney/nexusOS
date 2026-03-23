@@ -20,4 +20,13 @@ Object.defineProperty(global, 'navigator', {
   configurable: true
 });
 
-await import('./errorGuard.test.ts');
+// Helper to run sequential tests since we can't use top-level await in CJS easily via tsx
+async function runAll() {
+  await import('./errorGuard.test.ts');
+  await import('./osManifest.test.ts');
+}
+
+runAll().catch(e => {
+  console.error(e);
+  process.exit(1);
+});
