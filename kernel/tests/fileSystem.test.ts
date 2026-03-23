@@ -116,6 +116,71 @@ test('VirtualFileSystem - readFile for non-existent file', () => {
   assert.strictEqual(content, null, 'Should return null for non-existent file');
 });
 
+test('VirtualFileSystem - listDir with appId that has vfs.read permission', () => {
+  const vfs = new VirtualFileSystem();
+
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: [
+        { id: 'app1', permissions: ['vfs.read'] }
+      ]
+    })
+  };
+
+  vfs.createDir('/home/user/Desktop/test_dir');
+  vfs.writeFile('/home/user/Desktop/test_dir/file.txt', 'content');
+
+  const files = vfs.listDir('/home/user/Desktop/test_dir', 'app1');
+  assert.deepStrictEqual(files, ['file.txt'], 'Should list directory successfully with valid permissions');
+
+  delete (global as any).window.__OS_STORE__;
+});
+
+test('VirtualFileSystem - listDir with appId that lacks vfs.read permission', () => {
+  const vfs = new VirtualFileSystem();
+
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: [
+        { id: 'app2', permissions: ['vfs.write'] }
+      ]
+    })
+  };
+
+  vfs.createDir('/home/user/Desktop/test_dir_2');
+
+  lastConsoleError = '';
+  const files = vfs.listDir('/home/user/Desktop/test_dir_2', 'app2');
+
+  assert.deepStrictEqual(files, [], 'Should return empty array when permission is denied');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked app2 from reading'), 'Should log permission error');
+
+  delete (global as any).window.__OS_STORE__;
+});
+
+test('VirtualFileSystem - listDir with unregistered appId', () => {
+  const vfs = new VirtualFileSystem();
+
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: []
+    })
+  };
+
+  vfs.createDir('/home/user/Desktop/test_dir_3');
+
+  lastConsoleError = '';
+  const files = vfs.listDir('/home/user/Desktop/test_dir_3', 'unknown_app');
+
+  assert.deepStrictEqual(files, [], 'Should return empty array for unregistered app');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked unknown_app from reading'), 'Should log permission error');
+
+  delete (global as any).window.__OS_STORE__;
+});
+
 // Restore console.error at the end
 test('VirtualFileSystem - cleanup', () => {
   console.error = originalConsoleError;
