@@ -426,6 +426,7 @@ export default function ContextMenu() {
       try {
           const res = await aiService.generateOnce(prompt, kernelRules, 'json');
           const plan = JSON.parse(res.replace(/```json|```/g, '').trim());
+
           vfs.batch(() => {
               const folders = Object.keys(plan);
               for (let i = 0; i < folders.length; i++) {
@@ -439,6 +440,7 @@ export default function ContextMenu() {
                   }
               }
           });
+
           addNotification({ title: 'Organized', message: 'Directory structure optimized.', type: 'success' });
       } catch(e) { console.error(e); }
   };
