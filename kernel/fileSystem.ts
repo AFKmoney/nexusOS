@@ -174,7 +174,11 @@ export class VirtualFileSystem {
     return null;
   }
 
-  public listDir(path: string): string[] {
+  public listDir(path: string, appId?: string): string[] {
+    if (!this.checkPermission(appId, 'vfs.read')) {
+        console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
+        return [];
+    }
     const node = this.resolveNode(path);
     if (node && node.type === 'directory' && node.children) return Object.keys(node.children);
     return [];
