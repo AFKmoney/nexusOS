@@ -116,6 +116,73 @@ test('VirtualFileSystem - readFile for non-existent file', () => {
   assert.strictEqual(content, null, 'Should return null for non-existent file');
 });
 
+test('VirtualFileSystem - constructor handles localStorage errors by falling back to INITIAL_FS', () => {
+  const originalGetItem = global.localStorage.getItem;
+  try {
+    global.localStorage.getItem = () => {
+      throw new Error('localStorage is disabled');
+    };
+    const vfs = new VirtualFileSystem();
+
+    // Test if it loaded INITIAL_FS by reading a known default file
+    const content = vfs.readFile('/system/kernel.log');
+    assert.ok(content !== null, 'Should load INITIAL_FS and be able to read system files');
+    assert.ok(content?.includes('[BOOT]'), 'Content should match default system file');
+  } finally {
+    global.localStorage.getItem = originalGetItem;
+  }
+});
+
+test('VirtualFileSystem - constructor handles invalid JSON by falling back to INITIAL_FS', () => {
+  const originalGetItem = global.localStorage.getItem;
+  try {
+    global.localStorage.getItem = (key: string) => {
+      if (key === 'nexus_vfs_v1') return '{bad json';
+      return null;
+    };
+    const vfs = new VirtualFileSystem();
+
+    const content = vfs.readFile('/system/kernel.log');
+    assert.ok(content !== null, 'Should load INITIAL_FS and be able to read system files');
+  } finally {
+    global.localStorage.getItem = originalGetItem;
+  }
+});
+
+test('VirtualFileSystem - constructor loads saved valid state from localStorage', () => {
+  const originalGetItem = global.localStorage.getItem;
+  try {
+    const customState = {
+      system: {
+        name: 'system',
+        type: 'directory',
+        permissions: 'r-x',
+        children: {
+          'custom.log': {
+            name: 'custom.log',
+            type: 'file',
+            permissions: 'r--',
+            content: 'custom loaded content',
+            created: 0,
+            modified: 0
+          }
+        }
+      }
+    };
+
+    global.localStorage.getItem = (key: string) => {
+      if (key === 'nexus_vfs_v1') return JSON.stringify(customState);
+      return null;
+    };
+
+    const vfs = new VirtualFileSystem();
+    const content = vfs.readFile('/system/custom.log');
+    assert.strictEqual(content, 'custom loaded content', 'Should load and parse valid JSON state from localStorage');
+  } finally {
+    global.localStorage.getItem = originalGetItem;
+  }
+});
+
 // Restore console.error at the end
 test('VirtualFileSystem - cleanup', () => {
   console.error = originalConsoleError;
