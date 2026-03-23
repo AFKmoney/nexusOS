@@ -18,7 +18,27 @@ export default function CalendarApp() {
   useEffect(() => {
     try { const r = localStorage.getItem(EVENTS_KEY); if (r) setEvents(JSON.parse(r)); } catch {}
   }, []);
-  const persist = (e: CalEvent[]) => { setEvents(e); localStorage.setItem(EVENTS_KEY, JSON.stringify(e)); };
+
+  const schedulePersistence = (events: CalEvent[]) => {
+    const perform = () => {
+      try {
+        localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+      } catch (err) {
+        console.error('Failed to persist calendar events:', err);
+      }
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(perform, { timeout: 2000 });
+    } else {
+      setTimeout(perform, 0);
+    }
+  };
+
+  const persist = (e: CalEvent[]) => {
+    setEvents(e);
+    schedulePersistence(e);
+  };
 
   const year = current.getFullYear(), month = current.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
