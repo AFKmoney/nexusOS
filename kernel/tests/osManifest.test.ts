@@ -21,7 +21,8 @@ if (typeof global.fetch === 'undefined') {
 
 // In standard node test with experimental-strip-types, we don't rewrite app files.
 // But we *must* rewrite test file imports if they are local, so we add .ts.
-import { parseOsActions } from '../osManifest.ts';
+import { parseOsActions, generateOSManifest, bindOsStore } from '../osManifest.ts';
+import { vfs } from '../fileSystem.ts';
 
 test('parseOsActions - parses action with no arguments', () => {
   const text = 'OS::DO_SOMETHING';
@@ -114,4 +115,91 @@ test('parseOsActions - handles empty text and whitespace', () => {
   assert.deepStrictEqual(actions[0].args, ['Test:  Whitespace']);
   // The raw string keeps whatever was after trimming
   assert.strictEqual(actions[0].raw, 'OS::NOTIFY:Test:  Whitespace');
+});
+
+test('generateOSManifest - empty state', () => {
+  // Mock store empty state
+  bindOsStore(() => ({ windows: [] }));
+
+  // Mock VFS empty state
+  const originalListDir = vfs.listDir;
+  vfs.listDir = (path: string) => [];
+
+  try {
+    const manifest = generateOSManifest();
+
+    assert.match(manifest, /\[OPEN WINDOWS\]\nNone open\./);
+    assert.match(manifest, /\[VFS WORKSPACE\]\n📁 \/home\/user\/ \(empty\)/);
+    assert.match(manifest, /\[RELEVANT MEMORY\]\n  \(no relevant memory\)/);
+  } finally {
+    // Restore
+    vfs.listDir = originalListDir;
+  }
+});
+
+test('generateOSManifest - with active windows', () => {
+  // Mock store with windows
+  bindOsStore(() => ({
+    windows: [
+      { title: 'Terminal', appId: 'terminal', isMinimized: false },
+      { title: 'Editor', appId: 'hyperide', isMinimized: true }
+    ]
+  }));
+
+  const originalListDir = vfs.listDir;
+  vfs.listDir = (path: string) => [];
+
+  try {
+    const manifest = generateOSManifest();
+
+    assert.match(manifest, /\[OPEN WINDOWS\]\n  • Terminal \(appId: terminal\)\n  • Editor \(appId: hyperide, minimized\)/);
+  } finally {
+    vfs.listDir = originalListDir;
+  }
+});
+
+test('generateOSManifest - with VFS snapshot', () => {
+  bindOsStore(() => ({ windows: [] }));
+
+  const originalListDir = vfs.listDir;
+  const originalStat = vfs.stat;
+
+  // Mock VFS files
+  vfs.listDir = (path: string) => {
+    if (path === '/home/user') return ['docs', 'notes.txt'];
+    if (path === '/home/user/docs') return ['report.pdf'];
+    return [];
+  };
+
+  vfs.stat = (path: string) => {
+    if (path === '/home/user/docs') return { type: 'directory' } as any;
+    if (path === '/home/user/notes.txt') return { type: 'file' } as any;
+    if (path === '/home/user/docs/report.pdf') return { type: 'file' } as any;
+    return null;
+  };
+
+  try {
+    const manifest = generateOSManifest();
+
+    assert.match(manifest, /\[VFS WORKSPACE\]\n📁 \/home\/user\/\n  📁 docs\/\n    📄 report\.pdf\n  📄 notes\.txt/);
+  } finally {
+    vfs.listDir = originalListDir;
+    vfs.stat = originalStat;
+  }
+});
+
+test('generateOSManifest - with relevant memory', () => {
+  bindOsStore(() => ({ windows: [] }));
+
+  const originalListDir = vfs.listDir;
+  vfs.listDir = (path: string) => [];
+
+  try {
+    const memory = ['User likes dark mode.', 'Project is named "NexusOS"'];
+    const manifest = generateOSManifest(memory);
+
+    assert.match(manifest, /\[RELEVANT MEMORY\]\n  • User likes dark mode\.\n  • Project is named "NexusOS"/);
+  } finally {
+    vfs.listDir = originalListDir;
+  }
 });
