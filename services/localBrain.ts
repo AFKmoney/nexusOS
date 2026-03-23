@@ -1,4 +1,4 @@
-import { Wllama } from '@wllama/wllama';
+import { Wllama } from '@wllama/wllama/esm/index.js';
 
 export interface ModelConfig {
   id: string;
@@ -46,8 +46,10 @@ export class LocalBrain {
 
   private constructor() {
     this.loadStoredModels();
-    const savedActive = localStorage.getItem(ACTIVE_MODEL_KEY);
-    if (savedActive) this.activeModelId = savedActive;
+    if (typeof localStorage !== 'undefined') {
+      const savedActive = localStorage.getItem(ACTIVE_MODEL_KEY);
+      if (savedActive) this.activeModelId = savedActive;
+    }
   }
 
   public static getInstance(): LocalBrain {
@@ -59,12 +61,17 @@ export class LocalBrain {
 
   private loadStoredModels() {
     try {
+      if (typeof localStorage === 'undefined') {
+        this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
+        return;
+      }
       const raw = localStorage.getItem(STORED_MODELS_KEY);
       if (raw) {
         const parsed: ModelConfig[] = JSON.parse(raw);
         // Ensure LM Studio definition is always loaded
         const filtered = parsed.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
-        this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL, ...filtered];
+        filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
+        this.storedModels = filtered;
       }
     } catch {
       this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
@@ -193,18 +200,12 @@ export class LocalBrain {
 
         this.onLoadProgress?.(10, `Loading Model Weights: ${model.name}...`);
         
-        // @ts-ignore
         await this.wllama.loadModelFromUrl(model.path, {
-          // @ts-ignore
           n_ctx:      model.nCtx       ?? 4096,
-          // @ts-ignore
           n_threads:  model.nThreads   ?? (navigator.hardwareConcurrency ? Math.ceil(navigator.hardwareConcurrency / 2) : 4),
-          // @ts-ignore
           n_batch:    model.nBatch     ?? 256,
-          // @ts-ignore
-          n_gpu_layers: model.nGpuLayers ?? 100,
-          // @ts-ignore
-          onProgress: (pct: number) => {
+          progressCallback: ({ loaded, total }: { loaded: number; total: number }) => {
+            const pct = total > 0 ? loaded / total : 0;
             this.onLoadProgress?.(10 + Math.floor(pct * 85), `Decoding local blocks: ${Math.floor(pct * 100)}%`);
           }
         });
@@ -273,10 +274,9 @@ export class LocalBrain {
       // Wllama Flow
       if (!this.wllama) throw new Error('Brain Native Wasm not ready.');
       const formatted = this.formatPrompt(prompt, systemPrompt);
-      // @ts-ignore
       return await this.wllama.createCompletion(formatted, {
-        // @ts-ignore
-        n_predict: 2048, temp: 0.7, top_k: 40, top_p: 0.9,
+        nPredict: 2048,
+        sampling: { temp: 0.7, top_k: 40, top_p: 0.9 },
       });
     });
   }
@@ -332,10 +332,10 @@ export class LocalBrain {
       const formatted = this.formatPrompt(prompt, systemPrompt);
       const decoder = new TextDecoder();
       try {
-        // @ts-ignore
         const completion = await this.wllama.createCompletion(formatted, {
-          // @ts-ignore
-          n_predict: 2048, temp: 0.7, top_k: 40, top_p: 0.9, stream: true,
+          nPredict: 2048,
+          sampling: { temp: 0.7, top_k: 40, top_p: 0.9 },
+          stream: true,
         });
         for await (const chunk of completion) {
           const text = decoder.decode(chunk.piece, { stream: true });

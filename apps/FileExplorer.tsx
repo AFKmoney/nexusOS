@@ -69,7 +69,10 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
           const prompt = `Filter the file list based on query: "${searchQuery}". Context: ${JSON.stringify(fileContext)}. Return ONLY a JSON array of matched filenames.`;
           const res = await aiService.generateOnce(prompt, kernelRules, 'json');
           let matches = JSON.parse(res.replace(/```json|```/g, '').trim());
-          if (Array.isArray(matches)) setItems(matches.filter(m => typeof m === 'string' && allFiles.includes(m)));
+          if (Array.isArray(matches)) {
+              const allFilesSet = new Set(allFiles);
+              setItems(matches.filter(m => typeof m === 'string' && allFilesSet.has(m)));
+          }
           else setItems(allFiles.filter(f => f.toLowerCase().includes(searchQuery.toLowerCase())));
       } catch (e) {
           setItems(allFiles.filter(f => f.toLowerCase().includes(searchQuery.toLowerCase())));
