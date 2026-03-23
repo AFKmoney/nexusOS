@@ -22,9 +22,8 @@ const TONE_OPTIONS = [
 ];
 
 const MODEL_OPTIONS = [
-  { id: 'daemon-fractal', label: 'DAEMON Local', provider: 'Local WebAssembly', fast: true, desc: 'Offline sovereign mode — 100% private' },
-  { id: 'daemon-prime', label: 'DAEMON Prime', provider: 'NexusOS Core', fast: false, desc: 'Enhanced reasoning & analysis' },
-  { id: 'daemon-architect', label: 'DAEMON Architect', provider: 'NexusOS Core', fast: true, desc: 'Code generation & app building' },
+  { id: 'lfm-daemon', label: 'DAEMON LFM (Port 1234)', provider: 'LM Studio / Local API', fast: true, desc: 'Direct neural link via local server — Core Mode' },
+  { id: 'daemon-fractal', label: 'DAEMON Native (Wasm)', provider: 'Local WebAssembly', fast: true, desc: 'HuggingFace GGUF models directly inside the OS' },
 ];
 
 const ACCENT_COLORS = [

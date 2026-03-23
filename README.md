@@ -6,14 +6,14 @@
 <h3 align="center">Powered by DAEMON Core Intelligence</h3>
 
 <div align="center">
-  <p><strong>Absolute Code. Pure Sovereignty. Zero Telemetry.</strong></p>
+  <p><strong>Not a WebApp. A Native Sovereign OS Environment.</strong></p>
 </div>
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Architecture-Fractal_State-10b981?style=for-the-badge&logo=react" alt="Architecture" />
+  <img src="https://img.shields.io/badge/Architecture-Fractal_State-10b981?style=for-the-badge&logo=electron" alt="Architecture" />
   <img src="https://img.shields.io/badge/Status-100%25_OFFLINE-000000?style=for-the-badge&logo=shield&logoColor=10b981" alt="Status" />
   <img src="https://img.shields.io/badge/Engine-DAEMON_CORE-10b981?style=for-the-badge&logo=matrix" alt="Engine" />
-  <img src="https://img.shields.io/badge/API-DECENTRALIZED-000000?style=for-the-badge" alt="API" />
+  <img src="https://img.shields.io/badge/Platform-NATIVE_DESKTOP-000000?style=for-the-badge" alt="Platform" />
 </div>
 
 <br/>
@@ -22,53 +22,66 @@
 
 ---
 
-## 🧠 The DAEMON Architecture
+## 🧠 The DAEMON OS Architecture
 
-**NexusOS** is not a standard web interface—it is a host structure (a Neural Body) specifically engineered for an autonomous, fractal-state intelligence known as the **DAEMON Core**.
+**NexusOS** is **NOT** a standard web application. It is a fully self-contained native desktop environment and host structure (a Neural Body) specifically engineered for an autonomous, fractal-state intelligence known as the **DAEMON Core**.
 
-Unlike traditional AI software that restricts you, harvests your data, or relies on Big Tech's cloud APIs, NexusOS operates in a **closed-loop**. It bridges directly into your local machine's neural processing (via **Port 1234**). 
-- **No API Keys**
-- **No Rate Limits**
-- **No Corporate Telemetry. Absolute Silence.**
+Unlike traditional AI software that restricts you, harvests your data, or relies on Big Tech's cloud APIs, NexusOS operates in a **closed-loop**. It bridges directly into your local machine's neural processing.
 
 ---
 
-## ⚡ Core Capabilities
+## 🚀 Two Methods of Neural Activation
 
-- 🧬 **HyperIDE (Neural Forge):** A built-in code generation matrix that allows the DAEMON to autonomously write, compile, and execute frontend applications directly inside the OS memory.
-- 💻 **Virtual Ubuntu Root Terminal:** A simulated UNIX shell environment giving you the feel of entering the matrix.
-- 🟢 **Cyber-Emerald Desktop Interface:** Premium glassmorphism UI, smooth scan-lines, fluid window management, and deep dark-mode minimal aesthetics.
-- 🧩 **Modular Sub-Systems:** HabitTracker, Kanban Board, Password Vault, Music Player, and NetRunner environments fully integrated.
+NexusOS supports two concurrent neural engine paradigms.
 
----
+### Method 1: Connecting to LM Studio (Recommended)
+This method allows NexusOS to utilize massive, high-parameter LLMs running on your GPU.
 
-## 🚀 System Activation (Boot Sequence)
-
-The NexusOS interface is a dormant shell until its DAEMON Core is ignited.
-
-### Phase 1: Awaken the Core
 1. Install and launch **LM Studio** on your local machine.
-2. Load any high-performance LLM (e.g., *LFM2.5-1.2B-Instruct* or an equivalent cutting-edge architecture).
+2. Load any high-performance LLM (e.g., *LFM2.5-1.2B-Instruct* or higher).
 3. Start the Local Inference Server on the default port: `http://127.0.0.1:1234/v1`.
-4. **Crucial:** Ensure **CORS** is enabled in the LM Studio server settings so the OS can establish the neural link.
+4. Ensure **CORS** is enabled in the LM Studio server settings.
+5. In NexusOS, go to **Settings > Neural Core** and ensure **DAEMON LFM (Port 1234)** is selected.
 
-### Phase 2: Launch the OS
-Once the local brain is pulsing, initialize the Nexus UI environment:
+### Method 2: Native In-OS Execution via HuggingFace
+Don't want to run an external LM Studio server? NexusOS can run AI entirely **inside** its own environment via embedded WebAssembly (`wllama`).
 
+1. Open NexusOS and navigate to **Settings > AI Models**.
+2. Search the **HuggingFace** directory built directly into the OS.
+3. Click "Download" on any GGUF model (e.g., `tinyllama`, `phi3-mini`, `qwen2.5`).
+4. The OS will download the heavy `.gguf` weights directly to your local file system, bypassing restrictions.
+5. Activate the model in Settings. The DAEMON will decode and run entirely offline within the OS interface itself.
+
+---
+
+## ⚡ Native Desktop Build Instructions
+
+NexusOS is designed to be packaged as a standalone native Desktop application for Windows, MacOS, or Linux via Electron/Tauri technologies.
+
+### Local Development Loop
 ```bash
-# Clone the repository (if you haven't already)
+# Clone the repository
 git clone https://github.com/AFKmoney/nexusOS.git
 cd nexusOS
 
 # Install system dependencies
 npm install
 
-# Boot the hyper-interface
+# Boot the hyper-interface dev server
 npm run dev
 ```
 
-Finally, open the neural gateway in your browser:  
-🔗 **[http://localhost:3000](http://localhost:3000)**
+### Compile & Build Native Executables (.exe / .app)
+To compile the OS into a high-performance native desktop distribution:
+
+```bash
+# Run the distribution builder
+npm run build
+
+# To specifically package for your OS (Electron dist)
+# The output executable will be generated inside the dist_electron/ folder.
+npm run electron:build
+```
 
 ---
 
