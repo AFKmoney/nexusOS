@@ -38,8 +38,9 @@ export default function DashboardApp() {
     setModelStatus(localBrain.isReady() ? `✓ ${localBrain.getActiveModel().name}` : '⏳ No model loaded');
     const allMem = memory.getRecent(100);
     setMemories(allMem.length);
-    const allTools = toolForge.getAllTools();
-    setTools(allTools.map(t => t.name));
+    toolForge.getAllTools().then(allTools => {
+      setTools(allTools.map(t => t.name));
+    });
     setUptime(daemonBridge.getUptime());
     setGuardStats(errorGuard.getStats());
   }, []);
