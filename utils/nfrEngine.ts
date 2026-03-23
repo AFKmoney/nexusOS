@@ -152,6 +152,7 @@ export const nfrEngine = {
     let context = 0; // Initial context (order-1)
 
     const startTime = Date.now();
+    let lastYieldTime = startTime;
 
     // --- ENCODING LOOP ---
     for (let i = 0; i < data.length; i++) {
@@ -187,15 +188,23 @@ export const nfrEngine = {
       model.update(context, symbol);
       context = symbol; // Context is the current char for the next step
 
-      // Report progress every 500 bytes
-      if (i % 500 === 0 && onProgress) {
-          // Calculate "Instantaneous Entropy" (Loss)
-          // Loss = -log2(probability assigned to actual symbol)
-          const p = Number(prob.high - prob.low) / Number(prob.total);
-          const loss = -Math.log2(p);
-          onProgress({ epoch: i, loss: loss, accuracy: (1 - loss/8) * 100 });
-          // Yield to UI thread
-          if (i % 2000 === 0) await new Promise(r => setTimeout(r, 0));
+      // Yield to UI thread based on elapsed time rather than fixed byte counts.
+      // We check the time only every 512 bytes (using bitwise AND for performance)
+      // to minimize Date.now() overhead, yielding if >16ms have passed.
+      if ((i & 511) === 0) {
+          const now = Date.now();
+          if (now - lastYieldTime > 16) {
+              if (onProgress) {
+                  // Calculate "Instantaneous Entropy" (Loss)
+                  // Loss = -log2(probability assigned to actual symbol)
+                  const p = Number(prob.high - prob.low) / Number(prob.total);
+                  const loss = -Math.log2(p);
+                  onProgress({ epoch: i, loss: loss, accuracy: (1 - loss/8) * 100 });
+              }
+              // Yield to UI thread
+              await new Promise(r => setTimeout(r, 0));
+              lastYieldTime = Date.now();
+          }
       }
     }
 
@@ -269,6 +278,7 @@ export const nfrEngine = {
     let low = BigInt(0);
     let value = BigInt(0);
     let context = 0;
+    let lastYieldTime = Date.now();
 
     // Fill pipeline (read first 32 bits)
     for (let i = 0; i < CODE_VALUE_BITS; i++) {
@@ -338,8 +348,15 @@ export const nfrEngine = {
         // Safety Break for bad streams
         if (outputBuffer.length > originalLen * 2) throw new Error("Decompression Overflow: Model divergence.");
         
-        // Yield for UI responsiveness on large files
-        if (outputBuffer.length % 2000 === 0) await new Promise(r => setTimeout(r, 0));
+        // Yield for UI responsiveness on large files based on elapsed time.
+        // Check every 512 bytes to avoid excessive Date.now() calls.
+        if ((outputBuffer.length & 511) === 0) {
+            const now = Date.now();
+            if (now - lastYieldTime > 16) {
+                await new Promise(r => setTimeout(r, 0));
+                lastYieldTime = Date.now();
+            }
+        }
     }
 
     const dec = new TextDecoder();

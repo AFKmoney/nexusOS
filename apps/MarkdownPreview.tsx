@@ -15,7 +15,7 @@ export default function MarkdownPreviewApp() {
 ## Code Example
 \`\`\`javascript
 function hello() {
-  console.log("NexusOS");
+  return "NexusOS";
 }
 \`\`\`
 

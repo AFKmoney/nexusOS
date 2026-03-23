@@ -650,7 +650,6 @@ export default function ContextMenu() {
                 <MenuItem icon={ArrowDownFromLine} label="Minimize All" onClick={() => { windows.forEach(w => minimizeWindow(w.id)); closeContextMenu(); }} />
                 <MenuItem icon={ArrowUpFromLine} label="Restore All" onClick={() => { windows.forEach(w => restoreWindow(w.id)); closeContextMenu(); }} />
                 <NeuralItem icon={Sparkles} label="Neural Arrange" onClick={() => { 
-                    // @ts-ignore
                     useOS.getState().autoArrangeWindows(); 
                     closeContextMenu(); 
                 }} />
