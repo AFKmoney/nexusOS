@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useOS } from '../store/osStore';
 import { aiService } from '../services/puterService';
+import DOMPurify from 'dompurify';
 import { vfs } from '../kernel/fileSystem';
 import { memory } from '../kernel/memory';
 import {
@@ -622,7 +623,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
                 <div className={`max-w-full p-3 rounded-xl text-xs leading-relaxed font-sans ${msg.role === 'user' ? 'bg-zinc-800/80 text-white rounded-br-none border border-white/5' : 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-100 rounded-bl-none'}`}>
                   {msg.role === 'ai' ? (
                     msg.content
-                      ? <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                      ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(msg.content)) }} />
                       : (isAiThinking && i === aiMessages.length-1 ? <span className="text-emerald-500 animate-pulse">Thinking...</span> : '')
                   ) : msg.content}
                 </div>

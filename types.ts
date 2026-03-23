@@ -153,3 +153,7 @@ declare global {
     };
   }
 }
+
+declare global {
+  function uuid(): string;
+}
