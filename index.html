@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus OS // 10.5.2 (Local)</title>
+  <link rel="manifest" href="/manifest.json" />
+  
+  <script>
+    window.onerror = function (msg, url, line, col, error) {
+      var errMsg = (typeof msg === 'string' ? msg : JSON.stringify(msg) || '').toLowerCase();
+      var errStack = (error && error.stack ? error.stack : '').toLowerCase();
+      var errUrl = (url || '').toLowerCase();
+
+      var isExtension = errUrl.includes('chrome-extension://') || 
+                        errUrl.includes('moz-extension://') || 
+                        errStack.includes('chrome-extension://') ||
+                        errStack.includes('evmask');
+
+      var isWeb3 = errMsg.includes('ethereum') || 
+                   errMsg.includes('phantom') || 
+                   errMsg.includes('webrtc') ||
+                   errStack.includes('ethereum') ||
+                   errStack.includes('phantom');
+
+      if (isExtension || isWeb3) {
+        console.warn('[SYSTEM] Ignored external injection error:', msg);
+        return true;
+      }
+      
+      document.body.innerHTML = '<div style="background:#000;color:#ff3333;padding:50px;font-family:monospace;height:100vh;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">' +
+        '<div style="border:1px solid #333;padding:40px;background:#080808;border-radius:20px;max-width:800px;width:90%">' +
+        '<h1 style="border-bottom:1px solid #333;padding-bottom:10px;margin-bottom:20px;font-size:24px">SYSTEM_INITIALIZATION_FAILURE</h1>' +
+        '<p style="margin-bottom:10px"><b>CRITICAL ERROR:</b> ' + msg + '</p>' +
+        '<p style="margin-bottom:20px;color:#666;font-size:12px"><b>LOCATION:</b> ' + url + ':' + line + ':' + col + '</p>' +
+        '<pre style="background:#000;padding:20px;border-radius:10px;border:1px solid #222;text-align:left;font-size:12px;white-space:pre-wrap;word-break:break-all">' + (error ? (error.stack || error) : 'No stack trace available') + '</pre>' +
+        '<button onclick="location.reload()" style="background:#111;color:#10b981;border:1px solid #10b981;padding:12px 30px;cursor:pointer;margin-top:30px;border-radius:8px;font-weight:bold;text-transform:uppercase;letter-spacing:1px">RETRY_BOOT_SEQUENCE</button>' +
+        '</div></div>';
+      return false;
+    };
+  </script>
+
+  <!-- Removed external Tailwind CDN to support Air-Gapped Security Headers -->
+  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+  <style>
+    body {
+      background-color: #050505;
+      color: #e0e0e0;
+      font-family: sans-serif;
+      margin: 0;
+    }
+  </style>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

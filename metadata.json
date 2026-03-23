@@ -1,0 +1,5 @@
+{
+  "name": "nxss",
+  "description": "A sentient web-based Operating System featuring NeuralCore, NeuralForge, and a persistent virtual filesystem.",
+  "requestFramePermissions": []
+}

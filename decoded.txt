@@ -1,0 +1,168 @@
+﻿
+> nxss@0.0.0 electron:build
+> npm run build && electron-builder
+
+
+> nxss@0.0.0 build
+> vite build
+
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+node.exe : (node:16916) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/PHIL/Desktop/nxss%20(5)/postcss.config.js?t=1774135034895 is not specified and it doesn't 
+parse as CommonJS.
+Au caractère Ligne:1 : 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\PHIL\AppData\Roaming\n ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo              : NotSpecifi    ed: ((node:16916)     [M...se as CommonJ    S.:String) [], Rem    oteException
+    + FullyQualifiedEr    rorId : NativeComm    andError
+ 
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\PHIL\Desktop\nxss (5)\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+transforming...
+[32mÔ£ô[39m 1823 modules transformed.
+[33m[plugin vite:reporter] 
+(!) C:/Users/PHIL/Desktop/nxss (5)/kernel/fileSystem.ts is dynamically imported by C:/Users/PHIL/Desktop/nxss (5)/apps/terminal/TerminalCore.tsx, C:/Users/PHIL/Desktop/nxss 
+(5)/apps/terminal/TerminalCore.tsx but also statically imported by C:/Users/PHIL/Desktop/nxss (5)/App.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/AppStore.tsx, C:/Users/PHIL/Desktop/nxss 
+(5)/apps/DaemonChat.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/FileExplorer.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/FileProperties.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/HyperIDE.tsx, 
+C:/Users/PHIL/Desktop/nxss (5)/apps/NFRCompressor.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/Notepad.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/RecycleBinApp.tsx, C:/Users/PHIL/Desktop/nxss 
+(5)/apps/Silence.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/UbuntuTerminal.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/WebRunner.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/forge/ForgeSystem.tsx, 
+C:/Users/PHIL/Desktop/nxss (5)/components/ContextMenu.tsx, C:/Users/PHIL/Desktop/nxss (5)/components/GlobalSearch.tsx, C:/Users/PHIL/Desktop/nxss (5)/components/StartMenu.tsx, 
+C:/Users/PHIL/Desktop/nxss (5)/kernel/autonomy.ts, C:/Users/PHIL/Desktop/nxss (5)/kernel/commander.ts, C:/Users/PHIL/Desktop/nxss (5)/kernel/daemonBridge.ts, C:/Users/PHIL/Desktop/nxss 
+(5)/kernel/osManifest.ts, C:/Users/PHIL/Desktop/nxss (5)/kernel/toolForge.ts, C:/Users/PHIL/Desktop/nxss (5)/utils/smartIcons.tsx, dynamic import will not move module into another chunk.
+[39m
+[33m[plugin vite:reporter] 
+(!) C:/Users/PHIL/Desktop/nxss (5)/kernel/memory.ts is dynamically imported by C:/Users/PHIL/Desktop/nxss (5)/apps/terminal/TerminalCore.tsx, C:/Users/PHIL/Desktop/nxss 
+(5)/apps/terminal/TerminalCore.tsx but also statically imported by C:/Users/PHIL/Desktop/nxss (5)/apps/Dashboard.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/FractalVisualizer.tsx, 
+C:/Users/PHIL/Desktop/nxss (5)/apps/HyperIDE.tsx, C:/Users/PHIL/Desktop/nxss (5)/apps/forge/ForgeSystem.tsx, C:/Users/PHIL/Desktop/nxss (5)/kernel/autonomy.ts, C:/Users/PHIL/Desktop/nxss 
+(5)/kernel/daemonBridge.ts, C:/Users/PHIL/Desktop/nxss (5)/kernel/toolForge.ts, C:/Users/PHIL/Desktop/nxss (5)/services/puterService.ts, dynamic import will not move module into another 
+chunk.
+[39m
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32massets/manifest-DrMjXSNx.json  [39m[1m[2m    0.42 kB[22m[1m[22m[2m Ôöé gzip:   0.22 kB[22m
+[2mdist/[22m[32mindex.html                     [39m[1m[2m    3.12 kB[22m[1m[22m[2m Ôöé gzip:   1.43 kB[22m
+[2mdist/[22m[35massets/index-DLHu1KQK.css      [39m[1m[2m   86.04 kB[22m[1m[22m[2m Ôöé gzip:  13.34 kB[22m
+[2mdist/[22m[36massets/index-Cfm4g3BV.js       [39m[1m[33m1,028.85 kB[39m[22m[2m Ôöé gzip: 285.16 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32mÔ£ô built in 8.24s[39m
+  ÔÇó electron-builder  version=26.8.1 os=10.0.26200
+  ÔÇó loaded configuration  file=C:\Users\PHIL\Desktop\nxss (5)\electron-builder.yml
+  ÔÇó description is missed in the package.json  appPackageFile=C:\Users\PHIL\Desktop\nxss (5)\package.json
+  ÔÇó author is missed in the package.json  appPackageFile=C:\Users\PHIL\Desktop\nxss (5)\package.json
+  ÔÇó executing @electron/rebuild  electronVersion=41.0.2 arch=x64 buildFromSource=false workspaceRoot=C:\Users\PHIL\Desktop\nxss (5) projectDir=./ appDir=./
+  ÔÇó installing native dependencies  arch=x64
+  ÔÇó completed installing native dependencies
+  ÔÇó packaging       platform=win32 arch=x64 electron=41.0.2 appOutDir=dist_electron\win-unpacked
+  ÔÇó searching for node modules  pm=npm searchDir=C:\Users\PHIL\Desktop\nxss (5)
+(node:15220) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ÔÇó duplicate dependency references  dependencies=["debug@4.4.3","fetch-blob@3.2.0","strip-ansi@7.1.2","color-convert@2.0.1","strip-ansi@6.0.1","string-width@5.1.2","strip-ansi@7.1.2","gaxios@7.1.3","gaxios@7.1.3","jws@4.0.1","ecdsa-sig-formatter@1.0.11","debug@4.4.3","pump@3.0.4","debug@4.4.3","debug@4.4.3","https-proxy-agent@7.0.6","debug@4.4.3","debug@4.4.3","http-proxy-agent@7.0.2","https-proxy-agent@7.0.6","socks-proxy-agent@8.0.5","debug@4.4.3","bare-path@3.0.0","streamx@2.23.0","streamx@2.23.0","bare-path@3.0.0","once@1.4.0","bare-fs@4.5.5","strip-ansi@6.0.1","string-width@4.2.3","strip-ansi@6.0.1","@puppeteer/browsers@2.13.0","chromium-bidi@14.0.0","debug@4.4.3","react-dom@19.2.3","react-dom@19.2.3","react-dom@19.2.3"]
+  ÔÇó updating asar integrity executable resource  executablePath=dist_electron\win-unpacked\NXSS.exe
+  ÔÇó default Electron icon is used  reason=application icon is not set
+  ÔÇó signing with signtool.exe  path=dist_electron\win-unpacked\NXSS.exe
+  ÔÇó building        target=nsis file=dist_electron\NXSS_Setup_0.0.0.exe archs=x64 oneClick=false perMachine=false
+  ÔÇó signing with signtool.exe  path=dist_electron\win-unpacked\resources\elevate.exe
+  ÔÇó signing with signtool.exe  path=dist_electron\NXSS_Setup_0.0.0.__uninstaller.exe
+  Ô¿» C:\Users\PHIL\AppData\Local\electron-builder\Cache\nsis\nsis-3.0.4.1-nsis-3.0.4.1\Bin\makensis.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1
+Output:
+Command line defined: "APP_ID=com.daemon.nxss"
+Command line defined: "APP_GUID=2f4855ad-97c4-5fe3-adc8-be6ed392a405"
+Command line defined: "UNINSTALL_APP_KEY=2f4855ad-97c4-5fe3-adc8-be6ed392a405"
+Command line defined: "PRODUCT_NAME=NXSS"
+Command line defined: "PRODUCT_FILENAME=NXSS"
+Command line defined: "APP_FILENAME=NXSS"
+Command line defined: "APP_DESCRIPTION="
+Command line defined: "VERSION=0.0.0"
+Command line defined: "PROJECT_DIR=C:\Users\PHIL\Desktop\nxss (5)"
+Command line defined: "BUILD_RESOURCES_DIR=C:\Users\PHIL\Desktop\nxss (5)\build"
+Command line defined: "APP_PACKAGE_NAME=nxss"
+Command line defined: "APP_64=C:\Users\PHIL\Desktop\nxss (5)\dist_electron\nxss-0.0.0-x64.nsis.7z"
+Command line defined: "APP_64_NAME=nxss-0.0.0-x64.nsis.7z"
+Command line defined: "APP_64_HASH=4D50D1A04F140BC6C433CD8E64302300D525A005E4F457F2487D08AD05AE8662109E140EF54AD6B4CC88FE63DF0A90B5FB4E06D7658CCDA4355CC40F21AE73DD"
+Command line defined: "APP_64_UNPACKED_SIZE=1699704"
+Command line defined: "APP_INSTALLER_STORE_FILE=nxss-updater\installer.exe"
+Command line defined: "COMPRESSION_METHOD=7z"
+Command line defined: "MULTIUSER_INSTALLMODE_ALLOW_ELEVATION"
+Command line defined: "INSTALL_MODE_PER_ALL_USERS_REQUIRED"
+Command line defined: "allowToChangeInstallationDirectory"
+Command line defined: "SHORTCUT_NAME=NXSS Nexus"
+Command line defined: "DELETE_APP_DATA_ON_UNINSTALL"
+Command line defined: "UNINSTALL_DISPLAY_NAME=NXSS 0.0.0"
+Command line defined: "MUI_WELCOMEFINISHPAGE_BITMAP=${NSISDIR}\Contrib\Graphics\Wizard\nsis3-metro.bmp"
+Command line defined: "MUI_UNWELCOMEFINISHPAGE_BITMAP=${NSISDIR}\Contrib\Graphics\Wizard\nsis3-metro.bmp"
+Command line defined: "ESTIMATED_SIZE=1699703"
+Command line defined: "COMPRESS=auto"
+Command line defined: "UNINSTALLER_OUT_FILE=C:\Users\PHIL\Desktop\nxss (5)\dist_electron\NXSS_Setup_0.0.0.__uninstaller.exe"
+Processing config: C:\Users\PHIL\AppData\Local\electron-builder\Cache\nsis\nsis-3.0.4.1-nsis-3.0.4.1\nsisconf.nsh
+Processing script file: "<stdin>" (UTF8)
+
+Processed 1 file, 9 command line commands, writing output (x86-unicode):
+
+Output: "C:\Users\PHIL\Desktop\nxss (5)\dist_electron\NXSS_Setup_0.0.0.exe"
+Install: 4 pages (256 bytes), 1 section (16408 bytes), 2302 instructions (64456 bytes), 10271 strings (122472 bytes), 26 language tables (9412 bytes).
+
+Using zlib compression.
+
+EXE header size:               59904 / 39424 bytes
+Install code:                  47968 / 213468 bytes
+Install data:             1317532845 / 1317981613 bytes
+
+Error output:
+Error: can't write 67108864 bytes to output
+Error - aborting creation process
+  failedTask=build stackTrace=Error: C:\Users\PHIL\AppData\Local\electron-builder\Cache\nsis\nsis-3.0.4.1-nsis-3.0.4.1\Bin\makensis.exe process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1
+Output:
+Command line defined: "APP_ID=com.daemon.nxss"
+Command line defined: "APP_GUID=2f4855ad-97c4-5fe3-adc8-be6ed392a405"
+Command line defined: "UNINSTALL_APP_KEY=2f4855ad-97c4-5fe3-adc8-be6ed392a405"
+Command line defined: "PRODUCT_NAME=NXSS"
+Command line defined: "PRODUCT_FILENAME=NXSS"
+Command line defined: "APP_FILENAME=NXSS"
+Command line defined: "APP_DESCRIPTION="
+Command line defined: "VERSION=0.0.0"
+Command line defined: "PROJECT_DIR=C:\Users\PHIL\Desktop\nxss (5)"
+Command line defined: "BUILD_RESOURCES_DIR=C:\Users\PHIL\Desktop\nxss (5)\build"
+Command line defined: "APP_PACKAGE_NAME=nxss"
+Command line defined: "APP_64=C:\Users\PHIL\Desktop\nxss (5)\dist_electron\nxss-0.0.0-x64.nsis.7z"
+Command line defined: "APP_64_NAME=nxss-0.0.0-x64.nsis.7z"
+Command line defined: "APP_64_HASH=4D50D1A04F140BC6C433CD8E64302300D525A005E4F457F2487D08AD05AE8662109E140EF54AD6B4CC88FE63DF0A90B5FB4E06D7658CCDA4355CC40F21AE73DD"
+Command line defined: "APP_64_UNPACKED_SIZE=1699704"
+Command line defined: "APP_INSTALLER_STORE_FILE=nxss-updater\installer.exe"
+Command line defined: "COMPRESSION_METHOD=7z"
+Command line defined: "MULTIUSER_INSTALLMODE_ALLOW_ELEVATION"
+Command line defined: "INSTALL_MODE_PER_ALL_USERS_REQUIRED"
+Command line defined: "allowToChangeInstallationDirectory"
+Command line defined: "SHORTCUT_NAME=NXSS Nexus"
+Command line defined: "DELETE_APP_DATA_ON_UNINSTALL"
+Command line defined: "UNINSTALL_DISPLAY_NAME=NXSS 0.0.0"
+Command line defined: "MUI_WELCOMEFINISHPAGE_BITMAP=${NSISDIR}\Contrib\Graphics\Wizard\nsis3-metro.bmp"
+Command line defined: "MUI_UNWELCOMEFINISHPAGE_BITMAP=${NSISDIR}\Contrib\Graphics\Wizard\nsis3-metro.bmp"
+Command line defined: "ESTIMATED_SIZE=1699703"
+Command line defined: "COMPRESS=auto"
+Command line defined: "UNINSTALLER_OUT_FILE=C:\Users\PHIL\Desktop\nxss (5)\dist_electron\NXSS_Setup_0.0.0.__uninstaller.exe"
+Processing config: C:\Users\PHIL\AppData\Local\electron-builder\Cache\nsis\nsis-3.0.4.1-nsis-3.0.4.1\nsisconf.nsh
+Processing script file: "<stdin>" (UTF8)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Processed 1 file, 9 command line commands, writing output (x86-unicode):
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Output: "C:\Users\PHIL\Desktop\nxss (5)\dist_electron\NXSS_Setup_0.0.0.exe"
+Install: 4 pages (256 bytes), 1 section (16408 bytes), 2302 instructions (64456 bytes), 10271 strings (122472 bytes), 26 language tables (9412 bytes).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Using zlib compression.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               EXE header size:               59904 / 39424 bytes
+Install code:                  47968 / 213468 bytes
+Install data:             1317532845 / 1317981613 bytes
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Error output:
+Error: can't write 67108864 bytes to output
+Error - aborting creation process
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   at ChildProcess.<anonymous> (C:\Users\PHIL\Desktop\nxss (5)\node_modules\builder-util\src\util.ts:272:14)
+    at Object.onceWrapper (node:events:623:26)
+    at ChildProcess.emit (node:events:508:28)
+    at ChildProcess.cp.emit (C:\Users\PHIL\Desktop\nxss (5)\node_modules\cross-spawn\lib\enoent.js:34:29)
+    at maybeClose (node:internal/child_process:1101:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:305:5)

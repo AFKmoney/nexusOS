@@ -1,0 +1,21 @@
+appId: com.daemon.nxss
+productName: NXSS
+compression: store
+directories:
+  output: dist_electron
+  buildResources: build
+files:
+  - dist/**/*
+  - electron-main.cjs
+  - preload.cjs
+  - package.json
+win:
+  target: 
+    - nsis
+  icon: public/favicon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: "NXSS Nexus"
+  artifactName: "NXSS_Setup_${version}.${ext}"
+  deleteAppDataOnUninstall: true
