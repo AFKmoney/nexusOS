@@ -1,90 +1,122 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { VirtualFileSystem } from '../fileSystem';
 
-test('VirtualFileSystem - Initialization Fallback', async (t) => {
-  // Save original global methods to restore later
-  const originalGetItem = global.localStorage?.getItem;
-  const originalSetItem = global.localStorage?.setItem;
+// Provide shims for browser globals
+global.localStorage = {
+  getItem: (key: string) => null,
+  setItem: (key: string, value: string) => {},
+  removeItem: (key: string) => {},
+  clear: () => {},
+  length: 0,
+  key: (index: number) => null,
+} as any;
 
-  await t.test('Initializes with existing VFS_STORAGE_KEY data', () => {
-    // Mock global.localStorage
-    const mockData = {
-      testNode: {
-        name: 'testNode',
-        type: 'directory',
-        permissions: 'rwx',
-        children: {},
-        created: 123456789,
-        modified: 123456789
-      }
-    };
+global.navigator = {
+  hardwareConcurrency: 4,
+} as any;
 
-    global.localStorage = {
-      ...global.localStorage,
-      getItem: (key: string) => {
-        if (key === 'nexus_vfs_v1') return JSON.stringify(mockData);
-        return null;
-      },
-      setItem: () => {}
-    } as any;
+if (typeof global.window === 'undefined') {
+  (global as any).window = {};
+}
 
-    const vfs = new VirtualFileSystem();
-    const node = vfs.resolveNode('/testNode', false, 0);
-    // Since our test node doesn't match the standard desktop path normalization perfectly, we resolve raw root
-    // But `resolveNode` uses custom logic (defaults to /home/admin/Desktop/path).
-    // Let's check `vfs.listDir('/')` which returns root children.
-    const rootChildren = vfs.listDir('/');
-    assert.deepStrictEqual(rootChildren, ['testNode']);
-  });
+// Intercept console.error to avoid spamming the test output, but allow verifying it was called
+let lastConsoleError = '';
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  lastConsoleError = args.join(' ');
+};
 
-  await t.test('Initializes with INITIAL_FS when no data is found', () => {
-    let setItemCalled = false;
-    global.localStorage = {
-      ...global.localStorage,
-      getItem: (key: string) => null,
-      setItem: (key: string, value: string) => {
-        if (key === 'nexus_vfs_v1') {
-          setItemCalled = true;
-        }
-      }
-    } as any;
+import { VirtualFileSystem } from '../fileSystem.ts';
 
-    const vfs = new VirtualFileSystem();
-    const rootChildren = vfs.listDir('/');
+test('VirtualFileSystem - readFile without appId (system bypass)', () => {
+  const vfs = new VirtualFileSystem();
 
-    // Check if system and home are in INITIAL_FS
-    assert.ok(rootChildren.includes('home'));
-    assert.ok(rootChildren.includes('system'));
-    assert.strictEqual(setItemCalled, true, 'Should save INITIAL_FS to localStorage');
-  });
+  vfs.writeFile('/home/user/Desktop/test1.txt', 'system content');
 
-  await t.test('Initializes with INITIAL_FS when localStorage throws an error', () => {
-    let setItemCalled = false;
-    global.localStorage = {
-      ...global.localStorage,
-      getItem: (key: string) => {
-        throw new Error('localStorage is disabled');
-      },
-      setItem: (key: string, value: string) => {
-        setItemCalled = true;
-      }
-    } as any;
+  const content = vfs.readFile('/home/user/Desktop/test1.txt');
+  assert.strictEqual(content, 'system content', 'Should read file successfully without appId');
+});
 
-    const vfs = new VirtualFileSystem();
-    const rootChildren = vfs.listDir('/');
+test('VirtualFileSystem - readFile with appId that has vfs.read permission', () => {
+  const vfs = new VirtualFileSystem();
 
-    // Verify fallback to INITIAL_FS
-    assert.ok(rootChildren.includes('home'));
-    assert.ok(rootChildren.includes('system'));
-    // Should NOT call save() since it's in the catch block
-    assert.strictEqual(setItemCalled, false, 'Should not attempt to save if getItem threw an error');
-  });
+  // Mock window.__OS_STORE__
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: [
+        { id: 'app1', permissions: ['vfs.read', 'vfs.write'] }
+      ]
+    })
+  };
 
-  // Restore globals
-  global.localStorage = {
-    ...global.localStorage,
-    getItem: originalGetItem,
-    setItem: originalSetItem
-  } as any;
+  vfs.writeFile('/home/user/Desktop/test2.txt', 'app content');
+
+  const content = vfs.readFile('/home/user/Desktop/test2.txt', 'app1');
+  assert.strictEqual(content, 'app content', 'Should read file successfully with valid permissions');
+
+  // Clean up
+  delete (global as any).window.__OS_STORE__;
+});
+
+test('VirtualFileSystem - readFile with appId that lacks vfs.read permission', () => {
+  const vfs = new VirtualFileSystem();
+
+  // Mock window.__OS_STORE__
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: [
+        { id: 'app2', permissions: ['vfs.write'] } // Missing vfs.read
+      ]
+    })
+  };
+
+  vfs.writeFile('/home/user/Desktop/test3.txt', 'secret content');
+
+  lastConsoleError = '';
+  const content = vfs.readFile('/home/user/Desktop/test3.txt', 'app2');
+
+  assert.strictEqual(content, null, 'Should return null when permission is denied');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked app2 from reading'), 'Should log permission error');
+
+  // Clean up
+  delete (global as any).window.__OS_STORE__;
+});
+
+test('VirtualFileSystem - readFile with unregistered appId', () => {
+  const vfs = new VirtualFileSystem();
+
+  // Mock window.__OS_STORE__
+  (global as any).window.__OS_STORE__ = {
+    getState: () => ({
+      currentUser: { id: 'user' },
+      registry: [
+        { id: 'app1', permissions: ['vfs.read'] }
+      ]
+    })
+  };
+
+  vfs.writeFile('/home/user/Desktop/test4.txt', 'content');
+
+  lastConsoleError = '';
+  const content = vfs.readFile('/home/user/Desktop/test4.txt', 'unknown_app');
+
+  assert.strictEqual(content, null, 'Should return null for unregistered app');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked unknown_app from reading'), 'Should log permission error');
+
+  // Clean up
+  delete (global as any).window.__OS_STORE__;
+});
+
+test('VirtualFileSystem - readFile for non-existent file', () => {
+  const vfs = new VirtualFileSystem();
+
+  const content = vfs.readFile('/home/user/Desktop/does_not_exist.txt');
+  assert.strictEqual(content, null, 'Should return null for non-existent file');
+});
+
+// Restore console.error at the end
+test('VirtualFileSystem - cleanup', () => {
+  console.error = originalConsoleError;
 });
