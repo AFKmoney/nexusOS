@@ -273,6 +273,66 @@ export class VirtualFileSystem {
 
   public stat(path: string): FileNode | null { return this.resolveNode(path); }
 
+  public moveMany(moves: {oldPath: string, newPath: string}[], appId?: string): boolean {
+    if (!this.checkPermission(appId, 'vfs.write')) {
+        console.error(`[Sandbox Enforcer] Blocked ${appId} from performing moveMany`);
+        return false;
+    }
+
+    // Cache resolved parents to avoid repeated path traversal
+    const dirCache = new Map<string, FileNode | { children: { [key: string]: FileNode } } | null>();
+    const getCachedDir = (dirPath: string) => {
+        let dirNode = dirCache.get(dirPath);
+        if (dirNode === undefined) {
+            const info = this.getParent(dirPath + '/_dummy');
+            dirNode = info ? info.parent : null;
+            dirCache.set(dirPath, dirNode);
+        }
+        return dirNode;
+    };
+
+    let anyMoved = false;
+
+    for (let i = 0; i < moves.length; i++) {
+        const move = moves[i];
+        const oldPath = move.oldPath;
+        const newPath = move.newPath;
+
+        const lastSlashNew = newPath.lastIndexOf('/');
+        const destDir = lastSlashNew > 0 ? newPath.substring(0, lastSlashNew) : '/';
+        const destName = newPath.substring(lastSlashNew + 1);
+
+        const destParent = getCachedDir(destDir);
+        if (!destParent) continue;
+        if (destParent.children?.[destName]) continue; // Dest exists
+
+        const lastSlashOld = oldPath.lastIndexOf('/');
+        const srcDir = lastSlashOld > 0 ? oldPath.substring(0, lastSlashOld) : '/';
+        const srcName = oldPath.substring(lastSlashOld + 1);
+
+        const srcParent = getCachedDir(srcDir);
+        if (!srcParent || !srcParent.children) continue;
+
+        const node = srcParent.children[srcName];
+        if (node) {
+            delete srcParent.children[srcName];
+            node.name = destName;
+            node.modified = Date.now();
+            if (!destParent.children) destParent.children = {};
+            destParent.children[destName] = node;
+
+            // Update directory modification times
+            if ('modified' in srcParent) srcParent.modified = Date.now();
+            if ('modified' in destParent) destParent.modified = Date.now();
+
+            anyMoved = true;
+        }
+    }
+
+    if (anyMoved) this.save();
+    return anyMoved;
+  }
+
   public move(oldPath: string, newPath: string): boolean {
     const node = this.resolveNode(oldPath);
     if (!node) return false;
