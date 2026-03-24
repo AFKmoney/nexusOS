@@ -428,16 +428,18 @@ export default function ContextMenu() {
           const plan = JSON.parse(res.replace(/```json|```/g, '').trim());
 
           vfs.batch(() => {
-              const folders = Object.keys(plan);
-              for (let i = 0; i < folders.length; i++) {
-                  const folder = folders[i];
-                  const folderPath = `${targetDir}/${folder}`;
-                  vfs.createDir(folderPath);
-
-                  const files = plan[folder];
-                  for (let j = 0; j < files.length; j++) {
-                      vfs.move(`${targetDir}/${files[j]}`, `${folderPath}/${files[j]}`);
-                  }
+              const moves: { oldPath: string, newPath: string }[] = [];
+              Object.keys(plan).forEach(folder => {
+                  vfs.createDir(`${targetDir}/${folder}`);
+                  plan[folder].forEach((f: string) => {
+                      moves.push({
+                          oldPath: `${targetDir}/${f}`,
+                          newPath: `${targetDir}/${folder}/${f}`
+                      });
+                  });
+              });
+              if (moves.length > 0) {
+                  vfs.moveMany(moves);
               }
           });
 
