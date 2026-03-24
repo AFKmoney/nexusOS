@@ -151,7 +151,7 @@ export const nfrEngine = {
     let pending_bits = 0;
     let context = 0; // Initial context (order-1)
 
-    const startTime = Date.now();
+    const startTime = performance.now();
     let lastYieldTime = startTime;
 
     // --- ENCODING LOOP ---
@@ -192,7 +192,7 @@ export const nfrEngine = {
       // We check the time only every 512 bytes (using bitwise AND for performance)
       // to minimize Date.now() overhead, yielding if >16ms have passed.
       if ((i & 511) === 0) {
-          const now = Date.now();
+          const now = performance.now();
           if (now - lastYieldTime > 16) {
               if (onProgress) {
                   // Calculate "Instantaneous Entropy" (Loss)
@@ -203,7 +203,7 @@ export const nfrEngine = {
               }
               // Yield to UI thread
               await new Promise(r => setTimeout(r, 0));
-              lastYieldTime = Date.now();
+              lastYieldTime = performance.now();
           }
       }
     }
@@ -278,7 +278,7 @@ export const nfrEngine = {
     let low = BigInt(0);
     let value = BigInt(0);
     let context = 0;
-    let lastYieldTime = Date.now();
+    let lastYieldTime = performance.now();
 
     // Fill pipeline (read first 32 bits)
     for (let i = 0; i < CODE_VALUE_BITS; i++) {
@@ -349,12 +349,12 @@ export const nfrEngine = {
         if (outputBuffer.length > originalLen * 2) throw new Error("Decompression Overflow: Model divergence.");
         
         // Yield for UI responsiveness on large files based on elapsed time.
-        // Check every 512 bytes to avoid excessive Date.now() calls.
+        // Check every 512 bytes to avoid excessive performance.now() calls.
         if ((outputBuffer.length & 511) === 0) {
-            const now = Date.now();
+            const now = performance.now();
             if (now - lastYieldTime > 16) {
                 await new Promise(r => setTimeout(r, 0));
-                lastYieldTime = Date.now();
+                lastYieldTime = performance.now();
             }
         }
     }
