@@ -4,7 +4,7 @@ import { useOS } from '../../store/osStore';
 import { aiService } from '../../services/puterService';
 import { vfs } from '../../kernel/fileSystem';
 import { memory } from '../../kernel/memory';
-import { Cpu, Zap, Code, Eye, RefreshCw, Rocket, Box, Loader2, Sparkles, AlertCircle, CheckCircle, RotateCcw } from 'lucide-react';
+import { Cpu, Zap, Code, Eye, RefreshCw, Rocket, Box, Loader2, Sparkles, AlertCircle, CheckCircle, RotateCcw, Braces, FileCode2, Command } from 'lucide-react';
 
 type ForgeStatus = 'IDLE' | 'ANALYZING' | 'ARCHITECTING' | 'CODING' | 'REPAIRING' | 'INSTALLING' | 'DONE' | 'ERROR';
 
@@ -336,3 +336,4 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     </div>
   );
 }
+
