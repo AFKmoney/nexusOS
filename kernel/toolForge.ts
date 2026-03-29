@@ -18,9 +18,8 @@ export class ToolForge {
   // Callback for OS-level actions (set by App.tsx to avoid circular deps)
   private _osActionHandler: ((action: ParsedOsAction) => Promise<string>) | null = null;
   private _loaded = false;
-  private _loadPromise: Promise<void> | null = null;
   private _saveTimeout: any = null;
-  private _loadPromise: Promise<void>;
+  private _loadPromise: Promise<void> | null = null;
 
   constructor() {
     // True deferred async initialization to avoid blocking critical rendering path
