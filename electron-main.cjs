@@ -75,7 +75,21 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.show();
   });
+
+  // F11 Fullscreen Toggle
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F11' && input.type === 'keyDown') {
+      win.setFullScreen(!win.isFullScreen());
+      event.preventDefault();
+    }
+  });
 }
+
+// Fullscreen IPC
+ipcMain.on('toggle-fullscreen', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.setFullScreen(!win.isFullScreen());
+});
 
 // Handle errors gracefully
 process.on('uncaughtException', (error) => {

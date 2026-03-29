@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // Add IPC communication if needed late
   send: (channel, data) => {
-    let validChannels = [];
+    let validChannels = ['toggle-fullscreen'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
     }
