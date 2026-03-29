@@ -1,8 +1,11 @@
 {
-  "name": "nxss",
+  "name": "nexusos",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "The Sovereign Neural Operating System — Locally Inferenced, Globally Distributed.",
+  "author": "Philippe-Antoine Robert",
   "main": "electron-main.cjs",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

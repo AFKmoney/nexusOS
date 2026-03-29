@@ -18,10 +18,8 @@ const LFM_DAEMON_MODEL: ModelConfig = {
 
 const DEFAULT_MODEL: ModelConfig = {
   id: 'lfm2.5-1.2b',
-  name: 'LFM2.5-1.2B Q8 (Wllama Native)',
-  path: typeof window !== 'undefined'
-    ? `${window.location.origin}/models/LFM2.5-1.2B-Instruct-Q8_0.gguf`
-    : '/models/LFM2.5-1.2B-Instruct-Q8_0.gguf',
+  name: 'LFM 2.5 1.2B (Cloud Fallback)',
+  path: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf',
   nCtx: 4096,
   nBatch: 256,
   nGpuLayers: 100,
@@ -35,7 +33,7 @@ export class LocalBrain {
   private wllama: Wllama | null = null;
   private modelReady = false;
   private initPromise: Promise<void> | null = null;
-  private activeModelId = LFM_DAEMON_MODEL.id;
+  private activeModelId = DEFAULT_MODEL.id;
   private storedModels: ModelConfig[] = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
 
   // Concurrency queue
@@ -68,7 +66,7 @@ export class LocalBrain {
       const raw = localStorage.getItem(STORED_MODELS_KEY);
       if (raw) {
         const parsed: ModelConfig[] = JSON.parse(raw);
-        // Ensure LM Studio definition is always loaded
+        // Ensure core definitions are always present
         const filtered = parsed.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
         filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
         this.storedModels = filtered;
@@ -95,7 +93,7 @@ export class LocalBrain {
   }
 
   public getActiveModel(): ModelConfig {
-    return this.storedModels.find(m => m.id === this.activeModelId) || LFM_DAEMON_MODEL;
+    return this.storedModels.find(m => m.id === this.activeModelId) || DEFAULT_MODEL;
   }
 
   public registerModel(config: ModelConfig) {
@@ -109,11 +107,11 @@ export class LocalBrain {
   }
 
   public removeModel(id: string) {
-    if (id === LFM_DAEMON_MODEL.id) return;
+    if (id === LFM_DAEMON_MODEL.id || id === DEFAULT_MODEL.id) return;
     this.storedModels = this.storedModels.filter(m => m.id !== id);
     this.saveStoredModels();
     if (this.activeModelId === id) {
-      this.activeModelId = LFM_DAEMON_MODEL.id;
+      this.activeModelId = DEFAULT_MODEL.id;
       localStorage.setItem(ACTIVE_MODEL_KEY, this.activeModelId);
     }
   }
@@ -206,7 +204,7 @@ export class LocalBrain {
           n_batch:    model.nBatch     ?? 256,
           progressCallback: ({ loaded, total }: { loaded: number; total: number }) => {
             const pct = total > 0 ? loaded / total : 0;
-            this.onLoadProgress?.(10 + Math.floor(pct * 85), `Decoding local blocks: ${Math.floor(pct * 100)}%`);
+            this.onLoadProgress?.(10 + Math.floor(pct * 85), `Decoding neural blocks: ${Math.floor(pct * 100)}%`);
           }
         });
 
@@ -308,7 +306,7 @@ export class LocalBrain {
              const { done, value } = await reader.read();
              if (done) break;
              buffer += decoder.decode(value, { stream: true });
-             const parts = buffer.split('\\n');
+             const parts = buffer.split('\n');
              buffer = parts.pop() || '';
              for (let p of parts) {
                p = p.trim();
@@ -322,7 +320,7 @@ export class LocalBrain {
              }
            }
          } catch {
-           onToken(`\\n\\n[ERREUR CRITIQUE DAEMON]: Connexion au port 1234 refusée. Démarrez votre instance LM Studio.`);
+           onToken(`\n\n[DAEMON CRITICAL ERROR]: Connection to Port 1234 refused. Start your LM Studio instance.`);
          }
          return;
       }
@@ -343,7 +341,7 @@ export class LocalBrain {
         }
       } catch (e) {
         console.error('[NEURAL_STREAM]:', e);
-        onToken(`\\n[SYSTEM ERROR NATIVE LFM: ${e}]`);
+        onToken(`\n[SYSTEM ERROR NATIVE LFM: ${e}]`);
       }
     });
   }
@@ -355,7 +353,6 @@ export class LocalBrain {
     return out;
   }
 
-  // HuggingFace Link — The user explicitly wanted this connected!
   public async downloadFromHuggingFace(
     repoId: string,
     filename: string,
