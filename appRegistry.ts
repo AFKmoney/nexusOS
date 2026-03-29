@@ -70,7 +70,7 @@ export const SYSTEM_APPS: AppManifest[] = [
   // ── Dashboard ──────────────────────────────────────────────────────────────
   {
     id: 'welcome',
-    name: 'DAEMON Intro',
+    name: 'Introduction',
     icon: Zap,
     component: WelcomeApp,
     permissions: [],
@@ -94,7 +94,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: HyperIDEApp,
     permissions: ['vfs.read', 'vfs.write', 'network', 'kernel.modify'],
     defaultSize: { width: 1100, height: 720 },
-    description: 'VS Code-style IDE with AI assistant, syntax highlighting, file tree, and live preview.'
+    description: 'Advanced IDE with AI assistance, syntax highlighting, and live preview.'
   },
   { 
     id: 'terminal',
@@ -103,7 +103,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: TerminalApp, 
     permissions: ['vfs.read', 'vfs.write', 'kernel.modify'],
     defaultSize: { width: 700, height: 480 },
-    description: 'Neural shell with AI fallback, command history, autocomplete, and OS control.'
+    description: 'Neural shell with AI fallback and full system control.'
   },
   {
     id: 'explorer',
@@ -112,7 +112,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: FileExplorerApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 800, height: 560 },
-    description: 'Smart file browser with NLP search and AI auto-organization.'
+    description: 'Smart file browser with semantic search and AI organization.'
   },
   {
     id: 'forge',
@@ -121,7 +121,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: NeuralForgeApp,
     permissions: ['vfs.write', 'network'],
     defaultSize: { width: 900, height: 680 },
-    description: 'AI app generator. Describe an app and DAEMON builds it instantly.'
+    description: 'AI application generator. Build apps instantly via natural language.'
   },
 
   // ── AI & Intelligence ─────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: DaemonChatApp,
     permissions: ['network', 'kernel.modify'],
     defaultSize: { width: 760, height: 620 },
-    description: 'Direct neural link to DAEMON AI. Chat, code, strategize — completely offline.'
+    description: 'Direct neural link to DAEMON AI. Strategic analysis and coding.'
   },
   {
     id: 'aion_agent',
@@ -141,7 +141,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: NexusPrimeApp,
     permissions: ['vfs.read', 'vfs.write', 'kernel.modify', 'network'],
     defaultSize: { width: 680, height: 560 },
-    description: 'The primary AI chat interface. Talk directly to DAEMON.'
+    description: 'Primary AI interface for general tasks and system assistance.'
   },
   {
     id: 'model_manager',
@@ -150,7 +150,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: ModelManagerApp,
     permissions: ['network', 'kernel.modify'],
     defaultSize: { width: 760, height: 620 },
-    description: 'Browse, download, and switch GGUF models from HuggingFace.'
+    description: 'Manage GGUF models and HuggingFace integration.'
   },
   {
     id: 'nfr',
@@ -159,7 +159,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: NFRApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 800, height: 600 },
-    description: 'Neural Fractal Reconstruction compression engine. Chat with your archives.'
+    description: 'Neural Fractal Reconstruction engine for extreme data compression.'
   },
   {
     id: 'fractal',
@@ -168,7 +168,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: FractalVisualizerApp,
     permissions: [],
     defaultSize: { width: 800, height: 600 },
-    description: 'Real-time interactive graph of the DAEMON Neural Cortex.'
+    description: 'Interactive visualization of the DAEMON knowledge graph.'
   },
 
   // ── System & Network ─────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: NetRunnerApp,
     permissions: ['vfs.read', 'network'],
     defaultSize: { width: 1000, height: 700 },
-    description: 'AI-augmented browser with autonomous web agent and semantic snapshot.'
+    description: 'AI-augmented browser with autonomous research agents.'
   },
   {
     id: 'monitor',
@@ -188,16 +188,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: MonitorApp,
     permissions: ['kernel.modify'],
     defaultSize: { width: 760, height: 560 },
-    description: 'Real-time CPU, memory, and neural process monitoring.'
+    description: 'Real-time monitoring of CPU, memory, and neural loads.'
   },
   { 
     id: 'ubuntu',
-    name: 'Ubuntu Terminal',
+    name: 'Ubuntu Subsystem',
     icon: Command,
     component: UbuntuTerminalApp,
     permissions: ['network'],
     defaultSize: { width: 800, height: 600 },
-    description: 'Ubuntu subsystem terminal emulator.'
+    description: 'Virtualized Ubuntu environment for Linux workflows.'
   },
 
   // ── Utilities & Security ──────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: SilenceApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 720, height: 580 },
-    description: 'End-to-end encrypted password manager with AES-GCM.'
+    description: 'End-to-end encrypted storage for sensitive data.'
   },
   {
     id: 'appstore',
@@ -217,7 +217,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: AppStoreApp,
     permissions: ['network'],
     defaultSize: { width: 860, height: 640 },
-    description: 'Discover and install curated NexusOS applications.'
+    description: 'Discover and install curated OS extensions.'
   },
   {
     id: 'notepad',
@@ -226,16 +226,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: NotepadApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 600, height: 480 },
-    description: 'Simple text editor for quick notes and file viewing.'
+    description: 'Lightweight text editor for rapid documentation.'
   },
   {
     id: 'wallpaper',
-    name: 'Wallpapers',
+    name: 'Wallpaper Gen',
     icon: Image,
     component: WallpaperApp,
     permissions: ['kernel.modify'],
     defaultSize: { width: 720, height: 560 },
-    description: 'AI wallpaper generator and preset manager.'
+    description: 'Generative AI engine for system backgrounds.'
   },
   {
     id: 'settings',
@@ -244,24 +244,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: SettingsApp,
     permissions: ['kernel.modify'],
     defaultSize: { width: 760, height: 580 },
-    description: 'Configure AI model, autonomy engine, appearance, and system.'
+    description: 'Configure AI models, UI theme, and system security.'
   },
   {
     id: 'fileprops',
-    name: 'File Properties',
+    name: 'Properties',
     icon: Database,
     component: FilePropertiesApp,
     permissions: ['vfs.read'],
     defaultSize: { width: 400, height: 500 },
-  },
-  {
-    id: 'ubuntu_terminal',
-    name: 'Linux Terminal',
-    icon: Terminal,
-    component: UbuntuTerminalApp,
-    permissions: ['network'],
-    defaultSize: { width: 800, height: 520 },
-    description: 'Full Linux-like terminal environment with package simulation.'
+    description: 'Detailed file metadata and neural tags.'
   },
   {
     id: 'web_runner',
@@ -270,10 +262,10 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: WebRunnerApp,
     permissions: ['network'],
     defaultSize: { width: 900, height: 600 },
-    description: 'Sandboxed browser iframe for running web apps and sites.'
+    description: 'Sandboxed environment for web application execution.'
   },
 
-  // ── NEW APPS ───────────────────────────────────────────────────────────────
+  // ── Productivity ─────────────────────────────────────────────────────────
   {
     id: 'task_manager',
     name: 'Task Manager',
@@ -281,7 +273,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: TaskManagerApp,
     permissions: ['kernel.modify'],
     defaultSize: { width: 780, height: 480 },
-    description: 'View and kill running processes. Monitor memory usage per app.'
+    description: 'Process management and resource allocation control.'
   },
   {
     id: 'device_manager',
@@ -290,16 +282,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: DeviceManagerApp,
     permissions: [],
     defaultSize: { width: 700, height: 500 },
-    description: 'Hardware monitor communicating with the physical host via IPC.'
+    description: 'Hardware interface and IPC monitoring.'
   }, 
   {
     id: 'native_zip',
-    name: 'Archive Extractor',
+    name: 'Archiver',
     icon: FileArchive,
     component: NativeZipApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 600, height: 450 },
-    description: 'Native host ZIP extractor powered by PowerShell / Node IPC.'
+    description: 'High-speed archive compression and extraction.'
   },
   {
     id: 'recycle_bin',
@@ -308,16 +300,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: RecycleBinApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 700, height: 500 },
-    description: 'Restore deleted files or empty the trash to free space.'
+    description: 'Recovery system for deleted neural segments.'
   },
   {
     id: 'notifications',
-    name: 'Notification Center',
+    name: 'Notifications',
     icon: Bell,
     component: NotificationCenterApp,
     permissions: [],
     defaultSize: { width: 420, height: 560 },
-    description: 'Notification history with type filters and timestamps.' 
+    description: 'System-wide event log and AI alerts.' 
   },
   {
     id: 'clipboard',
@@ -326,7 +318,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: ClipboardManagerApp,
     permissions: [],
     defaultSize: { width: 400, height: 520 },
-    description: 'Clipboard history with search, pin favorites, and one-click re-copy.'
+    description: 'Persistent clipboard history with semantic indexing.'
   }, 
   {
     id: 'sticky_notes',
@@ -335,7 +327,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: StickyNotesApp,
     permissions: [],
     defaultSize: { width: 600, height: 500 },
-    description: 'Draggable sticky notes with colors and persistence.'
+    description: 'Draggable persistent notes for quick reference.'
   },
   {
     id: 'calculator',
@@ -344,7 +336,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: CalculatorProApp,
     permissions: [],
     defaultSize: { width: 320, height: 520 },
-    description: 'Scientific calculator with history, percent, and sign toggle.'
+    description: 'Scientific computation engine with history.'
   },
   {
     id: 'calendar',
@@ -353,16 +345,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: CalendarApp,
     permissions: [],
     defaultSize: { width: 640, height: 480 },
-    description: 'Monthly calendar with events, color coding, and time display.'
+    description: 'Neural event scheduling and time management.'
   },
   {
     id: 'image_viewer',
-    name: 'Image Viewer',
+    name: 'Gallery',
     icon: Image,
     component: ImageViewerApp,
     permissions: ['vfs.read'],
     defaultSize: { width: 720, height: 560 },
-    description: 'Image gallery with zoom, rotation, and thumbnail navigation.'
+    description: 'High-performance visual artifact browser.'
   },
   {
     id: 'music',
@@ -371,7 +363,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: MusicPlayerApp,
     permissions: [],
     defaultSize: { width: 700, height: 520 },
-    description: 'Audio player with visualizer, playlist, shuffle, repeat, and volume.'
+    description: 'Audio playback engine with neural visualizer.'
   },
   {
     id: 'rich_editor',
@@ -380,7 +372,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: RichEditorApp,
     permissions: ['vfs.read', 'vfs.write'],
     defaultSize: { width: 800, height: 600 },
-    description: 'WYSIWYG rich text editor with formatting toolbar and HTML export.'
+    description: 'WYSIWYG document architect with HTML export.'
   },
   {
     id: 'daemon_journal',
@@ -389,10 +381,10 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: DaemonJournalApp,
     permissions: ['vfs.read'],
     defaultSize: { width: 600, height: 480 },
-    description: 'DAEMON memory journal — browse and search AI memory entries.'
+    description: 'Access the persistent memory logs of the DAEMON entity.'
   },
   
-  // ── NEW : BATCH 1 & 2 ──────────────────────────────────────────────────────
+  // ── Multimedia & Apps ──────────────────────────────────────────────────────
   {
     id: 'paint',
     name: 'Paint',
@@ -400,7 +392,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: PaintApp,
     permissions: [],
     defaultSize: { width: 800, height: 600 }, 
-    description: 'Canvas drawing program with brush, fill, and color picker.'
+    description: 'Creative canvas for visual construction.'
   },
   {
     id: 'video_player',
@@ -409,7 +401,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: VideoPlayerApp,
     permissions: ['vfs.read'],
     defaultSize: { width: 720, height: 480 },
-    description: 'Media player for local video files.'
+    description: 'Media playback for localized video streams.'
   },
   {
     id: 'weather',
@@ -418,7 +410,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: WeatherApp,
     permissions: ['network'],
     defaultSize: { width: 400, height: 500 },
-    description: 'Current weather conditions and 7-day forecast.'
+    description: 'Meteorological data for global node coordinates.'
   },
   {
     id: 'sysinfo',
@@ -427,7 +419,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: SystemInfoApp,
     permissions: [],
     defaultSize: { width: 500, height: 400 },
-    description: 'Hardware, OS, and network diagnostic information.'
+    description: 'Diagnostic hardware and kernel reporting.'
   },
   {
     id: 'snippets',
@@ -436,7 +428,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: SnippetsApp,
     permissions: [],
     defaultSize: { width: 640, height: 500 },
-    description: 'Code snippets manager with syntax tagging.'
+    description: 'Code repository for recurring neural patterns.'
   },
   {
     id: 'contacts',
@@ -445,7 +437,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: ContactsApp,
     permissions: [],
     defaultSize: { width: 700, height: 500 },
-    description: 'Address book and contact manager.'
+    description: 'Address book for network node participants.'
   },
   {
     id: 'pomodoro', 
@@ -454,7 +446,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: PomodoroApp,
     permissions: [],
     defaultSize: { width: 340, height: 480 },
-    description: 'Focus timer for productivity with custom intervals.'
+    description: 'Focus management timer for peak productivity.'
   },
   {
     id: 'kanban',
@@ -463,7 +455,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: KanbanApp,
     permissions: [],
     defaultSize: { width: 900, height: 600 },
-    description: 'Drag-and-drop project management board.'
+    description: 'Project management via semantic card stacks.'
   },
   {
     id: 'vault',
@@ -472,16 +464,16 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: PasswordManagerApp,
     permissions: [],
     defaultSize: { width: 700, height: 500 },
-    description: 'Password manager and secure credentials vault.'
+    description: 'Secure credential manager and identity vault.'
   },
   {
     id: 'voice_recorder',
     name: 'Voice Recorder',
     icon: Mic,
     component: VoiceRecorderApp,
-    permissions: ['network'], // generic permission for mic access via browser
+    permissions: ['network'],
     defaultSize: { width: 400, height: 500 },
-    description: 'Record, save, and export audio memos.'
+    description: 'Audio capture and neural voice logging.'
   },
   {
     id: 'markdown',
@@ -490,7 +482,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: MarkdownPreviewApp,
     permissions: [],
     defaultSize: { width: 800, height: 600 },
-    description: 'Real-time markdown editor and HTML exporter.'
+    description: 'Real-time Markdown rendering engine.'
   },
   {
     id: 'rss',
@@ -499,7 +491,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: RSSReaderApp,
     permissions: ['network'],
     defaultSize: { width: 800, height: 600 },
-    description: 'News feed aggregator for your favorite tech sites.'
+    description: 'Decentralized news stream aggregator.'
   },
   {
     id: 'accessibility',
@@ -508,7 +500,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: AccessibilityPanel,
     permissions: ['kernel.modify'],
     defaultSize: { width: 400, height: 500 },
-    description: 'Configure UI scale, font size, and high contrast modes.'
+    description: 'Interface scaling and visual adjustment protocols.'
   },
   {
     id: 'habits',
@@ -517,7 +509,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: HabitTrackerApp,
     permissions: [],
     defaultSize: { width: 640, height: 500 },
-    description: 'Track daily habits and maintain streaks.'
+    description: 'Daily protocol monitoring and streak tracking.'
   },
   {
     id: 'screenshot',
@@ -526,6 +518,6 @@ export const SYSTEM_APPS: AppManifest[] = [
     component: ScreenshotToolApp,
     permissions: [],
     defaultSize: { width: 600, height: 400 },
-    description: 'Capture, copy, and save screenshots of the OS.'
+    description: 'Capture visual states of the NexusOS environment.'
   }
 ];
