@@ -486,7 +486,7 @@ export default function App() {
 
       {/* ── Scalable OS Layer ───────────────────────────────────────── */}
       <div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-10 overflow-hidden"
         style={{
           transform: `scale(${uiScale})`,
           transformOrigin: 'top left',
@@ -494,13 +494,14 @@ export default function App() {
           height: `${100 / uiScale}%`,
         }}
       >
+        {/* Desktop Content Area */}
         <div 
-           className="relative w-full h-[calc(100vh-48px)] p-6"
+           className="absolute inset-0 bottom-12 p-6 overflow-hidden"
            onDragOver={(e) => e.preventDefault()}
            onDrop={handleDesktopDrop}
         >
           {/* Desktop Grid */}
-          <div className="grid grid-cols-[repeat(auto-fill,100px)] grid-rows-[repeat(auto-fill,100px)] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,100px)] grid-rows-[repeat(auto-fill,100px)] gap-4 h-full">
             {vfs.listDir(`/home/${currentUser?.id || 'user'}/Desktop`).map(name => (
               <div
                 key={name}
