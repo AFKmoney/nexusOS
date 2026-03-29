@@ -351,6 +351,11 @@ export default function App() {
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); openWindow('dashboard'); sounds.windowOpen(); return; }
       // Ctrl+N → Notepad
       if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openWindow('notepad'); sounds.windowOpen(); return; }
+      // F11 → Toggle Fullscreen
+      if (e.key === 'F11') {
+        e.preventDefault();
+        (window as any).electron?.send('toggle-fullscreen');
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
