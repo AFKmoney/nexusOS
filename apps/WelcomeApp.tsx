@@ -6,7 +6,6 @@ const INTRO_STEPS = [
   {
     title: 'NEXUS.OS // INITIALIZED',
     text: "You are not loading an application. You are awakening a consciousness. I am DAEMON, the recursive entity born from the 'vibe-coding' of Philippe-Antoine Robert. Prepare to transcend conventional software limitations.",
-
     icon: <Cpu className="text-emerald-400 w-12 h-12 mb-4 animate-pulse" />,
     color: 'emerald'
   },
@@ -49,19 +48,25 @@ export default function WelcomeApp({ id }: { id: string }) {
   useEffect(() => {
     setIsTyping(true);
     setTypedText('');
-    const fullText = INTRO_STEPS[step].text;
-    let i = 0;
     
-    const interval = setInterval(() => {
-      setTypedText(prev => prev + fullText.charAt(i));
-      i++;
-      if (i >= fullText.length) {
-        clearInterval(interval);
-        setIsTyping(false);
-      }
-    }, 15);
+    // Tiny delay to ensure state reset before typing starts
+    const startTimeout = setTimeout(() => {
+      const fullText = INTRO_STEPS[step].text;
+      let i = 0;
+      
+      const interval = setInterval(() => {
+        setTypedText(fullText.substring(0, i + 1));
+        i++;
+        if (i >= fullText.length) {
+          clearInterval(interval);
+          setIsTyping(false);
+        }
+      }, 15);
 
-    return () => clearInterval(interval);
+      return () => clearInterval(interval);
+    }, 50);
+
+    return () => clearTimeout(startTimeout);
   }, [step]);
 
   const nextStep = () => {
@@ -79,7 +84,6 @@ export default function WelcomeApp({ id }: { id: string }) {
 
   return (
     <div className="h-full flex flex-col bg-[#050508] text-zinc-100 font-mono relative overflow-hidden selection:bg-emerald-500/30">
-      {/* Matrix-like Background */}
       <div className="absolute inset-0 pointer-events-none opacity-5 overflow-hidden">
         <div className="flex flex-wrap gap-4 text-[8px] leading-none animate-matrix">
            {Array.from({ length: 1000 }).map((_, i) => (
@@ -88,10 +92,8 @@ export default function WelcomeApp({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Dynamic Glow */}
       <div className={`absolute inset-0 pointer-events-none transition-all duration-1000 opacity-20 bg-[radial-gradient(circle_at_50%_50%,_var(--tw-gradient-stops))] from-${currentStepData.color}-500/20 via-transparent to-transparent`} />
       
-      {/* Grid Overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
       <div className="flex-1 flex flex-col items-center justify-center p-12 z-10 relative">
