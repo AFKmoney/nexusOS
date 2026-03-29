@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useOS } from '../store/osStore';
 import { aiService } from '../services/puterService';
@@ -10,55 +9,77 @@ import {
   ChevronRight, ChevronDown, Loader2, Zap, CheckCheck,
   FilePlus, Eye, Sparkles, Search, Layout,
   GitBranch, Copy, Settings2, Braces, Replace,
-  WrapText, AlignLeft, MoreHorizontal, ChevronUp
+  WrapText, AlignLeft, MoreHorizontal, ChevronUp,
+  TerminalSquare, FileJson, FileType2, FileCode2,
+  Box, Puzzle, ShieldAlert, FileText, Play
 } from 'lucide-react';
 
-// ─── Syntax highlighting ─────────────────────────────────────────
+// ─── Refined Syntax Highlighting (Daemon Dark Theme) ─────────────
 function escapeHtml(text: string): string {
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 function highlight(code: string, ext: string): string {
   if (!['html','js','ts','tsx','jsx','css','json','py','sh','md'].includes(ext)) return escapeHtml(code);
   let h = escapeHtml(code);
+  
   if (ext === 'json') {
-    h = h
-      .replace(/(\"(?:[^\"\\]|\\.)*\")\s*:/g,'<span class="text-sky-400">$1</span>:')
+    return h
+      .replace(/(\"(?:[^\"\\]|\\.)*\")\s*:/g,'<span class="text-sky-300 font-medium">$1</span>:')
       .replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g,': <span class="text-emerald-300">$1</span>')
-      .replace(/:\s*(true|false|null)/g,': <span class="text-purple-400">$1</span>')
-      .replace(/:\s*(\d+\.?\d*)/g,': <span class="text-orange-400">$1</span>');
-    return h;
+      .replace(/:\s*(true|false|null)/g,': <span class="text-purple-400 font-bold">$1</span>')
+      .replace(/:\s*(\d+\.?\d*)/g,': <span class="text-orange-300">$1</span>');
   }
   if (ext === 'md') {
-    h = h.replace(/^(#{1,6}\s.+)$/gm,'<span class="text-yellow-300 font-bold">$1</span>');
+    h = h.replace(/^(#{1,6}\s.+)$/gm,'<span class="text-yellow-400 font-black tracking-wide">$1</span>');
     h = h.replace(/\*\*(.+?)\*\*/g,'<span class="text-white font-bold">$1</span>');
-    h = h.replace(/`([^`]+)`/g,'<span class="text-emerald-300 bg-emerald-900/30 px-1 rounded">$1</span>');
+    h = h.replace(/`([^`]+)`/g,'<span class="text-emerald-300 bg-emerald-500/10 px-1 rounded-md border border-emerald-500/20">$1</span>');
     return h;
   }
+
+  // Keywords
   const kw = ['const','let','var','function','return','if','else','for','while','class','import','export','default','from','async','await','new','try','catch','throw','interface','type','extends','implements','true','false','null','undefined','void','def','print','self','elif','in','not','and','or','is','typeof','instanceof','static','private','public','protected','readonly','enum','switch','case','break','continue','delete','yield'];
-  kw.forEach(k => { h = h.replace(new RegExp(`\\b(${k})\\b`,'g'),'<span class="text-violet-400">$1</span>'); });
+  kw.forEach(k => { h = h.replace(new RegExp(`\\b(${k})\\b`,'g'),`<span class="text-purple-400 font-semibold">$1</span>`); });
+  
+  // Strings & Comments
   h = h.replace(/(\".*?\"|'.*?'|`[\s\S]*?`)/g,'<span class="text-emerald-300">$1</span>');
   h = h.replace(/(\/\/[^\n]*)/g,'<span class="text-zinc-500 italic">$1</span>');
   h = h.replace(/(\/\*[\s\S]*?\*\/)/g,'<span class="text-zinc-500 italic">$1</span>');
   h = h.replace(/(#[^\n]*)/g,'<span class="text-zinc-500 italic">$1</span>');
+  
+  // Tags (React/HTML)
   if (['html','tsx','jsx'].includes(ext)) {
-    h = h.replace(/(&lt;\/?)([\w-]+)/g,'$1<span class="text-emerald-400">$2</span>');
-    h = h.replace(/([\w-]+)=(&quot;|&#x27;)/g,'<span class="text-sky-400">$1</span>=$2');
+    h = h.replace(/(&lt;\/?)([\w.-]+)/g,'$1<span class="text-rose-400 font-medium">$2</span>');
+    h = h.replace(/([\w-]+)=(&quot;|&#x27;)/g,'<span class="text-sky-300">$1</span>=$2');
   }
-  h = h.replace(/\b(\d+\.?\d*)\b/g,'<span class="text-orange-400">$1</span>');
-  h = h.replace(/\b([A-Z][a-zA-Z0-9]+)\b/g,'<span class="text-yellow-400">$1</span>');
+  
+  // Numbers & Types/Classes
+  h = h.replace(/\b(\d+\.?\d*)\b/g,'<span class="text-orange-300">$1</span>');
+  h = h.replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g,'<span class="text-yellow-200 font-medium">$1</span>');
+  
+  // Functions
+  h = h.replace(/\b([a-zA-Z0-9_]+)(?=\()/g,'<span class="text-blue-300 font-medium">$1</span>');
+
   return h;
 }
 
-function fileIcon(name: string) {
-  const ext = name.split('.').pop() || '';
-  const colors: Record<string,string> = {
-    tsx:'text-cyan-400', ts:'text-blue-400', jsx:'text-cyan-400', js:'text-yellow-400',
-    html:'text-orange-400', css:'text-blue-300', json:'text-yellow-300', py:'text-green-400',
-    md:'text-zinc-400', sh:'text-emerald-400', txt:'text-zinc-500', gitignore:'text-zinc-600'
-  };
-  return <File size={13} className={colors[ext] || 'text-zinc-500'} />;
+// ─── Dynamic File Icons ─────────────────────────────────────────
+function fileIcon(name: string, size = 14) {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (ext === 'tsx' || ext === 'jsx') return <FileCode2 size={size} className="text-cyan-400" />;
+  if (ext === 'ts') return <FileType2 size={size} className="text-blue-400" />;
+  if (ext === 'js') return <FileCode2 size={size} className="text-yellow-400" />;
+  if (ext === 'json') return <FileJson size={size} className="text-yellow-200" />;
+  if (ext === 'md') return <FileText size={size} className="text-zinc-300" />;
+  if (ext === 'sh' || ext === 'bat') return <TerminalSquare size={size} className="text-emerald-400" />;
+  if (ext === 'css') return <FileCode2 size={size} className="text-sky-400" />;
+  if (ext === 'py') return <FileCode2 size={size} className="text-green-500" />;
+  if (ext === 'html') return <FileCode2 size={size} className="text-orange-500" />;
+  if (name.includes('config') || name.startsWith('.')) return <Settings2 size={size} className="text-zinc-500" />;
+  return <File size={size} className="text-zinc-500" />;
 }
 
+// ─── Pro File Tree Node ─────────────────────────────────────────
 function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath }: {
   path: string; name: string; depth: number;
   onSelect: (path: string) => void;
@@ -69,6 +90,7 @@ function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath
   const stat = vfs.stat(path);
   const isDir = stat?.type === 'directory';
   const isSelected = path === selectedPath;
+  
   if (isDir) {
     const children = (vfs.listDir(path) || []).sort((a, b) => {
       const aIsDir = vfs.stat(`${path}/${a}`)?.type === 'directory';
@@ -78,25 +100,30 @@ function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath
       return a.localeCompare(b);
     });
     return (
-      <div>
+      <div className="relative">
         <button
           onClick={() => setExpanded(!expanded)}
           onContextMenu={e => onContextMenu(e, path, true)}
-          className={`w-full flex items-center gap-1 py-0.5 pr-2 text-xs hover:bg-white/5 transition-all rounded ${isSelected ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
-          style={{ paddingLeft: `${6 + depth * 12}px` }}
+          className={`w-full flex items-center gap-1.5 py-1 pr-2 text-[11px] font-medium hover:bg-white/10 transition-all rounded-md group ${isSelected ? 'bg-white/5 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+          style={{ paddingLeft: `${4 + depth * 14}px` }}
         >
-          {expanded ? <ChevronDown size={11} className="shrink-0 text-zinc-600" /> : <ChevronRight size={11} className="shrink-0 text-zinc-600" />}
-          {expanded ? <FolderOpen size={13} className="text-yellow-500 shrink-0" /> : <Folder size={13} className="text-yellow-600 shrink-0" />}
+          {expanded ? <ChevronDown size={12} className="shrink-0 text-zinc-500 group-hover:text-zinc-300" /> : <ChevronRight size={12} className="shrink-0 text-zinc-500 group-hover:text-zinc-300" />}
+          {expanded ? <FolderOpen size={14} className="text-blue-400 shrink-0 drop-shadow-md" /> : <Folder size={14} className="text-blue-500 shrink-0 drop-shadow-md" />}
           <span className="truncate">{name}</span>
         </button>
-        {expanded && children.map(child => (
-          <div key={child}>
-            <FileTreeNode
-              path={`${path}/${child}`} name={child} depth={depth + 1}
-              onSelect={onSelect} onContextMenu={onContextMenu} selectedPath={selectedPath}
-            />
+        {expanded && (
+          <div className="relative">
+            {/* Tree Guide Line */}
+            <div className="absolute left-0 top-0 bottom-0 border-l border-white/5" style={{ marginLeft: `${10 + depth * 14}px` }} />
+            {children.map(child => (
+              <FileTreeNode
+                key={child}
+                path={`${path}/${child}`} name={child} depth={depth + 1}
+                onSelect={onSelect} onContextMenu={onContextMenu} selectedPath={selectedPath}
+              />
+            ))}
           </div>
-        ))}
+        )}
       </div>
     );
   }
@@ -104,10 +131,12 @@ function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath
     <button
       onClick={() => onSelect(path)}
       onContextMenu={e => onContextMenu(e, path, false)}
-      className={`w-full flex items-center gap-1.5 py-0.5 pr-2 text-xs hover:bg-white/5 transition-all rounded ${isSelected ? 'bg-blue-500/20 text-blue-300' : 'text-zinc-500 hover:text-zinc-300'}`}
-      style={{ paddingLeft: `${18 + depth * 12}px` }}
+      className={`w-full flex items-center gap-2 py-1 pr-2 text-[11px] font-medium hover:bg-white/10 transition-all rounded-md group ${isSelected ? 'bg-blue-500/20 text-white shadow-inner' : 'text-zinc-400 hover:text-zinc-200'}`}
+      style={{ paddingLeft: `${20 + depth * 14}px` }}
     >
-      {fileIcon(name)}
+      <div className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-md">
+        {fileIcon(name, 14)}
+      </div>
       <span className="truncate">{name}</span>
     </button>
   );
@@ -121,7 +150,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [currentDir, setCurrentDir] = useState('/home/user');
-  const [sidePanel, setSidePanel] = useState<'files'|'search'|'git'|'ai'>('files');
+  const [sidePanel, setSidePanel] = useState<'files'|'search'|'git'>('files');
   const [showSide, setShowSide] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showAI, setShowAI] = useState(true);
@@ -131,7 +160,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
   const [savedIndicator, setSavedIndicator] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [aiMessages, setAiMessages] = useState<AiMsg[]>([
-    { role: 'ai', content: '⚡ **HyperIDE Neural Core** online.\n\nI have full context of your open file. Ask me to:\n- **Explain** or **Debug** your code\n- **Refactor** for performance\n- **Write tests** or **Add docs**\n- **Write new features** from scratch\n\nOr just type any question.' }
+    { role: 'ai', content: '⚡ **NEXUS Neural Forge** Active.\n\nI am connected to the kernel. I can:\n- **Refactor** & optimize logic\n- **Debug** complex errors\n- **Generate** complete files\n- **Explain** architecture\n\nWhat are we building today, Creator?' }
   ]);
   const [aiInput, setAiInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,18 +172,20 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
   const [contextMenu, setContextMenu] = useState<{x:number;y:number;path:string;isDir:boolean}|null>(null);
   const [renameTarget, setRenameTarget] = useState<string|null>(null);
   const [renameValue, setRenameValue] = useState('');
+  
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLIFrameElement>(null);
   const aiScrollRef = useRef<HTMLDivElement>(null);
 
   const activeTab = tabs[activeIdx] || null;
-  const ext = activeTab?.name.split('.').pop() || 'txt';
+  const ext = activeTab?.name.split('.').pop()?.toLowerCase() || 'txt';
   const highlighted = activeTab ? highlight(activeTab.content, ext) : '';
-  const lineCount = activeTab ? activeTab.content.split('\n').length : 0;
+  const lineCount = activeTab ? activeTab.content.split('\n').length : 1;
 
   useEffect(() => { if (initPath) openFile(initPath); }, [initPath]);
   useEffect(() => { aiScrollRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [aiMessages]);
 
+  // ─── File Operations ─────────────────────────────────────────
   const openFile = (path: string) => {
     const existing = tabs.findIndex(t => t.path === path);
     if (existing >= 0) { setActiveIdx(existing); return; }
@@ -209,19 +240,6 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     setContextMenu(null);
   };
 
-  const duplicateFile = (path: string) => {
-    const content = vfs.readFile(path) || '';
-    const parts = path.split('/');
-    const name = parts.pop() || 'file';
-    const ext = name.includes('.') ? name.split('.').pop() : '';
-    const base = ext ? name.slice(0, -(ext.length + 1)) : name;
-    const newName = ext ? `${base}_copy.${ext}` : `${base}_copy`;
-    const newPath = [...parts, newName].join('/');
-    vfs.writeFile(newPath, content);
-    openFile(newPath);
-    setContextMenu(null);
-  };
-
   const startRename = (path: string) => {
     setRenameTarget(path);
     setRenameValue(path.split('/').pop() || '');
@@ -268,24 +286,22 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     addNotification({ title: 'Replace Done', message: `Replaced all occurrences of "${searchQuery}"`, type: 'success' });
   };
 
-  const copyCode = (content: string) => {
-    navigator.clipboard.writeText(content).catch(() => {});
-  };
-
   const handleContextMenu = (e: React.MouseEvent, path: string, isDir: boolean) => {
     e.preventDefault(); e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, path, isDir });
   };
 
+  // ─── AI Integration ─────────────────────────────────────────
   const askAI = async (question?: string) => {
     const q = question || aiInput.trim();
     if (!q || isAiThinking) return;
     setAiInput('');
     setIsAiThinking(true);
     const fileContext = activeTab
-      ? `[FILE: ${activeTab.name} (${lineCount} lines)]\n\`\`\`${ext}\n${activeTab.content.slice(0, 3000)}\n\`\`\``
-      : '[No file open — answering from general knowledge]';
-    const prompt = `${fileContext}\n\n[USER]: ${q}`;
+      ? `[CURRENT FILE: ${activeTab.name}]\n\`\`\`${ext}\n${activeTab.content.slice(0, 4000)}\n\`\`\``
+      : '[No file open. Provide general architectural guidance.]';
+    const prompt = `${fileContext}\n\n[USER REQUEST]: ${q}\nAlways provide high-quality, production-ready code. Use modern patterns.`;
+    
     setAiMessages(prev => [...prev, { role: 'user', content: q }, { role: 'ai', content: '' }]);
     try {
       let buf = '';
@@ -298,28 +314,33 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     } finally { setIsAiThinking(false); }
   };
 
-  const aiAction = (action: string) => {
-    const prompts: Record<string, string> = {
-      explain: 'Explain exactly what this code does — step by step, in plain language. Be thorough.',
-      fix: 'Find ALL bugs in this code. Return the COMPLETE fixed file with a // [FIX APPLIED] comment at the top listing each bug fixed.',
-      refactor: 'Refactor this code for maximum performance, readability, and best practices. Return the COMPLETE refactored file with no explanation outside the code.',
-      document: 'Add comprehensive JSDoc/docstring comments to every function, class, and complex block. Return the COMPLETE documented file.',
-      tests: 'Write comprehensive unit tests for every function and edge case. Return a complete test file ready to run.',
-      complete: 'Complete, extend, or improve this code in the most powerful way possible. Return the COMPLETE file.',
-      optimize: 'Analyze and optimize this code for performance and bundle size. Return the COMPLETE optimized file.',
-    };
-    askAI(prompts[action]);
-  };
-
   const applyAICode = () => {
     const lastAI = aiMessages.slice().reverse().find(m => m.role === 'ai');
     if (!lastAI || !activeTab) return;
     const codeMatch = lastAI.content.match(/```(?:\w+)?\n([\s\S]*?)```/);
     const code = codeMatch ? codeMatch[1] : lastAI.content;
     updateContent(code.trim());
-    addNotification({ title: '⚡ Code Applied', message: `AI code applied to ${activeTab.name}`, type: 'success' });
+    addNotification({ title: 'Code Injected', message: `Neural synthesis applied to ${activeTab.name}`, type: 'success' });
   };
 
+  const copyCode = (content: string) => {
+    navigator.clipboard.writeText(content).catch(() => {});
+  };
+
+  const aiAction = (action: string) => {
+    const prompts: Record<string, string> = {
+      explain: 'Explain exactly what this code does — step by step, in plain language.',
+      fix: 'Find ALL bugs in this code. Return the COMPLETE fixed file with comments.',
+      refactor: 'Refactor this code for maximum performance and readability. Return the complete refactored file.',
+      document: 'Add comprehensive JSDoc/docstring comments. Return the complete documented file.',
+      tests: 'Write comprehensive unit tests for this code.',
+      complete: 'Complete or extend this code.',
+      optimize: 'Optimize this code for performance.',
+    };
+    askAI(prompts[action]);
+  };
+
+  // ─── Editor Utils ─────────────────────────────────────────
   const updateCursorPos = () => {
     const ta = editorRef.current;
     if (!ta || !activeTab) return;
@@ -341,75 +362,80 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
 
   const renderMarkdown = (text: string) => {
     return text
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')
-      .replace(/`([^`]+)`/g, '<code class="bg-black/40 text-emerald-300 px-1 rounded text-xs font-mono">$1</code>')
-      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/60 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto text-emerald-200 text-xs font-mono">$2</pre>')
-      .replace(/^#{1,3}\s(.+)$/gm, '<div class="text-yellow-300 font-bold mt-2 mb-1">$1</div>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-300">$1</strong>')
+      .replace(/`([^`]+)`/g, '<code class="bg-black/50 text-emerald-300 px-1.5 py-0.5 rounded-md text-xs font-mono border border-emerald-500/20">$1</code>')
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/80 border border-white/10 rounded-xl p-4 my-3 overflow-x-auto text-emerald-200 text-[11px] font-mono shadow-inner">$2</pre>')
+      .replace(/^#{1,3}\s(.+)$/gm, '<div class="text-white font-black text-sm mt-4 mb-2 tracking-wide uppercase">$1</div>')
       .replace(/\n/g, '<br/>');
   };
 
-  const SIDE_PANELS = [
-    { id: 'files', icon: Folder, title: 'Explorer' },
-    { id: 'search', icon: Search, title: 'Search' },
-    { id: 'git', icon: GitBranch, title: 'Source Control' },
-  ];
-
   return (
-    <div className="h-full flex bg-[#0d1117] text-slate-200 font-mono text-sm overflow-hidden" onClick={() => setContextMenu(null)}>
+    <div className="h-full flex bg-[#09090B] text-slate-200 font-sans text-sm overflow-hidden" onClick={() => setContextMenu(null)}>
 
-      {/* Activity Bar */}
-      <div className="w-12 bg-[#010409] border-r border-white/5 flex flex-col items-center py-2 gap-1 shrink-0">
-        {SIDE_PANELS.map(({ id, icon: Icon, title }) => (
+      {/* ─── Activity Bar ─── */}
+      <div className="w-14 bg-black/60 backdrop-blur-xl border-r border-white/5 flex flex-col items-center py-4 gap-3 shrink-0 shadow-xl z-20 relative">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+          <Code size={18} className="text-white" />
+        </div>
+        
+        {[
+          { id: 'files', icon: Copy, title: 'Explorer' },
+          { id: 'search', icon: Search, title: 'Search' },
+          { id: 'git', icon: GitBranch, title: 'Source Control' },
+        ].map(({ id, icon: Icon, title }) => (
           <button
-            key={id}
-            title={title}
+            key={id} title={title}
             onClick={() => { setSidePanel(id as any); setShowSide(sidePanel === id ? !showSide : true); }}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all relative ${sidePanel === id && showSide ? 'bg-white/10 text-white' : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/5'}`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${sidePanel === id && showSide ? 'bg-white/10 text-white shadow-inner' : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'}`}
           >
-            {sidePanel === id && showSide && <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-400 -ml-0.5" />}
-            <Icon size={20} />
+            {sidePanel === id && showSide && <div className="absolute left-0 top-2 bottom-2 w-1 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.8)]" />}
+            <Icon size={20} className="group-hover:scale-110 transition-transform" />
           </button>
         ))}
+        
         <div className="flex-1" />
-        <button title="Wrap Text" onClick={() => setWordWrap(w => !w)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${wordWrap ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/5'}`}>
+        
+        <button title="Toggle Word Wrap" onClick={() => setWordWrap(w => !w)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${wordWrap ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'}`}>
           <WrapText size={18} />
         </button>
-        <button title="Toggle AI Panel" onClick={() => setShowAI(!showAI)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showAI ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-600 hover:text-zinc-300 hover:bg-white/5'}`}>
+        <button title="Toggle Neural Engine" onClick={() => setShowAI(!showAI)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${showAI ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'text-zinc-500 hover:text-emerald-400 hover:bg-white/5'}`}>
           <Sparkles size={20} />
+        </button>
+        <button title="Settings" className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-all mt-2">
+          <Settings2 size={20} />
         </button>
       </div>
 
-      {/* Side Panel */}
+      {/* ─── Side Panel (Explorer) ─── */}
       {showSide && (
-        <div className="w-60 bg-[#010409] border-r border-white/5 flex flex-col shrink-0 overflow-hidden">
-          <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between shrink-0">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{SIDE_PANELS.find(p => p.id === sidePanel)?.title}</span>
-            <div className="flex items-center gap-1">
+        <div className="w-64 bg-[#0A0A0C]/95 backdrop-blur-xl border-r border-white/5 flex flex-col shrink-0 z-10 relative">
+          <div className="px-4 py-3 flex items-center justify-between shrink-0">
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">{sidePanel}</span>
+            <div className="flex items-center gap-1.5">
               {sidePanel === 'files' && (
-                <button onClick={() => { setNewFileDir(''); setShowNewFile(true); }} className="text-zinc-600 hover:text-zinc-300 p-1 rounded hover:bg-white/5 transition-all" title="New File">
-                  <FilePlus size={13} />
+                <button onClick={() => { setNewFileDir(''); setShowNewFile(true); }} className="text-zinc-500 hover:text-emerald-400 p-1 rounded-md hover:bg-emerald-500/10 transition-all" title="New File">
+                  <FilePlus size={14} />
                 </button>
               )}
-              <button onClick={() => setShowSide(false)} className="text-zinc-700 hover:text-zinc-300 p-1 rounded hover:bg-white/5 transition-all">
-                <X size={13} />
+              <button onClick={() => setShowSide(false)} className="text-zinc-500 hover:text-zinc-200 p-1 rounded-md hover:bg-white/10 transition-all">
+                <Layout size={14} />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
             {sidePanel === 'files' && (
-              <div className="py-1">
+              <div className="space-y-0.5">
                 {showNewFile && (
-                  <form onSubmit={e => { e.preventDefault(); createFile(); }} className="flex items-center gap-1 px-2 py-1">
-                    <FilePlus size={12} className="text-zinc-600 shrink-0" />
-                    <input autoFocus className="flex-1 bg-zinc-900 border border-blue-500/50 rounded px-2 py-0.5 text-xs outline-none text-white" placeholder="filename.tsx" value={newFileName} onChange={e => setNewFileName(e.target.value)} onKeyDown={e => e.key === 'Escape' && setShowNewFile(false)} />
-                    <button type="button" onClick={() => setShowNewFile(false)} className="text-zinc-600 hover:text-red-400"><X size={10} /></button>
+                  <form onSubmit={e => { e.preventDefault(); createFile(); }} className="flex items-center gap-2 px-2 py-1.5 bg-black/40 border border-emerald-500/30 rounded-lg mb-2 shadow-inner">
+                    <FilePlus size={14} className="text-emerald-500 shrink-0" />
+                    <input autoFocus className="flex-1 bg-transparent text-xs outline-none text-white font-mono placeholder:text-zinc-600" placeholder="filename.tsx" value={newFileName} onChange={e => setNewFileName(e.target.value)} onKeyDown={e => e.key === 'Escape' && setShowNewFile(false)} />
                   </form>
                 )}
                 {renameTarget && (
-                  <form onSubmit={e => { e.preventDefault(); doRename(); }} className="flex items-center gap-1 px-2 py-1">
-                    <input autoFocus className="flex-1 bg-zinc-900 border border-yellow-500/50 rounded px-2 py-0.5 text-xs outline-none text-white" value={renameValue} onChange={e => setRenameValue(e.target.value)} onKeyDown={e => e.key === 'Escape' && setRenameTarget(null)} />
-                    <button type="submit" className="text-emerald-400 text-xs px-1">OK</button>
+                  <form onSubmit={e => { e.preventDefault(); doRename(); }} className="flex items-center gap-2 px-2 py-1.5 bg-black/40 border border-yellow-500/30 rounded-lg mb-2 shadow-inner">
+                    <AlignLeft size={14} className="text-yellow-500 shrink-0" />
+                    <input autoFocus className="flex-1 bg-transparent text-xs outline-none text-white font-mono" value={renameValue} onChange={e => setRenameValue(e.target.value)} onKeyDown={e => e.key === 'Escape' && setRenameTarget(null)} />
                   </form>
                 )}
                 <FileTreeNode path="/home/user" name="home" depth={0} onSelect={openFile} onContextMenu={handleContextMenu} selectedPath={activeTab?.path || ''} />
@@ -418,40 +444,42 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
             )}
 
             {sidePanel === 'search' && (
-              <div className="p-2 space-y-2">
-                <input className="w-full bg-zinc-900 border border-white/5 rounded px-2 py-1.5 text-xs outline-none focus:border-blue-500/50 text-white" placeholder="Search in files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-                <button onClick={handleSearch} className="w-full py-1 bg-blue-600/80 hover:bg-blue-600 rounded text-xs text-white transition-all">Search</button>
-                <div className="space-y-0.5">
+              <div className="space-y-3 px-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-2.5 top-2 text-zinc-500" />
+                  <input className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none focus:border-blue-500/50 text-white font-mono shadow-inner transition-colors" placeholder="Search codebase..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+                </div>
+                <div className="space-y-1">
                   {searchResults.map((r, i) => (
-                    <button key={i} onClick={() => openFile(r.path)} className="w-full text-left p-1.5 rounded hover:bg-white/5 transition-all block">
-                      <div className="text-xs text-blue-400 truncate">{r.path.split('/').pop()}<span className="text-zinc-600">:{r.line}</span></div>
-                      <div className="text-xs text-zinc-500 truncate font-mono">{r.text}</div>
+                    <button key={i} onClick={() => openFile(r.path)} className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all group">
+                      <div className="text-[11px] text-blue-400 font-medium truncate flex items-center gap-1.5"><File size={10}/> {r.path.split('/').pop()}<span className="text-zinc-600 bg-black/40 px-1 rounded">:{r.line}</span></div>
+                      <div className="text-[10px] text-zinc-400 truncate font-mono mt-1 opacity-80 group-hover:opacity-100">{r.text}</div>
                     </button>
                   ))}
-                  {searchResults.length === 0 && searchQuery && <div className="text-xs text-zinc-600 px-1 text-center py-4">No results found</div>}
+                  {searchResults.length === 0 && searchQuery && <div className="text-xs text-zinc-600 text-center py-8 flex flex-col items-center gap-2"><ShieldAlert size={24} className="opacity-20"/> No matches found</div>}
                 </div>
               </div>
             )}
-
+            
             {sidePanel === 'git' && (
-              <div className="p-3 space-y-3">
-                <div className="p-3 bg-zinc-900/60 rounded-lg border border-white/5 text-xs text-zinc-400 space-y-1">
-                  <div className="flex items-center gap-2 text-emerald-400"><GitBranch size={12} /> main</div>
-                  <div>Tracked: {Object.keys(localStorage).filter(k => k.startsWith('vfs_')).length} files</div>
-                  <div className="text-zinc-600">VFS (local persistence)</div>
+              <div className="p-2 space-y-3">
+                <div className="p-3 bg-zinc-900/60 rounded-xl border border-white/5 text-xs text-zinc-400 space-y-2 shadow-inner">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest"><GitBranch size={14} /> main</div>
+                  <div className="flex justify-between"><span>Tracked Nodes:</span> <span className="text-white">{Object.keys(localStorage).filter(k => k.startsWith('vfs_')).length}</span></div>
+                  <div className="text-[10px] text-zinc-600 mt-2">VFS Local Persistence</div>
                 </div>
                 {tabs.filter(t => t.modified).length > 0 && (
                   <div>
-                    <div className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">Modified</div>
+                    <div className="text-[10px] font-black text-zinc-500 mb-2 uppercase tracking-widest px-1">Modified Manifests</div>
                     {tabs.filter(t => t.modified).map(t => (
-                      <div key={t.path} className="flex items-center gap-1 text-xs text-yellow-400 py-0.5">
-                        <span className="text-yellow-600">M</span> {t.name}
+                      <div key={t.path} className="flex items-center gap-2 text-xs text-yellow-400 py-1.5 px-2 bg-yellow-500/10 rounded-lg mb-1 border border-yellow-500/20">
+                        <span className="text-yellow-500 font-black">M</span> {t.name}
                       </div>
                     ))}
                   </div>
                 )}
-                <button onClick={() => askAI('Review all recently modified files and suggest what I should review before committing, noting any bugs, style issues, or missing tests.')} className="w-full p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all flex items-center gap-2">
-                  <Sparkles size={11} /> AI Code Review
+                <button onClick={() => askAI('Review all recently modified files and suggest what I should review before committing, noting any bugs, style issues, or missing tests.')} className="w-full p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-400 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                  <Sparkles size={14} /> Neural Review
                 </button>
               </div>
             )}
@@ -459,85 +487,108 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
         </div>
       )}
 
-      {/* Main Editor + AI */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ─── Main Editor Area ─── */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#0E0E11] relative">
 
-        {/* Top Bar */}
-        <div className="h-9 bg-[#010409] border-b border-white/5 flex items-center gap-1 px-2 shrink-0">
-          {!showSide && <button onClick={() => setShowSide(true)} className="p-1.5 rounded hover:bg-white/5 text-zinc-600 hover:text-zinc-300 transition-all mr-1"><Layout size={15} /></button>}
-          <button onClick={saveFile} disabled={!activeTab} className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 text-zinc-400 hover:text-white transition-all text-xs disabled:opacity-30">
-            {savedIndicator ? <CheckCheck size={13} className="text-emerald-400" /> : <Code size={13} />}
-            <span>{savedIndicator ? 'Saved ✓' : 'Save'}</span>
-          </button>
-          <button onClick={() => setShowFindReplace(v => !v)} className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 transition-all text-xs ${showFindReplace ? 'text-yellow-400' : 'text-zinc-400 hover:text-white'}`}>
-            <Replace size={13} /> Find
-          </button>
-          {ext === 'html' && <button onClick={() => setShowPreview(!showPreview)} className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 transition-all text-xs ${showPreview ? 'text-emerald-400' : 'text-zinc-400 hover:text-white'}`}><Eye size={13} /> Preview</button>}
-          <div className="flex-1" />
-          <button onClick={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); setNewFileDir(''); }} title="New File" className="p-1.5 rounded hover:bg-white/5 text-zinc-600 hover:text-zinc-300 transition-all"><FilePlus size={15} /></button>
-        </div>
-
-        {/* Find/Replace Bar */}
-        {showFindReplace && (
-          <div className="bg-[#010409] border-b border-white/5 px-3 py-2 flex items-center gap-2 shrink-0">
-            <input className="flex-1 bg-zinc-900 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-yellow-500/50 text-white" placeholder="Find..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-            <input className="flex-1 bg-zinc-900 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-blue-500/50 text-white" placeholder="Replace with..." value={replaceQuery} onChange={e => setReplaceQuery(e.target.value)} />
-            <button onClick={findAndReplace} disabled={!activeTab || !searchQuery} className="px-3 py-1 bg-blue-600/80 hover:bg-blue-600 rounded text-xs text-white transition-all disabled:opacity-30">Replace All</button>
-            <button onClick={() => setShowFindReplace(false)} className="text-zinc-600 hover:text-zinc-300"><X size={12} /></button>
+        {/* Top Header / Tabs */}
+        <div className="flex flex-col shrink-0 bg-[#09090B]">
+          {/* Action Bar */}
+          <div className="h-11 flex items-center justify-between px-4 border-b border-white/5 bg-gradient-to-r from-white/[0.02] to-transparent">
+             <div className="flex items-center gap-2">
+               <button onClick={saveFile} disabled={!activeTab || !activeTab.modified} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all shadow-sm ${activeTab?.modified ? 'bg-blue-500 text-white hover:bg-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]' : 'bg-white/5 text-zinc-500'}`}>
+                 {savedIndicator ? <CheckCheck size={14} /> : <Save size={14} />} {savedIndicator ? 'Saved' : 'Save'}
+               </button>
+               {ext === 'html' && (
+                 <button onClick={() => setShowPreview(!showPreview)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${showPreview ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'}`}>
+                   <Play size={14} className={showPreview ? "animate-pulse" : ""} /> Preview
+                 </button>
+               )}
+             </div>
+             <div className="flex items-center gap-2 bg-black/40 rounded-xl p-1 border border-white/5">
+               <button onClick={() => setShowFindReplace(v => !v)} className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all" title="Find / Replace"><Replace size={14} /></button>
+               <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="More Options"><MoreHorizontal size={14} /></button>
+             </div>
           </div>
-        )}
 
-        {/* Tabs */}
-        {tabs.length > 0 && (
-          <div className="flex items-center bg-[#010409] border-b border-white/5 overflow-x-auto shrink-0" style={{height:'33px'}}>
-            {tabs.map((tab, i) => (
-              <div key={tab.path} className={`flex items-center gap-2 px-3 h-full border-r border-white/5 cursor-pointer select-none whitespace-nowrap text-xs transition-all shrink-0 ${i === activeIdx ? 'bg-[#0d1117] text-white border-t-2 border-t-blue-500' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`} onClick={() => setActiveIdx(i)}>
-                {fileIcon(tab.name)}
-                <span>{tab.name}{tab.modified ? ' ●' : ''}</span>
-                <button onClick={e => { e.stopPropagation(); closeTab(i); }} className="ml-1 opacity-40 hover:opacity-100 hover:text-red-400 transition-all"><X size={10} /></button>
-              </div>
-            ))}
-            <button onClick={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); }} className="px-3 h-full text-zinc-700 hover:text-zinc-400 hover:bg-white/5 transition-all shrink-0"><Plus size={13} /></button>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {!activeTab && (
-            <div className="flex-1 flex flex-col items-center justify-center text-zinc-800">
-              <Braces size={56} className="mb-5 opacity-20" />
-              <div className="text-lg font-bold uppercase tracking-[0.25em] mb-2 text-zinc-600">HyperIDE</div>
-              <div className="text-sm text-zinc-700 text-center max-w-xs leading-relaxed mb-4">Open a file from the Explorer, or create a new one to start coding.</div>
-              <div className="flex gap-2">
-                <button onClick={() => { setShowSide(true); setSidePanel('files'); }} className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg text-xs text-blue-400 hover:text-blue-300 transition-all">Open Explorer</button>
-                <button onClick={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); }} className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-zinc-400 hover:text-white transition-all">New File</button>
-              </div>
+          {/* Find & Replace Overlay */}
+          {showFindReplace && (
+            <div className="px-4 py-2.5 bg-zinc-900 border-b border-white/5 flex items-center gap-3 shrink-0 animate-in slide-in-from-top-2 shadow-lg">
+              <Replace size={16} className="text-blue-400" />
+              <input className="flex-1 max-w-xs bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-blue-500/50 text-white font-mono shadow-inner transition-colors" placeholder="Find..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+              <ChevronRight size={14} className="text-zinc-600" />
+              <input className="flex-1 max-w-xs bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-yellow-500/50 text-white font-mono shadow-inner transition-colors" placeholder="Replace with..." value={replaceQuery} onChange={e => setReplaceQuery(e.target.value)} />
+              <button onClick={findAndReplace} disabled={!activeTab || !searchQuery} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest text-white transition-all disabled:opacity-30 shadow-md">Replace All</button>
+              <button onClick={() => setShowFindReplace(false)} className="p-1 text-zinc-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors ml-auto"><X size={14} /></button>
             </div>
           )}
 
-          {activeTab && (
-            <div className={`${showPreview ? 'w-1/2 border-r border-white/5' : 'flex-1'} flex flex-col overflow-hidden`}>
-              <div className="flex-1 flex overflow-hidden">
-                {/* Line Numbers */}
-                <div className="w-11 shrink-0 bg-[#010409] border-r border-white/5 overflow-hidden select-none text-right">
-                  <pre className="text-xs text-zinc-700 pr-2 pt-3 leading-5 font-mono">
-                    {Array.from({ length: lineCount }, (_, i) => i + 1).join('\n')}
-                  </pre>
+          {/* Tabs Row */}
+          {tabs.length > 0 && (
+            <div className="flex items-end bg-[#0A0A0C] border-b border-white/5 overflow-x-auto custom-scrollbar h-10 px-2 gap-1 pt-2">
+              {tabs.map((tab, i) => (
+                <div 
+                  key={tab.path} 
+                  onClick={() => setActiveIdx(i)}
+                  className={`group flex items-center gap-2 px-4 py-2 min-w-[140px] max-w-[220px] cursor-pointer select-none rounded-t-xl transition-all relative ${
+                    i === activeIdx 
+                      ? 'bg-[#0E0E11] text-white shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-10 before:absolute before:top-0 before:left-2 before:right-2 before:h-0.5 before:bg-blue-500 before:rounded-b-full' 
+                      : 'bg-transparent text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                  }`}
+                >
+                  <div className={`transition-transform drop-shadow-md ${i === activeIdx ? 'scale-110' : ''}`}>{fileIcon(tab.name, 14)}</div>
+                  <span className="truncate text-xs font-medium flex-1">{tab.name}</span>
+                  {tab.modified ? (
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); closeTab(i); }} className="opacity-0 group-hover:opacity-100 hover:bg-red-500/20 p-1 rounded-md text-zinc-400 hover:text-red-400 transition-all shrink-0"><X size={12} /></button>
+                  )}
                 </div>
-                {/* Code Area */}
-                <div className="flex-1 relative overflow-auto">
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Editor Content */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {!activeTab ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0E0E11]">
+              <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
+                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full animate-pulse" />
+                 <Code size={80} className="text-zinc-800 relative z-10 drop-shadow-2xl" />
+              </div>
+              <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-white mb-3">HyperIDE <span className="text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Core</span></h2>
+              <p className="text-zinc-500 font-mono text-sm max-w-md text-center mb-10 leading-relaxed">The sovereign development environment. Open a manifest from the explorer or instantiate a new node.</p>
+              <div className="flex gap-4">
+                <button onClick={() => { setShowSide(true); setSidePanel('files'); }} className="px-8 py-3.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm font-black text-blue-400 uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]">Browse Files</button>
+                <button onClick={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); }} className="px-8 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-black text-white uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-lg">New Manifest</button>
+              </div>
+            </div>
+          ) : (
+            <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'w-1/2 border-r border-white/10' : ''}`}>
+              <div className="flex-1 flex overflow-hidden bg-[#0E0E11]">
+                {/* Line Numbers Gutter */}
+                <div className="w-14 shrink-0 bg-[#0A0A0C] border-r border-white/5 flex flex-col items-end py-4 pr-3 select-none overflow-hidden">
+                  {Array.from({ length: lineCount }, (_, i) => (
+                    <div key={i} className={`text-[13px] leading-6 font-mono transition-colors ${i + 1 === cursorPos.line ? 'text-blue-400 font-bold drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]' : 'text-zinc-700'}`}>
+                      {i + 1}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Text Area / Highlight Overlay */}
+                <div className="flex-1 relative overflow-auto custom-scrollbar" onClick={updateCursorPos} onKeyUp={updateCursorPos}>
+                  {/* Highlighted code rendering layer */}
                   <pre
-                    className={`absolute inset-0 p-3 text-sm leading-5 font-mono pointer-events-none ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'} overflow-hidden`}
+                    className={`absolute inset-0 p-4 text-[13px] leading-6 font-mono pointer-events-none ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'} overflow-hidden text-transparent`}
                     dangerouslySetInnerHTML={{ __html: highlighted }}
                     aria-hidden
                   />
+                  {/* Actual editable textarea */}
                   <textarea
                     ref={editorRef}
-                    className={`absolute inset-0 w-full h-full p-3 text-sm leading-5 font-mono bg-transparent text-transparent caret-white outline-none resize-none selection:bg-blue-500/30 z-10 ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'}`}
+                    className={`absolute inset-0 w-full h-full p-4 text-[13px] leading-6 font-mono bg-transparent text-transparent caret-blue-400 outline-none resize-none selection:bg-blue-500/30 z-10 ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'}`}
                     value={activeTab.content}
                     onChange={e => updateContent(e.target.value)}
-                    onClick={updateCursorPos}
-                    onKeyUp={updateCursorPos}
                     spellCheck={false}
                     onKeyDown={e => {
                       if (e.key === 'Tab') {
@@ -552,130 +603,149 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
                   />
                 </div>
               </div>
+
               {/* Status Bar */}
-              <div className="h-6 bg-blue-900/20 border-t border-white/5 flex items-center px-3 gap-4 shrink-0 text-xs text-zinc-600 select-none">
-                <span className="truncate text-zinc-700">{activeTab.path}</span>
-                <span className="shrink-0">Ln {cursorPos.line}, Col {cursorPos.col}</span>
-                <span className="uppercase shrink-0 font-bold text-zinc-600">{ext}</span>
-                <span className="shrink-0">{lineCount} lines</span>
-                {activeTab.modified && <span className="text-yellow-600 shrink-0 animate-pulse">● Modified</span>}
-                {savedIndicator && <span className="text-emerald-500 shrink-0">✓ Saved</span>}
-                <div className="flex-1 flex justify-end items-center gap-3 shrink-0">
+              <div className="h-8 bg-[#050508] border-t border-white/5 flex items-center px-4 justify-between text-[10px] font-mono uppercase tracking-widest select-none shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-20">
+                <div className="flex items-center gap-5 text-zinc-500">
+                  <span className="text-blue-400 font-bold flex items-center gap-1.5"><Box size={12}/> {activeTab.name}</span>
+                  <span className="bg-black/50 px-2 py-0.5 rounded border border-white/5">Ln {cursorPos.line}, Col {cursorPos.col}</span>
+                  <span className="bg-white/5 px-2 py-0.5 rounded text-zinc-400">{ext}</span>
+                </div>
+                <div className="flex items-center gap-5 text-zinc-600">
                   <span>UTF-8</span>
-                  <span>LF</span>
                   <span>{wordWrap ? 'Wrap ON' : 'Wrap OFF'}</span>
+                  <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded border border-emerald-500/20"><ShieldAlert size={10} /> Secure</span>
                 </div>
               </div>
             </div>
           )}
 
+          {/* HTML Preview Split */}
           {showPreview && activeTab && (
-            <div className="flex-1 border-l border-white/5 flex flex-col">
-              <div className="h-7 bg-[#010409] border-b border-white/5 flex items-center px-3 gap-2 shrink-0">
-                <Eye size={11} className="text-zinc-600" />
-                <span className="text-xs text-zinc-600">Live Preview — {activeTab.name}</span>
+            <div className="w-1/2 flex flex-col bg-white">
+              <div className="h-10 bg-zinc-100 border-b border-zinc-300 flex items-center px-4 gap-3 shrink-0 shadow-sm z-10">
+                <div className="p-1.5 bg-emerald-500/20 rounded-md"><Play size={12} className="text-emerald-600" /></div>
+                <span className="text-xs font-bold text-zinc-800 tracking-wide uppercase">Live Render Engine</span>
+                <span className="text-[10px] font-mono text-zinc-400 ml-auto border border-zinc-200 px-2 py-0.5 rounded bg-white">about:blank</span>
               </div>
-              <iframe ref={previewRef} className="flex-1 border-none bg-white" sandbox="allow-scripts allow-modals allow-forms allow-same-origin" srcDoc={activeTab.content} title="Preview" />
+              <iframe ref={previewRef} className="flex-1 w-full h-full border-none bg-white" sandbox="allow-scripts allow-modals allow-forms allow-same-origin" srcDoc={activeTab.content} title="Preview" />
             </div>
           )}
         </div>
       </div>
 
-      {/* AI Panel */}
+      {/* ─── Neural AI Panel ─── */}
       {showAI && (
-        <div className="w-80 border-l border-white/5 bg-[#010409] flex flex-col shrink-0">
-          <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <Sparkles size={13} className="text-emerald-400" />
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Neural Dev</span>
-              {isAiThinking && <Loader2 size={11} className="text-emerald-400 animate-spin" />}
+        <div className="w-80 bg-[#050508]/95 backdrop-blur-2xl border-l border-white/10 flex flex-col shrink-0 shadow-[-15px_0_40px_rgba(0,0,0,0.8)] z-30 relative overflow-hidden">
+          {/* AI Background Glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[80px] pointer-events-none rounded-full" />
+
+          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between shrink-0 relative z-10 bg-gradient-to-b from-emerald-500/5 to-transparent">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Sparkles size={20} className="text-emerald-400 relative z-10 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                {isAiThinking && <div className="absolute inset-0 bg-emerald-400 blur-md animate-pulse" />}
+              </div>
+              <div>
+                <span className="text-xs font-black text-white uppercase tracking-[0.25em] block leading-none mb-1.5">DAEMON</span>
+                <span className="text-[9px] font-mono text-emerald-500/80 tracking-widest uppercase">Neural Copilot</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button onClick={applyAICode} disabled={!activeTab} title="Apply last AI code to editor" className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all disabled:opacity-30">Apply</button>
-              <button onClick={() => setAiMessages([aiMessages[0]])} title="Clear chat" className="text-zinc-700 hover:text-zinc-400 p-0.5 transition-all"><X size={11} /></button>
-              <button onClick={() => setShowAI(false)} className="text-zinc-600 hover:text-zinc-300 p-0.5 transition-all"><ChevronUp size={13} /></button>
-            </div>
+            <button onClick={() => setShowAI(false)} className="p-1.5 text-zinc-500 hover:text-white rounded-lg hover:bg-white/10 transition-all">
+              <ChevronRight size={16} />
+            </button>
           </div>
 
-          {/* Quick Actions */}
-          <div className="p-2 border-b border-white/5">
-            <div className="grid grid-cols-4 gap-1">
+          <div className="p-3 border-b border-white/5 bg-black/40 shrink-0 relative z-10">
+            <div className="grid grid-cols-3 gap-2">
               {[
-                ['explain','📖 Explain'],
-                ['fix','🔧 Fix'],
-                ['refactor','⚡ Refactor'],
-                ['document','📝 Doc'],
-                ['tests','🧪 Tests'],
-                ['complete','✨ Extend'],
-                ['optimize','🚀 Optimize'],
-              ].map(([action, label]) => (
-                <button key={action} onClick={() => aiAction(action)} disabled={!activeTab || isAiThinking} className={`py-1 px-1 rounded-lg bg-white/3 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-500 hover:text-emerald-300 transition-all text-xs disabled:opacity-30 text-center leading-tight ${action === 'optimize' ? 'col-span-4 py-1.5' : ''}`}>
-                  {label}
+                { id: 'explain', label: 'Explain', icon: FileText },
+                { id: 'fix', label: 'Fix Bugs', icon: ShieldAlert },
+                { id: 'refactor', label: 'Refactor', icon: Zap },
+              ].map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => aiAction(id)} disabled={!activeTab || isAiThinking} className="flex flex-col items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 transition-all text-xs font-bold text-zinc-400 disabled:opacity-30 disabled:hover:border-white/5 shadow-sm">
+                  <Icon size={16} className={!isAiThinking && activeTab ? "text-emerald-500/70" : ""} />
+                  <span className="text-[9px] uppercase tracking-wider">{label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar relative z-10">
             {aiMessages.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-full p-3 rounded-xl text-xs leading-relaxed font-sans ${msg.role === 'user' ? 'bg-zinc-800/80 text-white rounded-br-none border border-white/5' : 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-100 rounded-bl-none'}`}>
+                {msg.role === 'user' && <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1.5 ml-1">You</span>}
+                {msg.role === 'ai' && <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1.5 ml-1 flex items-center gap-1"><Zap size={8} /> DAEMON</span>}
+                
+                <div className={`max-w-[92%] p-4 rounded-2xl text-[13px] leading-relaxed font-sans shadow-xl ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-tr-sm border border-white/10' : 'bg-emerald-950/40 border border-emerald-500/20 text-zinc-200 rounded-tl-sm backdrop-blur-md'}`}>
                   {msg.role === 'ai' ? (
                     msg.content
                       ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(msg.content)) }} />
-                      : (isAiThinking && i === aiMessages.length-1 ? <span className="text-emerald-500 animate-pulse">Thinking...</span> : '')
+                      : (isAiThinking && i === aiMessages.length-1 ? <div className="flex items-center gap-2 text-emerald-500 font-mono text-xs uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Synthesizing...</div> : '')
                   ) : msg.content}
                 </div>
+                
                 {msg.role === 'ai' && msg.content && (
-                  <button onClick={() => copyCode(msg.content)} className="mt-1 text-zinc-700 hover:text-zinc-400 flex items-center gap-1 text-xs transition-all">
-                    <Copy size={9} /> Copy
-                  </button>
+                  <div className="flex items-center gap-2 mt-2 ml-1">
+                    <button onClick={() => copyCode(msg.content)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all border border-transparent hover:border-white/10">
+                      <Copy size={12} /> Copy
+                    </button>
+                    {msg.content.includes('```') && activeTab && (
+                      <button onClick={applyAICode} className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 rounded-lg text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                        <Save size={12} /> Apply to Manifest
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
             <div ref={aiScrollRef} />
           </div>
 
-          {/* Input */}
-          <div className="p-2 border-t border-white/5">
-            <div className="flex items-end gap-2 bg-black/60 border border-white/10 rounded-xl px-3 py-2 focus-within:border-emerald-500/30 transition-all">
+          <div className="p-4 border-t border-white/5 bg-[#010409] shrink-0 relative z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+            <div className="relative group">
               <textarea
-                className="flex-1 bg-transparent outline-none text-xs text-white placeholder:text-zinc-700 resize-none font-sans leading-relaxed max-h-24 min-h-[20px]"
-                placeholder={activeTab ? `Ask about ${activeTab.name}...` : 'Ask me anything...'}
+                className="w-full bg-[#0A0A0C] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-xs outline-none text-white placeholder:text-zinc-600 resize-none font-sans leading-relaxed focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner custom-scrollbar"
+                style={{ minHeight: '52px', maxHeight: '140px' }}
+                placeholder={activeTab ? `Ask DAEMON about ${activeTab.name}...` : 'Initialize neural prompt...'}
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askAI(); } }}
                 disabled={isAiThinking}
                 rows={1}
               />
-              <button onClick={() => askAI()} disabled={!aiInput.trim() || isAiThinking} className="text-emerald-500 hover:text-emerald-400 disabled:opacity-30 transition-all shrink-0">
-                {isAiThinking ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
+              <button 
+                onClick={() => askAI()} 
+                disabled={!aiInput.trim() || isAiThinking} 
+                className="absolute right-2 top-2 p-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-400 disabled:opacity-30 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all shadow-lg hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] hover:scale-105 active:scale-95"
+              >
+                {isAiThinking ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} className="fill-current" />}
               </button>
             </div>
+            <div className="text-center mt-3 text-[9px] text-zinc-600 font-mono uppercase tracking-widest">Shift+Enter for newline</div>
           </div>
         </div>
       )}
 
-      {/* Context Menu */}
+      {/* ─── Context Menu ─── */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-zinc-950 border border-white/10 rounded-xl shadow-2xl py-1 text-xs backdrop-blur-xl"
-          style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 200), minWidth: '180px' }}
+          className="fixed z-50 bg-[#121214]/95 border border-white/10 rounded-xl shadow-[0_10px_50px_rgba(0,0,0,0.9)] py-2 text-xs backdrop-blur-3xl"
+          style={{ left: Math.min(contextMenu.x, window.innerWidth - 220), top: Math.min(contextMenu.y, window.innerHeight - 200), minWidth: '220px' }}
         >
           {contextMenu.isDir ? (
             <>
-              <button onClick={() => { setNewFileDir(contextMenu.path); setShowNewFile(true); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><FilePlus size={12} /> New File Here</button>
-              <button onClick={() => { openFile(contextMenu.path); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><FolderOpen size={12} /> Open Folder</button>
+              <button onClick={() => { setNewFileDir(contextMenu.path); setShowNewFile(true); setContextMenu(null); }} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-emerald-500/20 hover:text-emerald-400 transition-colors flex items-center gap-3 font-medium"><FilePlus size={16} /> New File Here</button>
+              <button onClick={() => { openFile(contextMenu.path); setContextMenu(null); }} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-blue-500/20 hover:text-blue-400 transition-colors flex items-center gap-3 font-medium"><FolderOpen size={16} /> Open Folder</button>
             </>
           ) : (
             <>
-              <button onClick={() => { openFile(contextMenu.path); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><File size={12} /> Open</button>
-              <button onClick={() => startRename(contextMenu.path)} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><AlignLeft size={12} /> Rename</button>
-              <button onClick={() => duplicateFile(contextMenu.path)} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><Copy size={12} /> Duplicate</button>
-              <button onClick={() => { const c = contextMenu.path; navigator.clipboard.writeText(c); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"><Copy size={12} /> Copy Path</button>
-              <div className="border-t border-white/5 my-1" />
-              <button onClick={() => deleteFile(contextMenu.path)} className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-400/10 transition-all flex items-center gap-2"><X size={12} /> Delete</button>
+              <button onClick={() => { openFile(contextMenu.path); setContextMenu(null); }} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-blue-500/20 hover:text-blue-400 transition-colors flex items-center gap-3 font-medium"><File size={16} /> Open File</button>
+              <button onClick={() => startRename(contextMenu.path)} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 font-medium"><AlignLeft size={16} /> Rename</button>
+              <button onClick={() => duplicateFile(contextMenu.path)} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 font-medium"><Copy size={16} /> Duplicate</button>
+              <button onClick={() => { const c = contextMenu.path; navigator.clipboard.writeText(c); setContextMenu(null); }} className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 font-medium"><Copy size={16} /> Copy Path</button>
+              <div className="border-t border-white/10 my-1 mx-3" />
+              <button onClick={() => deleteFile(contextMenu.path)} className="w-full text-left px-4 py-2.5 text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-3 font-medium"><X size={16} /> Delete File</button>
             </>
           )}
         </div>
