@@ -18,8 +18,8 @@ const LFM_DAEMON_MODEL: ModelConfig = {
 
 const DEFAULT_MODEL: ModelConfig = {
   id: 'lfm2.5-1.2b',
-  name: 'LFM 2.5 1.2B (Cloud Fallback)',
-  path: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf',
+  name: 'LFM 2.5 1.2B (Local)',
+  path: '/models/Llama-3.2-1B-Instruct-Q8_0.gguf', // Local VFS or relative path
   nCtx: 4096,
   nBatch: 256,
   nGpuLayers: 100,
