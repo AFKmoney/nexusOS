@@ -58,7 +58,7 @@ export default function Taskbar() {
   const safePinnedApps = Array.isArray(pinnedApps) ? pinnedApps : [];
 
   return (
-    <div onContextMenu={handleTaskbarRightClick} className="h-16 bg-[#030305]/60 backdrop-blur-[40px] border-t border-white/10 flex items-center px-6 justify-between absolute bottom-0 w-full z-50 select-none shadow-[0_-15px_50px_rgba(0,0,0,0.8)] ring-1 ring-white/5">
+    <div onContextMenu={handleTaskbarRightClick} className="taskbar h-16 bg-[#030305]/60 backdrop-blur-[40px] border-t border-white/10 flex items-center px-6 justify-between absolute bottom-0 w-full z-50 select-none shadow-[0_-15px_50px_rgba(0,0,0,0.8)] ring-1 ring-white/5">
       
       {/* Left Area: Start & Pinned */}
       <div className="flex items-center gap-3 h-full">

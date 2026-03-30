@@ -9,7 +9,7 @@ import { sounds } from '../kernel/sounds';
 export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => {
   const { 
     closeWindow, focusWindow, minimizeWindow, toggleMaximizeWindow, 
-    updateWindow, activeWindowId, openContextMenu, uiScale
+    updateWindow, activeWindowId, openContextMenu, uiScale, registry
   } = useOS();
   
   const [isOpening, setIsOpening] = useState(true);
@@ -36,7 +36,10 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'window', targetId: windowState.id });
   };
 
-  const IconComponent = getSmartIcon(`app://${windowState.appId}`, 16, true);
+  // Dynamically resolve application metadata from registry
+  const app = registry.find(a => a.id === windowState.appId);
+  const IconComponent = app?.icon || Box;
+  const AppComponent = app?.component;
 
   if (windowState.isMinimized) return null;
 
@@ -112,7 +115,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
 
           {/* Window Content Spatial */}
           <div className="flex-1 overflow-hidden relative bg-[#050508]/40">
-            {windowState.Component ? <windowState.Component windowId={windowState.id} /> : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800"><Box size={48} className="opacity-10 mb-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span></div>}
+            {AppComponent ? <AppComponent windowId={windowState.id} /> : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800"><Box size={48} className="opacity-10 mb-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span></div>}
             
             {/* Focus Overlay */}
             {!isActive && <div className="absolute inset-0 bg-black/10 pointer-events-none transition-opacity duration-500" />}

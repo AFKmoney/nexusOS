@@ -407,7 +407,7 @@ export default function App() {
   }, [openWindow, closeWindow]);
 
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.window-title-bar') || (e.target as HTMLElement).closest('.taskbar')) return;
+    if ((e.target as HTMLElement).closest('.window-title-bar') || (e.target as HTMLElement).closest('.taskbar') || (e.target as HTMLElement).closest('.start-menu')) return;
     e.preventDefault();
     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'desktop' });
   };
