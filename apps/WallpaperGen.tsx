@@ -261,6 +261,22 @@ let t=0;function draw(){
 draw();
 </script></body></html>`,
   },
+  {
+    id: 'QUANTUM_FIELD',
+    name: 'Quantum Field',
+    category: 'Neural',
+    desc: 'Dynamic particle interaction field',
+    preview: 'from-blue-950 via-indigo-950 to-black',
+    code: 'QUANTUM_FIELD'
+  },
+  {
+    id: 'FRACTAL_ORBIT',
+    name: 'Fractal Orbit',
+    category: 'Abstract',
+    desc: 'Sacred geometry and orbital paths',
+    preview: 'from-emerald-950 via-black to-purple-950',
+    code: 'FRACTAL_ORBIT'
+  }
 ];
 
 const STATIC_PRESETS = [
@@ -483,3 +499,4 @@ RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOC
     </div>
   );
 }
+

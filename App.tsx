@@ -97,6 +97,51 @@ const PROCEDURAL_WALLPAPERS: Record<string, string> = {
       ctx.strokeStyle="rgba(16,185,129,0.15)";ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
       requestAnimationFrame(draw);
+    }draw();</script></body></html>`,
+  'QUANTUM_FIELD': `
+    <!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#020204">
+    <canvas id="c"></canvas><script>
+    const c=document.getElementById("c"),ctx=c.getContext("2d");
+    let w,h;function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;}
+    window.onresize=resize;resize();
+    const p=Array(150).fill(0).map(()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2}));
+    function draw(){
+      ctx.fillStyle="rgba(2,2,4,0.2)";ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle="rgba(59,130,246,0.15)";
+      p.forEach((a,i)=>{
+        a.x+=a.vx;a.y+=a.vy;
+        if(a.x<0||a.x>w)a.vx*=-1;if(a.y<0||a.y>h)a.vy*=-1;
+        ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(a.x,a.y,1.5,0,Math.PI*2);ctx.fill();
+        for(let j=i+1;j<p.length;j++){
+          const b=p[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+          if(d<120){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+        }
+      });
+      requestAnimationFrame(draw);
+    }draw();</script></body></html>`,
+  'FRACTAL_ORBIT': `
+    <!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#050508">
+    <canvas id="c"></canvas><script>
+    const c=document.getElementById("c"),ctx=c.getContext("2d");
+    let w,h,t=0;function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;}
+    window.onresize=resize;resize();
+    function draw(){
+      ctx.fillStyle="rgba(5,5,8,0.1)";ctx.fillRect(0,0,w,h);
+      const cx=w/2,cy=h/2;
+      for(let i=0;i<3;i++){
+        const r=100+i*80;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,t*(i+1)*0.5,t*(i+1)*0.5+Math.PI*1.5);
+        ctx.strokeStyle=i%2==0?"#10b981":"#8b5cf6";
+        ctx.lineWidth=2;ctx.stroke();
+        
+        ctx.beginPath();
+        const px=cx+Math.cos(t*(i+1)*0.5)*r;
+        const py=cy+Math.sin(t*(i+1)*0.5)*r;
+        ctx.arc(px,py,4,0,Math.PI*2);
+        ctx.fillStyle="#fff";ctx.fill();
+      }
+      t+=0.02;requestAnimationFrame(draw);
     }draw();</script></body></html>`
 };
 

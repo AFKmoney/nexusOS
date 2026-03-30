@@ -11,14 +11,12 @@ export default function StartMenu() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
-  // Recent files (mocked by sorting use r dir by modified)
-  // MUST be before any co nditional return to satisfy React hooks rules 
   const recentFiles = useMemo(() => {
     if (!isStartMenuOpen) return [];
-    const list = vfs.listDir('/home/user');
-    return list 
+    const list = vfs.listDir('/home/user/Desktop');
+    return (list || [])
       .map(f => {
-        const fullPath = `/home/user/${f}`;
+        const fullPath = `/home/user/Desktop/${f}`;
         const stat = vfs.stat(fullPath);
         return { name: f, path: fullPath, modified: stat?.modified || 0, type: stat?.type };
       })
@@ -31,11 +29,12 @@ export default function StartMenu() {
 
   // Categories Mapping
   const CATEGORIES: Record<string, string[]> = {
-     'All': [],
-    'System': ['dashboard', 'settings', 'monitor', 'task_manager', 'clipboard', 'notifications'],
+    'All': [],
+    'System': ['dashboard', 'settings', 'monitor', 'task_manager', 'clipboard', 'notifications', 'device_manager', 'recycle_bin'],
     'AI & Dev': ['hyperide', 'forge', 'daemon_chat', 'aion_agent', 'model_manager', 'nfr', 'terminal', 'ubuntu', 'snippets'],
-    'Media': ['paint', 'video_player', 'image_viewer', 'music'],
-    'Productivity': ['notepad', 'explorer', 'calculator', 'calendar', 'rich_editor', 'kanban', 'pomodoro', 'habits', 'contacts']
+    'Media': ['paint', 'video_player', 'image_viewer', 'music', 'wallpaper', 'fractal'],
+    'Productivity': ['notepad', 'explorer', 'calculator', 'calendar', 'rich_editor', 'kanban', 'pomodoro', 'habits', 'contacts'],
+    'Utilities': ['appstore', 'silence', 'native_zip', 'sticky_notes', 'vault', 'voice_recorder', 'markdown', 'rss', 'accessibility', 'screenshot', 'sysinfo', 'weather']
   };
 
   const categoriesList = Object.keys(CATEGORIES);
@@ -47,7 +46,7 @@ export default function StartMenu() {
     if (search && !app.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (activeCategory !== 'All' && !search) {
       // Find category
-      const inCat = CATEGORIES[activeCategory].includes(app.id);
+      const inCat = CATEGORIES[activeCategory]?.includes(app.id);
       if (!inCat) return false;
      }
     return true;
@@ -57,19 +56,21 @@ export default function StartMenu() {
       e.preventDefault(); e.stopPropagation();
       openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'app-icon', appId: appId });
   };
+
   return (
      <div 
-      className="fixed bottom-14 left-4 z-[9990] w-[600px] max-w-[calc(100vw-32px)] h-[680px] max-h-[calc(80vh-60px)] bg-[#09090b]/95 backdrop-blur-3xl border border-white/5 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 zoom-in-95 duration-200 ring-1 ring-white/5"
+      className="fixed bottom-16 left-4 z-[9990] w-[640px] max-w-[calc(100vw-32px)] h-[720px] max-h-[calc(80vh-60px)] bg-[#050508]/80 backdrop-blur-[40px] border border-white/10 rounded-3xl shadow-[0_15px_60px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 zoom-in-95 duration-300 ring-1 ring-white/5"
       onClick={(e) => e.stopPropagation()} 
     >
       
       {/* Search Bar Area */}
-      <div className="p-6 pb-4 shrink-0 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
-           <div className="relative group">
+      <div className="p-6 pb-4 shrink-0 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent relative">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
+           <div className="relative group z-10">
                <Search className="absolute left-4 top-3.5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                <input 
-                  className="w-full bg-[#18181b] border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-base text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:bg-[#202024] transition-all placeholder:text-zinc-500 shadow-inner"
-                  placeholder="Ask DAEMON or search apps, files, settings..."
+                  className="w-full bg-[#0A0A0C]/80 backdrop-blur-md border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-base text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-zinc-600 shadow-inner"
+                  placeholder="Ask DAEMON or search system nodes..."
                    value={search}
                    onChange={e => setSearch(e.target.value)}
                    autoFocus
@@ -78,34 +79,34 @@ export default function StartMenu() {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-         {/* Category Pills — horizontal, no scroll needed */}
+         {/* Category Pills */}
         <div className="px-6 pt-4 pb-2 flex gap-2 flex-wrap shrink-0">
            {categoriesList.map(cat => (
              <button key={cat} onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${activeCategory === cat ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]' : 'text-zinc-500 hover:text-zinc-300 bg-white/3 hover:bg-white/8 border border-transparent'}`}>
+              className={`px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'text-zinc-500 hover:text-zinc-300 bg-white/5 hover:bg-white/10 border border-transparent'}`}>
               {cat}
              </button>
           ))}
         </div>
 
          {/* Main Content */}
-        <div className="flex-1 flex flex-col px-6 pb-4 overflow-y-auto custom-scrollbar bg-[#0A0A0C]">
+        <div className="flex-1 flex flex-col px-6 pb-4 overflow-y-auto custom-scrollbar relative z-10">
            
-          {/* Recent Files Section (only show if not searching and in 'All' category) */}
+          {/* Recent Files */}
           {!search && activeCategory === 'All' && recentFiles.length > 0 && (
-             <div className="mb-6 animate-in fade-in slide-in-from-bottom-2">
+             <div className="mb-8 animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center gap-2 mb-3">
-                 <Clock size={14} className="text-zinc-500" />
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Recent Files</span>
+                 <Clock size={14} className="text-emerald-500/70" />
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Recent Artifacts</span>
                </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {recentFiles.map(file => (
                   <button key={file.path} onClick={() => { openWindow('notepad', { path: file.path }); toggleStartMenu(); }}
-                    className="flex items-center gap-3 p-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition group text-left">
-                     <div className="text-zinc-400 group-hover:text-emerald-400 transition-colors shrink-0">{getSmartIcon(file.path, 24)}</div>
+                    className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-300 group text-left shadow-sm">
+                     <div className="p-2 bg-black/40 rounded-xl text-zinc-400 group-hover:text-emerald-400 group-hover:scale-110 transition-all shrink-0">{getSmartIcon(file.path, 18)}</div>
                      <div className="min-w-0">
-                       <div className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{file.name}</div>
-                       <div className="text-[10px] text-zinc-500 truncate">{new Date(file.modified).toLocaleString()}</div>
+                       <div className="text-xs font-bold text-zinc-200 truncate group-hover:text-white transition-colors">{file.name}</div>
+                       <div className="text-[9px] font-mono text-zinc-600 truncate mt-0.5">{new Date(file.modified).toLocaleTimeString()}</div>
                      </div>
                   </button>
                  ))}
@@ -114,13 +115,13 @@ export default function StartMenu() {
           )}
 
           {/* App Grid */}
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-              <FolderOpen size={14} className="text-zinc-500" /> {activeCategory === 'All' ? 'All Apps' : activeCategory}
+          <div className="flex justify-between items-center mb-4 mt-2">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <FolderOpen size={14} className="text-blue-500/70" /> {activeCategory === 'All' ? 'System Applications' : activeCategory}
              </span>
           </div>
 
-          <div className="grid grid-cols-5 gap-x-2 gap-y-3">
+          <div className="grid grid-cols-5 gap-x-3 gap-y-4">
               {displayedApps.map(app => {
                   const Icon = app.icon;
                   return (
@@ -128,20 +129,22 @@ export default function StartMenu() {
                         key={app.id}
                          onClick={() => { openWindow(app.id); toggleStartMenu(); }}
                          onContextMenu={(e) => handleAppRightClick(e, app.id)}
-                        className="flex flex-col items-center gap-2 p-2 rounded-2xl hover:bg-white/5 transition-all group outline-none"
+                        className="flex flex-col items-center gap-2 p-2 rounded-2xl transition-all group outline-none hover:bg-white/[0.03]"
                     >
-                         <div className="w-12 h-12 bg-gradient-to-b from-[#1E1E22] to-[#121214] rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-emerald-500/40 group-hover:shadow-[0_4px_25px_rgba(16,185,129,0.15)] group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                            <Icon size={22} className="text-zinc-300 group-hover:text-emerald-400 transition-colors drop-shadow-md" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                         <div className="w-14 h-14 bg-gradient-to-b from-white/10 to-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-emerald-500/50 group-hover:shadow-[0_10px_30px_rgba(16,185,129,0.3)] group-hover:-translate-y-2 transition-all duration-300 relative overflow-hidden backdrop-blur-sm">
+                            <Icon size={26} className="text-zinc-300 group-hover:text-white transition-colors drop-shadow-lg z-10" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                         </div>
-                         <span className="text-[11px] text-zinc-400 font-medium text-center line-clamp-2 w-full px-1 group-hover:text-zinc-100 transition-colors">{app.name}</span>
+                         <span className="text-[10px] font-black text-zinc-400 text-center line-clamp-2 w-full px-1 group-hover:text-emerald-300 transition-colors tracking-wide">{app.name}</span>
                      </button>
                  )
               })}
              {displayedApps.length === 0 && (
-                 <div className="col-span-5 text-center text-zinc-600 py-12 flex flex-col items-center gap-2">
-                      <Search size={32} className="opacity-20" />
-                     <div className="text-sm font-medium">No matches found</div>
+                 <div className="col-span-5 text-center py-16 flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
+                        <Search size={28} className="text-zinc-600" />
+                      </div>
+                     <div className="text-sm font-bold text-zinc-400">No nodes match your query</div>
                  </div>
              )}
            </div>
@@ -149,32 +152,37 @@ export default function StartMenu() {
       </div>
  
       {/* Footer / Profile / Power Menu */}
-       <div className="bg-[#0c0c0e]/95 p-5 border-t border-white/5 flex items-center justify-between mt-auto shrink-0 relative">
+       <div className="bg-[#0A0A0C]/90 backdrop-blur-xl p-5 border-t border-white/5 flex items-center justify-between mt-auto shrink-0 relative z-20">
            <button 
-              className="flex items-center gap-3 hover:bg-white/5 px-3 py-2 -ml-2 rounded-xl transition-colors cursor-pointer group outline-none" 
+              className="flex items-center gap-3 hover:bg-white/5 p-2 -ml-2 rounded-2xl transition-colors cursor-pointer group outline-none" 
               onClick={() => { openWindow('settings'); toggleStartMenu(); }}
           >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-base font-bold text-white shadow-lg border border-white/20 group-hover:border-emerald-400 transition-all">
-                   {currentUser?.name?.[0] || <User size={16}/>}
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-blue-600 flex items-center justify-center text-lg font-black text-black shadow-[0_0_15px_rgba(16,185,129,0.4)] border-2 border-[#050508] group-hover:scale-110 transition-transform">
+                   {currentUser?.name?.[0] || <User size={20}/>}
               </div>
                <div className="flex flex-col items-start gap-0.5">
-                  <span className="text-sm font-bold text-zinc-100 group-hover:text-white leading-none">{currentUser?.name || "System Admin"}</span>
-                   <span className="text-[10px] text-zinc-500 font-mono tracking-wider">DAEMON.AUTH_OK</span>
+                  <span className="text-sm font-black text-white tracking-wide group-hover:text-emerald-300 transition-colors">{currentUser?.name || "System Admin"}</span>
+                   <span className="text-[9px] text-zinc-500 font-mono tracking-[0.2em] flex items-center gap-1.5">
+                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                     DAEMON.SYNCED
+                   </span>
               </div>
           </button>
 
-           <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/5">
-                <button onClick={() => { /* Implement screen lock */ toggleStartMenu(); }} className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-colors" title="Lock Screen">
+           <div className="flex items-center gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/10 shadow-inner">
+                <button onClick={() => { toggleStartMenu(); }} className="w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-all hover:scale-105" title="Lock Node">
                     <Lock size={16} />
                </button>
-               <button onClick={() => { logout(); toggleStartMenu(); }} className="w-10 h-10 flex items-center justify-center hover:bg-amber-500/10 hover:text-amber-400 rounded-xl text-zinc-400 transition-colors" title="Sign Out">
+               <button onClick={() => { logout(); toggleStartMenu(); }} className="w-10 h-10 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-400 rounded-xl text-zinc-400 transition-all hover:scale-105" title="Disconnect">
                    <LogOut size={16} />
                </button>
-                <button onClick={() => systemReset(false)}  className="w-10 h-10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 rounded-xl text-zinc-400 transition-colors" title="Shut Down">
-                   <Power size={16} />
+                <div className="w-px h-6 bg-white/10 mx-0.5" />
+                <button onClick={() => systemReset(false)}  className="w-10 h-10 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 rounded-xl text-zinc-400 transition-all hover:scale-105 group" title="Terminate Core">
+                   <Power size={18} className="group-hover:animate-pulse" />
                </button>
            </div>
       </div>
     </div>
   );
-} 
+}
+

@@ -99,7 +99,7 @@ export const WindowFrame: React.FC<Props> = ({ windowState }) => {
     >
       {isInteracting && <div className="absolute inset-0 z-[99999] bg-transparent" />}
 
-      <div className={`flex flex-col w-full h-full overflow-hidden ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-xl'} bg-zinc-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl`}
+      <div className={`flex flex-col w-full h-full overflow-hidden ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-2xl'} bg-[#0a0a0c]/80 backdrop-blur-[40px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition-all duration-300`}
         style={{
              transform: isOpening || isClosing ? 'scale(0.95) translateY(10px)' : 'scale(1) translateY(0)',
              transition: isInteracting ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)'
@@ -107,34 +107,34 @@ export const WindowFrame: React.FC<Props> = ({ windowState }) => {
           
           {/* Title Bar */}
           <div onContextMenu={handleContextMenu} onDoubleClick={() => toggleMaximizeWindow(windowState.id)}
-            className={`window-title-bar h-10 flex items-center justify-between px-3 cursor-default select-none border-b border-white/5 bg-gradient-to-r from-white/5 to-transparent`}>
+            className={`window-title-bar h-12 flex items-center justify-between px-4 cursor-default select-none border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent`}>
             
             <div className="flex items-center gap-3">
-              <div className="p-1 bg-white/10 rounded-md">
-                <IconComponent size={14} className="text-emerald-400" />
+              <div className="p-1.5 bg-white/5 border border-white/5 rounded-lg shadow-inner">
+                <IconComponent size={14} className="text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
               </div>
-              <span className="text-xs font-semibold text-zinc-200 uppercase tracking-widest truncate max-w-[200px]">
+              <span className="text-xs font-bold text-zinc-100 uppercase tracking-widest truncate max-w-[250px] drop-shadow-md">
                 {windowState.title}
               </span>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-1" onMouseDown={(e) => e.stopPropagation()}>
-              <button onClick={() => setOpacity(o => o === 1 ? 0.8 : o === 0.8 ? 0.5 : 1)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded text-zinc-400 transition" title="Toggle Opacity">
-                <Droplet size={12} />
+            <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
+              <button onClick={() => setOpacity(o => o === 1 ? 0.8 : o === 0.8 ? 0.5 : 1)} className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all" title="Toggle Opacity">
+                <Droplet size={14} />
               </button>
-              <button onClick={() => setAlwaysOnTop(!alwaysOnTop)} className={`w-6 h-6 flex items-center justify-center rounded transition ${alwaysOnTop ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-zinc-400'}`} title="Always on Top">
-                {alwaysOnTop ? <Pin size={12} /> : <PinOff size={12} />}
+              <button onClick={() => setAlwaysOnTop(!alwaysOnTop)} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${alwaysOnTop ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'hover:bg-white/10 text-zinc-400 hover:text-white'}`} title="Always on Top">
+                {alwaysOnTop ? <Pin size={14} /> : <PinOff size={14} />}
               </button>
               <div className="w-px h-4 bg-white/10 mx-1" />
-              <button onClick={() => minimizeWindow(windowState.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded text-zinc-400 transition">
-                <Minus size={14} />
+              <button onClick={() => minimizeWindow(windowState.id)} className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all">
+                <Minus size={16} />
               </button>
-              <button onClick={() => toggleMaximizeWindow(windowState.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded text-zinc-400 transition">
-                {windowState.isMaximized ? <Minimize2 size={12} /> : <Square size={12} />}
+              <button onClick={() => toggleMaximizeWindow(windowState.id)} className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all">
+                {windowState.isMaximized ? <Minimize2 size={14} /> : <Square size={12} />}
               </button>
-              <button onClick={handleClose} className="w-6 h-6 flex items-center justify-center hover:bg-red-500 hover:text-white rounded text-zinc-400 transition group">
-                <X size={14} className="group-hover:scale-110 transition-transform"/>
+              <button onClick={handleClose} className="w-7 h-7 flex items-center justify-center hover:bg-red-500/20 hover:text-red-400 rounded-lg text-zinc-400 transition-all group">
+                <X size={16} className="group-hover:scale-110 transition-transform"/>
               </button>
             </div>
           </div>
@@ -153,3 +153,5 @@ export const WindowFrame: React.FC<Props> = ({ windowState }) => {
     </Rnd>
   );
 };
+
+
