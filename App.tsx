@@ -143,7 +143,7 @@ function BootScreen() {
     'Neural Spine → manifest snapshot compiled',
     'ThemeEngine → accent applied',
     'PermissionSystem → sandbox enforced',
-    'DAEMON.CORE → Neural link established',
+    'DAEMON.CORE → Link check initiated',
   ];
 
   useEffect(() => {
