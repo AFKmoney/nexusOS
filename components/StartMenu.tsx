@@ -59,7 +59,7 @@ export default function StartMenu() {
 
   return (
      <div 
-      className="fixed bottom-16 left-4 z-[9990] w-[640px] max-w-[calc(100vw-32px)] h-[720px] max-h-[calc(80vh-60px)] bg-[#050508]/80 backdrop-blur-[40px] border border-white/10 rounded-3xl shadow-[0_15px_60px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 zoom-in-95 duration-300 ring-1 ring-white/5"
+      className="fixed bottom-16 left-4 z-[9990] w-[640px] max-w-[calc(100vw-32px)] h-[720px] max-h-[calc(80vh-60px)] bg-[#030305]/80 backdrop-blur-[50px] border border-white/10 rounded-3xl shadow-[0_10px_60px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 zoom-in-95 duration-300 ring-1 ring-white/5"
       onClick={(e) => e.stopPropagation()} 
     >
       
@@ -69,7 +69,7 @@ export default function StartMenu() {
            <div className="relative group z-10">
                <Search className="absolute left-4 top-3.5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                <input 
-                  className="w-full bg-[#0A0A0C]/80 backdrop-blur-md border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-base text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-zinc-600 shadow-inner"
+                  className="w-full bg-[#0a0a0c]/80 backdrop-blur-md border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-base text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-zinc-600 shadow-inner"
                   placeholder="Ask DAEMON or search system nodes..."
                    value={search}
                    onChange={e => setSearch(e.target.value)}
@@ -185,4 +185,5 @@ export default function StartMenu() {
     </div>
   );
 }
+
 
