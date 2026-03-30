@@ -1,112 +1,96 @@
-import React, { useState, useRef } from 'react';
-import { Camera, Download, Copy, Check, Maximize } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Download, Trash2, Image as ImageIcon, Frame, Scissors, Check, X, Loader2, Zap } from 'lucide-react';
+import { useOS } from '../store/osStore';
 
-export default function ScreenshotToolApp() {
-  const [screenshot, setScreenshot] = useState<string|null>(null);
-  const [copied, setCopied] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export default function ScreenshotTool() {
+  const { addNotification } = useOS();
+  const [screenshots, setScreenshots] = useState<{id: string, data: string, date: number}[]>([]);
+  const [isCapturing, setIsCapturing] = useState(false);
 
-  const capture = async () => {
-    try {
+  const takeCapture = () => {
+    setIsCapturing(true);
+    addNotification({ title: 'Neural Capture', message: 'Scanning system visual buffer...', type: 'info' });
+    
+    // Simulate capture delay
+    setTimeout(() => {
+      // In a real Electron app, we'd use desktopCapturer. 
+      // Here we mock the result with a cool abstract system state image.
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Capture the entire viewport
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-
-      // Use html2canvas alternative: draw current page via SVG foreignObject
-      const data = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="background:#000;color:#fff;font-family:sans-serif;width:${canvas.width}px;height:${canvas.height}px;display:flex;align-items:center;justify-content:center">
-            <div style="text-align:center">
-              <div style="font-size:48px;margin-bottom:16px">📸</div>
-              <div style="font-size:20px;font-weight:bold">NexusOS Screenshot</div>
-              <div style="font-size:12px;color:#888;margin-top:8px">${new Date().toLocaleString()}</div>
-              <div style="font-size:11px;color:#555;margin-top:4px">${window.innerWidth}×${window.innerHeight}</div>
-            </div>
-          </div>
-        </foreignObject>
-      </svg>`;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#050508';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+      }
       
-      const img = new Image();
-      const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        setScreenshot(canvas.toDataURL('image/png'));
-      };
-      img.src = url;
-    } catch (err) {
-      console.error('Screenshot failed:', err);
-    }
+      const data = canvas.toDataURL();
+      setScreenshots(prev => [{id: Date.now().toString(), data, date: Date.now()}, ...prev]);
+      setIsCapturing(false);
+      addNotification({ title: 'Frame Sequenced', message: 'Visual manifest stored in local repository.', type: 'success' });
+    }, 1000);
   };
 
-  const download = () => {
-    if (!screenshot) return;
-    const a = document.createElement('a');
-    a.href = screenshot;
-    a.download = `nexus-screenshot-${Date.now()}.png`;
-    a.click();
-  };
-
-  const copyToClipboard = async () => {
-    if (!screenshot) return;
-    try {
-      const resp = await fetch(screenshot);
-      const blob = await resp.blob();
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* clipboard API may not support images in all browsers */ }
-  };
+  const deleteShot = (id: string) => setScreenshots(prev => prev.filter(s => s.id !== id));
 
   return (
-    <div className="h-full flex flex-col bg-[#050508] text-zinc-100">
-      <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-black/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <Camera size={16} className="text-cyan-400" />
-          <span className="font-bold text-sm tracking-widest uppercase">Screenshot</span>
+    <div className="h-full bg-[#050508] text-white flex flex-col font-sans overflow-hidden">
+      {/* Header */}
+      <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+            <Camera size={20} />
+          </div>
+          <div>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Visual Capture</h1>
+            <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">System Frame Buffer Index</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          {screenshot && (
-            <>
-              <button onClick={copyToClipboard} className="p-1.5 text-zinc-500 hover:text-white rounded-lg transition">
-                {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              </button>
-              <button onClick={download} className="p-1.5 text-zinc-500 hover:text-white rounded-lg transition"><Download size={14} /></button>
-            </>
-          )}
-        </div>
+        <button 
+          onClick={takeCapture}
+          disabled={isCapturing}
+          className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-black rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 disabled:opacity-50"
+        >
+          {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Frame size={14} />}
+          {isCapturing ? 'CAPTURING' : 'NEW CAPTURE'}
+        </button>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
-        {screenshot ? (
-          <div className="relative group">
-            <img src={screenshot} alt="Screenshot" className="max-w-full max-h-full rounded-xl border border-white/10 shadow-2xl" />
-            <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-              <button onClick={download} className="px-2 py-1 bg-black/70 rounded-lg text-[10px] text-white hover:bg-black/90 transition flex items-center gap-1"><Download size={10} /> Save</button>
-              <button onClick={copyToClipboard} className="px-2 py-1 bg-black/70 rounded-lg text-[10px] text-white hover:bg-black/90 transition flex items-center gap-1"><Copy size={10} /> Copy</button>
-            </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-black/20">
+        {screenshots.length > 0 ? (
+          <div className="grid grid-cols-2 gap-6">
+            {screenshots.map(s => (
+              <div key={s.id} className="group relative bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="aspect-video bg-black flex items-center justify-center relative overflow-hidden">
+                  <img src={s.data} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  
+                  {/* Actions Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
+                    <a href={s.data} download={`nexus_shot_${s.id}.png`} className="p-3 bg-emerald-500 text-black rounded-full shadow-xl hover:scale-110 transition-transform"><Download size={20}/></a>
+                    <button onClick={() => deleteShot(s.id)} className="p-3 bg-red-500 text-white rounded-full shadow-xl hover:scale-110 transition-transform"><Trash2 size={20}/></button>
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between bg-zinc-900/80 backdrop-blur-md">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-zinc-200">SHOT_{s.id.slice(-6)}</div>
+                    <div className="text-[9px] font-mono text-zinc-500 mt-0.5">{new Date(s.date).toLocaleString()}</div>
+                  </div>
+                  <Zap size={14} className="text-emerald-500 opacity-20" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="text-center">
-            <button onClick={capture} className="flex flex-col items-center gap-4 p-8 rounded-2xl hover:bg-white/5 transition group">
-              <div className="w-20 h-20 bg-cyan-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20 group-hover:bg-cyan-500/20 transition">
-                <Camera size={32} className="text-cyan-400" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-white mb-1">Capture Screenshot</div>
-                <div className="text-xs text-zinc-600">Click to capture the current screen</div>
-              </div>
-            </button>
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+            <ImageIcon size={80} className="text-zinc-600 mb-4" />
+            <p className="text-sm font-black uppercase tracking-widest">Visual Buffer Empty</p>
           </div>
         )}
       </div>
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

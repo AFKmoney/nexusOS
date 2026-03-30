@@ -1,116 +1,131 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Timer, Play, Pause, RotateCcw, Coffee, Brain, Settings } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, Coffee, Zap, Bell, Settings2 } from 'lucide-react';
+import { useOS } from '../store/osStore';
 
 export default function PomodoroApp() {
-  const [mode, setMode] = useState<'work'|'break'|'long'>('work');
+  const { addNotification } = useOS();
   const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const [sessions, setSessions] = useState(0);
-  const [workMin, setWorkMin] = useState(25);
-  const [breakMin, setBreakMin] = useState(5);
-  const [longBreakMin, setLongBreakMin] = useState(15);
-  const [showSettings, setShowSettings] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
-
-  const durations = { work: workMin * 60, break: breakMin * 60, long: longBreakMin * 60 };
+  const [isActive, setIsActive] = useState(false);
+  const [mode, setMode] = useState<'work' | 'break'>('work');
+  const [sessionCount, setSessionCount] = useState(0);
+  
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setRunning(false);
-            if (mode === 'work') {
-              const newSessions = sessions + 1;
-              setSessions(newSessions);
-              if (newSessions % 4 === 0) { setMode('long'); return longBreakMin * 60; }
-              else { setMode('break'); return breakMin * 60; }
-            } else { setMode('work'); return workMin * 60; }
-          }
-          return prev - 1;
-        });
+    if (isActive && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(t => t - 1);
       }, 1000);
+    } else if (timeLeft === 0) {
+      handleComplete();
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running, mode, sessions, workMin, breakMin, longBreakMin]);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isActive, timeLeft]);
 
-  const reset = () => { setRunning(false); setTimeLeft(durations[mode]); };
-  const switchMode = (m: typeof mode) => { setMode(m); setTimeLeft(durations[m]); setRunning(false); };
+  const handleComplete = () => {
+    setIsActive(false);
+    if (mode === 'work') {
+      setSessionCount(s => s + 1);
+      addNotification({ title: 'Focus Complete', message: 'Take a cognitive reset.', type: 'info' });
+      setMode('break');
+      setTimeLeft(5 * 60);
+    } else {
+      addNotification({ title: 'Break Over', message: 'Neural focus re-engaging.', type: 'success' });
+      setMode('work');
+      setTimeLeft(25 * 60);
+    }
+    // Browser audio notification fallback
+    try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e){}
+  };
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const progress = 1 - timeLeft / durations[mode];
+  const toggleTimer = () => setIsActive(!isActive);
+  
+  const resetTimer = () => {
+    setIsActive(false);
+    setTimeLeft(mode === 'work' ? 25 * 60 : 5 * 60);
+  };
 
-  const modeColors = { work: 'text-red-400', break: 'text-emerald-400', long: 'text-blue-400' };
-  const modeBg = { work: 'from-red-500/10', break: 'from-emerald-500/10', long: 'from-blue-500/10' };
-  const modeRing = { work: 'stroke-red-500', break: 'stroke-emerald-500', long: 'stroke-blue-500' };
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  const circumference = 2 * Math.PI * 90;
+  const progress = mode === 'work' ? (1 - timeLeft / (25 * 60)) * 100 : (1 - timeLeft / (5 * 60)) * 100;
 
   return (
-    <div className={`h-full flex flex-col items-center justify-center bg-gradient-to-b ${modeBg[mode]} to-[#050508] text-zinc-100 relative`}>
-      {/* Mode Tabs */}
-      <div className="flex gap-2 mb-8">
-        {([['work', 'Focus', Brain], ['break', 'Break', Coffee], ['long', 'Long Break', Timer]] as const).map(([m, label, Icon]) => (
-          <button key={m} onClick={() => switchMode(m)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition ${mode === m ? `${modeColors[m]} bg-white/10` : 'text-zinc-600 hover:text-zinc-400'}`}>
-            <Icon size={12} /> {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Timer Circle */}
-      <div className="relative w-52 h-52 mb-8">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-          <circle cx="100" cy="100" r="90" fill="none" className={modeRing[mode]} strokeWidth="4" strokeLinecap="round"
-            strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progress)} style={{ transition: 'stroke-dashoffset 1s linear' }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-5xl font-extralight text-white font-mono">
-            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+    <div className="h-full bg-[#050508] text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      {/* Background Pulse */}
+      <div className={`absolute inset-0 opacity-10 transition-colors duration-1000 ${isActive ? (mode === 'work' ? 'bg-red-500' : 'bg-emerald-500') : 'bg-transparent'}`} />
+      
+      <div className="z-10 flex flex-col items-center gap-8 w-full max-w-sm">
+        
+        {/* Progress Ring Layout */}
+        <div className="relative w-64 h-64 flex items-center justify-center">
+          <svg className="w-full h-full -rotate-90">
+            <circle cx="128" cy="128" r="120" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+            <circle 
+              cx="128" cy="128" r="120" stroke="currentColor" strokeWidth="8" fill="transparent" 
+              strokeDasharray={2 * Math.PI * 120}
+              strokeDashoffset={2 * Math.PI * 120 * (1 - progress / 100)}
+              strokeLinecap="round"
+              className={`transition-all duration-1000 ${mode === 'work' ? 'text-emerald-500' : 'text-blue-400'}`} 
+            />
+          </svg>
+          <div className="absolute flex flex-col items-center">
+            <span className="text-6xl font-black font-mono tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              {formatTime(timeLeft)}
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mt-2">
+              {mode === 'work' ? 'Neural Focus' : 'Cognitive Reset'}
+            </span>
           </div>
-          <div className={`text-xs uppercase tracking-widest mt-1 ${modeColors[mode]}`}>
-            {mode === 'work' ? 'Focus Time' : mode === 'break' ? 'Short Break' : 'Long Break'}
+        </div>
+
+        <div className="flex flex-col items-center gap-6 w-full">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={resetTimer}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+            >
+              <RotateCcw size={20} />
+            </button>
+            <button 
+              onClick={toggleTimer}
+              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-95 ${isActive ? 'bg-zinc-800 text-white border border-white/10' : 'bg-emerald-500 text-black shadow-[0_0_30px_rgba(16,185,129,0.4)]'}`}
+            >
+              {isActive ? <Pause size={32} fill="currentColor" /> : <Play size={32} className="ml-1" fill="currentColor" />}
+            </button>
+            <button 
+              onClick={() => { setMode(mode === 'work' ? 'break' : 'work'); resetTimer(); }}
+              className="p-4 rounded-2xl bg-white/5 border border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+            >
+              {mode === 'work' ? <Coffee size={20} /> : <Zap size={20} />}
+            </button>
+          </div>
+
+          <div className="flex gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
+            {Array.from({length: 4}).map((_, i) => (
+              <div 
+                key={i} 
+                className={`w-3 h-3 rounded-full transition-all duration-500 ${i < sessionCount % 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-zinc-800'}`} 
+              />
+            ))}
+          </div>
+          
+          <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+            Session {sessionCount + 1} // Cycle 4-Stage
           </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-4">
-        <button onClick={reset} className="p-2 text-zinc-500 hover:text-white transition"><RotateCcw size={18} /></button>
-        <button onClick={() => setRunning(!running)} className={`p-4 rounded-full transition ${running ? 'bg-zinc-800 hover:bg-zinc-700' : `bg-white/10 hover:bg-white/15`}`}>
-          {running ? <Pause size={24} className="text-white" /> : <Play size={24} className="text-white ml-0.5" />}
-        </button>
-        <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-zinc-500 hover:text-white transition"><Settings size={18} /></button>
+      {/* Decorative */}
+      <div className="absolute bottom-8 flex gap-8 opacity-20">
+        <div className="flex items-center gap-2 text-[10px] font-mono"><Bell size={12}/> Notifications ON</div>
+        <div className="flex items-center gap-2 text-[10px] font-mono"><Settings2 size={12}/> Auto-Loop OFF</div>
       </div>
-
-      {/* Session Counter */}
-      <div className="mt-6 flex items-center gap-2">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className={`w-3 h-3 rounded-full transition ${i < (sessions % 4) ? 'bg-emerald-500' : 'bg-zinc-800'}`} />
-        ))}
-        <span className="text-xs text-zinc-600 ml-2">#{sessions} sessions</span>
-      </div>
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="absolute bottom-4 bg-zinc-900/95 border border-white/10 rounded-xl p-4 space-y-3 w-64">
-          {[
-            { label: 'Work', val: workMin, set: setWorkMin },
-            { label: 'Break', val: breakMin, set: setBreakMin },
-            { label: 'Long Break', val: longBreakMin, set: setLongBreakMin },
-          ].map(s => (
-            <div key={s.label} className="flex items-center justify-between">
-              <span className="text-xs text-zinc-400">{s.label}</span>
-              <div className="flex items-center gap-2">
-                <input type="number" min="1" max="120" value={s.val} onChange={e => { s.set(+e.target.value); if (!running) setTimeLeft(+e.target.value * 60); }}
-                  className="w-14 bg-zinc-800 rounded px-2 py-1 text-xs text-white border border-white/10 text-center outline-none" />
-                <span className="text-[10px] text-zinc-600">min</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

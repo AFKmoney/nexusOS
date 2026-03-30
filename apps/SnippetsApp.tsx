@@ -1,113 +1,161 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Copy, Search, Plus, Trash2, Tag, Check } from 'lucide-react';
+import { FileCode2, Plus, Trash2, Search, Copy, Check, TerminalSquare, Zap, Braces, Layers } from 'lucide-react';
+import { useOS } from '../store/osStore';
+import { uuid } from '../utils/uuid';
 
-interface Snippet { id: string; title: string; language: string; code: string; tags: string[]; created: number; }
-
-const LS_KEY = 'nexus_snippets';
+interface Snippet { id: string; title: string; code: string; language: string; tags: string[]; created: number; }
+const LS_KEY = 'nexus_snippets_v2';
 
 export default function SnippetsApp() {
+  const { addNotification } = useOS();
   const [snippets, setSnippets] = useState<Snippet[]>(() => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [
+      { id: '1', title: 'Neural Initialization', code: 'const core = new NeuralCore();\ncore.boot();', language: 'typescript', tags: ['KERNEL'], created: Date.now() },
+      { id: '2', title: 'VFS Mount Protocol', code: 'vfs.mount("/home/user", device);', language: 'javascript', tags: ['FILESYSTEM'], created: Date.now() },
+    ];
   });
-  const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [copied, setCopied] = useState(false);
 
-  useEffect(() => { localStorage.setItem(LS_KEY, JSON.stringify(snippets)); }, [snippets]);
+  const [search, setSearch] = useState('');
+  const [activeSnippet, setActiveSnippet] = useState<Snippet | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(LS_KEY, JSON.stringify(snippets));
+  }, [snippets]);
 
   const addSnippet = () => {
-    const s: Snippet = { id: uuid(), title: 'Untitled', language: 'typescript', code: '// Your code here\n', tags: [], created: Date.now() };
-    setSnippets(prev => [s, ...prev]);
-    setSelected(s.id);
+    const s: Snippet = { 
+      id: uuid(), 
+      title: 'New Neural Pattern', 
+      code: '// Enter system logic...', 
+      language: 'typescript', 
+      tags: ['NEW'], 
+      created: Date.now() 
+    };
+    setSnippets([s, ...snippets]);
+    setActiveSnippet(s);
   };
 
-  const updateSnippet = (id: string, patch: Partial<Snippet>) => {
-    setSnippets(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  const updateSnippet = (id: string, updates: Partial<Snippet>) => {
+    setSnippets(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    if (activeSnippet?.id === id) setActiveSnippet({ ...activeSnippet, ...updates });
   };
 
   const deleteSnippet = (id: string) => {
     setSnippets(prev => prev.filter(s => s.id !== id));
-    if (selected === id) setSelected(null);
+    if (activeSnippet?.id === id) setActiveSnippet(null);
   };
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const copyCode = (s: Snippet) => {
+    navigator.clipboard.writeText(s.code);
+    setCopiedId(s.id);
+    setTimeout(() => setCopiedId(null), 2000);
+    addNotification({ title: 'Pattern Copied', message: 'Logic extracted to clipboard buffer.', type: 'info' });
   };
 
-  const current = snippets.find(s => s.id === selected);
-  const filtered = snippets.filter(s => 
-    s.title.toLowerCase().includes(search.toLowerCase()) || 
-    s.code.toLowerCase().includes(search.toLowerCase()) ||
-    s.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const languages = ['typescript', 'javascript', 'python', 'html', 'css', 'json', 'bash', 'rust', 'go', 'sql'];
+  const filtered = snippets.filter(s => s.title.toLowerCase().includes(search.toLowerCase()) || s.tags.some(t => t.toLowerCase().includes(search.toLowerCase())));
 
   return (
-    <div className="h-full flex bg-[#050508] text-zinc-100">
-      {/* Sidebar */}
-      <div className="w-56 border-r border-white/5 flex flex-col shrink-0">
-        <div className="p-3 border-b border-white/5 flex items-center gap-2">
-          <div className="flex-1 relative">
-            <Search size={12} className="absolute left-2 top-2 text-zinc-600" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="w-full bg-zinc-900 rounded-lg pl-7 pr-2 py-1.5 text-xs outline-none border border-white/5 focus:border-emerald-500/50" />
+    <div className="h-full bg-[#050508] text-white flex flex-col font-sans overflow-hidden">
+      {/* Header */}
+      <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+            <FileCode2 size={20} />
           </div>
-          <button onClick={addSnippet} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition"><Plus size={14} /></button>
+          <div>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em]">Pattern Repository</h1>
+            <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Neural Logic Storage</p>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          {filtered.map(s => (
-            <button key={s.id} onClick={() => setSelected(s.id)} className={`w-full text-left px-3 py-2 border-b border-white/5 transition ${selected === s.id ? 'bg-emerald-500/10' : 'hover:bg-white/5'}`}>
-              <div className="text-xs font-semibold text-white truncate">{s.title}</div>
-              <div className="text-[10px] text-zinc-600 flex items-center gap-1 mt-0.5">
-                <Code size={10} /> {s.language}
-                {s.tags.length > 0 && <span className="ml-1">• {s.tags.join(', ')}</span>}
-              </div>
-            </button>
-          ))}
-          {filtered.length === 0 && <div className="p-4 text-xs text-zinc-600 text-center">No snippets</div>}
-        </div>
-        <div className="p-2 border-t border-white/5 text-[10px] text-zinc-600 text-center">{snippets.length} snippets</div>
+        <button onClick={addSnippet} className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95">
+          <Plus size={14} /> New Pattern
+        </button>
       </div>
 
-      {/* Editor */}
-      {current ? (
-        <div className="flex-1 flex flex-col">
-          <div className="px-4 py-2 border-b border-white/5 flex items-center gap-2 bg-black/20">
-            <input value={current.title} onChange={e => updateSnippet(current.id, { title: e.target.value })} className="flex-1 bg-transparent text-sm font-semibold text-white outline-none" />
-            <select value={current.language} onChange={e => updateSnippet(current.id, { language: e.target.value })} className="bg-zinc-900 text-xs text-zinc-400 px-2 py-1 rounded border border-white/10 outline-none">
-              {languages.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-            <button onClick={() => copyCode(current.code)} className={`p-1.5 rounded-lg transition ${copied ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}>
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-            <button onClick={() => deleteSnippet(current.id)} className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"><Trash2 size={14} /></button>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-72 border-r border-white/5 flex flex-col shrink-0 bg-black/20">
+          <div className="p-4 border-b border-white/5">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 text-zinc-600" size={14} />
+              <input 
+                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
+                placeholder="Search repository..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
           </div>
-          <textarea
-            value={current.code}
-            onChange={e => updateSnippet(current.id, { code: e.target.value })}
-            className="flex-1 bg-transparent p-4 font-mono text-sm text-emerald-300 outline-none resize-none"
-            spellCheck={false}
-          />
-          <div className="px-4 py-2 border-t border-white/5 flex items-center gap-2">
-            <Tag size={12} className="text-zinc-600" />
-            <input
-              value={current.tags.join(', ')}
-              onChange={e => updateSnippet(current.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-              className="flex-1 bg-transparent text-xs text-zinc-400 outline-none"
-              placeholder="Tags (comma separated)"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-zinc-600">
-          <div className="text-center">
-            <Code size={32} className="mx-auto mb-2 opacity-20" />
-            <p className="text-sm">Select or create a snippet</p>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            {filtered.map(s => (
+              <button 
+                key={s.id}
+                onClick={() => setActiveSnippet(s)}
+                className={`w-full flex flex-col gap-1 p-3 rounded-xl transition-all text-left group ${activeSnippet?.id === s.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'}`}
+              >
+                <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{s.title}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">{s.language}</span>
+                  <span className="text-[8px] font-black text-zinc-700 uppercase bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{s.tags[0]}</span>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* Editor Area */}
+        <div className="flex-1 flex flex-col bg-[#0a0a0c] relative">
+          {activeSnippet ? (
+            <div className="h-full flex flex-col animate-in fade-in duration-300">
+              <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+                <input 
+                  className="bg-transparent text-lg font-black text-white outline-none w-1/2 focus:text-emerald-400 transition-colors"
+                  value={activeSnippet.title}
+                  onChange={e => updateSnippet(activeSnippet.id, { title: e.target.value })}
+                />
+                <div className="flex items-center gap-3">
+                  <button onClick={() => copyCode(activeSnippet)} className="flex items-center gap-2 px-4 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-lg text-xs font-bold uppercase tracking-widest transition-all">
+                    {copiedId === activeSnippet.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />} 
+                    {copiedId === activeSnippet.id ? 'Extracted' : 'Copy'}
+                  </button>
+                  <button onClick={() => deleteSnippet(activeSnippet.id)} className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 relative group">
+                <textarea 
+                  className="w-full h-full bg-transparent p-8 text-sm font-mono text-emerald-100/80 outline-none resize-none selection:bg-emerald-500/20 leading-relaxed custom-scrollbar"
+                  spellCheck={false}
+                  value={activeSnippet.code}
+                  onChange={e => updateSnippet(activeSnippet.id, { code: e.target.value })}
+                />
+                <div className="absolute bottom-6 right-8 flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-opacity">
+                  <select 
+                    className="bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-lg px-3 py-1 outline-none focus:border-emerald-500/50"
+                    value={activeSnippet.language}
+                    onChange={e => updateSnippet(activeSnippet.id, { language: e.target.value })}
+                  >
+                    {['typescript', 'javascript', 'python', 'html', 'css', 'rust', 'go', 'markdown'].map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+              <Braces size={64} className="mb-4" />
+              <p className="text-sm font-black uppercase tracking-widest">Select a pattern node to decrypt</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

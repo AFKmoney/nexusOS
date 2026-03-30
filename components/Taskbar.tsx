@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOS } from '../store/osStore';
-import { Wifi, Volume2, Battery, BatteryCharging, Sparkles, Lock, Droplet, Bell, Layers, ChevronUp, Bluetooth, Moon, Monitor, Shield, Settings, Sun } from 'lucide-react';
+import { Zap, Wifi, Volume2, Battery, BatteryCharging, Sparkles, Lock, Droplet, Bell, Layers, ChevronUp, Bluetooth, Moon, Monitor, Shield, Settings, Sun, Search } from 'lucide-react';
 import { notificationQueue } from '../kernel/notificationQueue';
 
 export default function Taskbar() {

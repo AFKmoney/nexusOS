@@ -257,7 +257,7 @@ export class PuterService {
     // Check if model is ready
     if (!localBrain.isReady()) {
       try { await localBrain.initialize(); } catch {
-        return '[DAEMON]: Aucun modèle IA chargé. Ouvre le Model Manager pour télécharger un modèle HuggingFace.';
+        return '[DAEMON]: No AI model loaded. Open Model Manager to download a HuggingFace model.';
       }
     }
     try {
