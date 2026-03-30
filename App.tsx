@@ -407,8 +407,19 @@ export default function App() {
   }, [openWindow, closeWindow]);
 
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.window-title-bar') || (e.target as HTMLElement).closest('.taskbar') || (e.target as HTMLElement).closest('.start-menu')) return;
+    // Spatial boundary detection
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('.taskbar') || 
+      target.closest('.start-menu') || 
+      target.closest('.window-frame') ||
+      target.closest('.context-menu')
+    ) {
+      return; 
+    }
+    
     e.preventDefault();
+    e.stopPropagation();
     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'desktop' });
   };
 
