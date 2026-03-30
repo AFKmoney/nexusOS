@@ -98,7 +98,7 @@ export const useOS = create<OSState>()(
       currentObjective: 'System Monitoring',
       currentSelfPrompt: undefined,
       clipboard: null,
-      wallpaper: 'https://images.unsplash.com/photo-1605218427306-6354db696f36?q=80&w=2070&auto=format&fit=crop',
+      wallpaper: 'NEURAL_GLOBE',
       accentColor: '#10b981',
       isStartMenuOpen: false,
       isSearchOpen: false,
