@@ -112,6 +112,14 @@ export const useOS = create<OSState>()(
       },
       logout: () => set({ isLoggedIn: false, currentUser: null, windows: [], isStartMenuOpen: false }),
       openWindow: (appId, data) => {
+        // Check if app is already open (singleton-like behavior for core apps)
+        const existingWin = get().windows.find(w => w.appId === appId);
+        if (existingWin) {
+          get().focusWindow(existingWin.id);
+          if (existingWin.isMinimized) get().restoreWindow(existingWin.id);
+          return;
+        }
+
         const app = get().registry.find(a => a.id === appId);
         if (!app) return;
         const id = uuid();
