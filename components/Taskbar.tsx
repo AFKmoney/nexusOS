@@ -60,19 +60,21 @@ export default function Taskbar() {
   const safePinnedApps = Array.isArray(pinnedApps) ? pinnedApps : [];
 
   return (
-    <div onContextMenu={handleTaskbarRightClick} className="h-12 bg-black/60 backdrop-blur-2xl border-t border-white/5 flex items-center px-3 justify-between absolute bottom-0 w-full z-50 select-none shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+    <div onContextMenu={handleTaskbarRightClick} className="h-14 bg-[#030305]/80 backdrop-blur-3xl border-t border-white/5 flex items-center px-4 justify-between absolute bottom-0 w-full z-50 select-none shadow-[0_-10px_40px_rgba(0,0,0,0.6)]">
       
       {/* LEFT: Start Button & Pinned Apps */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 h-full">
         <button 
           onClick={(e) => { e.stopPropagation(); toggleStartMenu(); }}
-          className={`mr-2 font-black text-lg tracking-tighter cursor-pointer px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 ${isStartMenuOpen ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'text-zinc-200 hover:bg-white/5 hover:text-cyan-400'}`}
+          className={`mr-3 font-black text-lg tracking-widest cursor-pointer px-3 h-10 rounded-xl transition-all flex items-center gap-2.5 duration-300 hover:scale-[1.02] active:scale-95 ${isStartMenuOpen ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)] ring-1 ring-emerald-500/30' : 'text-zinc-200 hover:bg-white/10 hover:text-emerald-400'}`}
         >
-          <div className="w-5 h-5 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-sm shadow-sm" />
-          <span className="hidden md:inline">NEXUS</span>
+          <div className="w-5 h-5 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-md shadow-[0_0_10px_rgba(16,185,129,0.5)] flex items-center justify-center">
+             <Zap size={12} className="text-black" />
+          </div>
+          <span className="hidden md:inline drop-shadow-md">NEXUS</span>
         </button>
         
-        <div className="h-6 w-px bg-white/10 mx-2" />
+        <div className="h-6 w-px bg-white/10 mx-1" />
         
         {/* Pinned Apps */}
         {safePinnedApps.map(appId => {
@@ -88,13 +90,16 @@ export default function Taskbar() {
                   e.preventDefault(); e.stopPropagation();
                   openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'app-icon', appId: app.id });
               }}
-              className={`p-2 rounded-md transition-all group relative hover:bg-white/10 ${isActive ? 'bg-white/5' : ''}`}
+              className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 group relative hover:bg-white/10 hover:scale-105 active:scale-95 ${isActive ? 'bg-white/5' : ''}`}
             >
-              <Icon size={20} className={`${isActive ? 'text-cyan-400' : 'text-zinc-400'} group-hover:text-white transition-colors group-active:scale-95`} />
-              {isActive && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_5px_currentColor]" />}
+              <Icon size={22} className={`transition-all duration-300 drop-shadow-md ${isActive ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-white'}`} />
+              
+              {isActive && (
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-1 bg-emerald-500 rounded-t-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              )}
               
               {/* Tooltip */}
-              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-800 border border-white/10 rounded text-[10px] text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
+              <div className="absolute bottom-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#121214]/90 backdrop-blur-md border border-white/10 rounded-lg text-xs font-medium text-zinc-200 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap shadow-[0_10px_30px_rgba(0,0,0,0.8)] translate-y-2 group-hover:translate-y-0 z-[100]">
                 {app.name}
               </div>
             </button>
