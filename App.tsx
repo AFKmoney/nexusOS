@@ -547,7 +547,7 @@ export default function App() {
         >
           {/* Desktop Grid */}
           <div className="grid grid-cols-[repeat(auto-fill,100px)] grid-rows-[repeat(auto-fill,100px)] gap-4 h-full">
-            {vfs.listDir(`/home/${currentUser?.id || 'user'}/Desktop`).map(name => (
+            {(vfs.listDir(`/home/${currentUser?.id || 'user'}/Desktop`) || []).map(name => (
               <div
                 key={name}
                 draggable
@@ -567,7 +567,7 @@ export default function App() {
             ))}
           </div>
 
-          {windows.filter(w => w.workspaceId === activeWorkspace || !w.workspaceId).map(win => (
+          {(windows || []).filter(w => w.workspaceId === activeWorkspace || !w.workspaceId).map(win => (
             <WindowFrame key={win.id} windowState={win} />
           ))}
         </div>
