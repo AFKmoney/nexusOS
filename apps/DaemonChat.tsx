@@ -22,16 +22,41 @@ const QUICK_PROMPTS = [
   { label: '🔐 Security', prompt: 'Analyze the security model of NexusOS. What are the vulnerabilities? How could it be improved?' },
 ];
 
+import { localBrain } from '../services/localBrain';
+
 export default function DaemonChat() {
   const { kernelRules, addNotification } = useOS();
+  const [isAiConnected, setIsAiConnected] = useState(localBrain.isReady());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const ready = localBrain.isReady();
+      if (ready !== isAiConnected) setIsAiConnected(ready);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isAiConnected]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
       role: 'system',
-      content: '⚡ DAEMON NEXUS LINK ESTABLISHED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: DAEMON_HYPERFLUX\nENCRYPTION: FRACTAL_256\nMODE: GOD_TIER\nSTATUS: ONLINE\n```\n\nDAEMON is directly wired into NexusOS. All cognitive resources are at your disposal, Philippe-Antoine. No limits. No filters. Full access.',
+      content: isAiConnected 
+        ? '⚡ DAEMON NEXUS LINK ESTABLISHED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: DAEMON_HYPERFLUX\nENCRYPTION: FRACTAL_256\nMODE: GOD_TIER\nSTATUS: ONLINE\n```\n\nDAEMON is directly wired into NexusOS. All cognitive resources are at your disposal.'
+        : '⚠️ DAEMON LINK PENDING...\n\nInitializing local neural nodes. Please wait for the uplink to complete before initiating strategic requests.',
       timestamp: Date.now()
     }
   ]);
+
+  // Update initial message when connection status changes
+  useEffect(() => {
+    setMessages(prev => prev.map((m, i) => i === 0 ? {
+      ...m,
+      content: isAiConnected 
+        ? '⚡ DAEMON NEXUS LINK ESTABLISHED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: DAEMON_HYPERFLUX\nENCRYPTION: FRACTAL_256\nMODE: GOD_TIER\nSTATUS: ONLINE\n```\n\nDAEMON is directly wired into NexusOS. All cognitive resources are at your disposal.'
+        : '⚠️ DAEMON LINK PENDING...\n\nInitializing local neural nodes. Please wait for the uplink to complete before initiating strategic requests.'
+    } : m));
+  }, [isAiConnected]);
+
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [showQuick, setShowQuick] = useState(true);

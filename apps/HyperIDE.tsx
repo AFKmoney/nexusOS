@@ -142,6 +142,8 @@ function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath
   );
 }
 
+import { localBrain } from '../services/localBrain';
+
 interface EditorTab { path: string; name: string; content: string; modified: boolean; }
 interface AiMsg { role: 'user'|'ai'; content: string; }
 
@@ -159,8 +161,18 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
   const [newFileDir, setNewFileDir] = useState('');
   const [savedIndicator, setSavedIndicator] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isAiConnected, setIsAiConnected] = useState(localBrain.isReady());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const ready = localBrain.isReady();
+      if (ready !== isAiConnected) setIsAiConnected(ready);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isAiConnected]);
+
   const [aiMessages, setAiMessages] = useState<AiMsg[]>([
-    { role: 'ai', content: '⚡ **NEXUS Neural Forge** Active.\n\nI am connected to the kernel. I can:\n- **Refactor** & optimize logic\n- **Debug** complex errors\n- **Generate** complete files\n- **Explain** architecture\n\nWhat are we building today, Creator?' }
+    { role: 'ai', content: `⚡ **NEXUS Neural Forge** ${isAiConnected ? 'Online' : 'Initializing'}...\n\nI am connected to the kernel. I can:\n- **Refactor** & optimize logic\n- **Debug** complex errors\n- **Generate** complete files\n- **Explain** architecture\n\nWhat are we building today, Creator?` }
   ]);
   const [aiInput, setAiInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');

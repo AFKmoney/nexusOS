@@ -1,13 +1,13 @@
-
 import { create } from 'zustand';
 import { uuid } from '../utils/uuid';
 import { persist } from 'zustand/middleware';
-import { WindowState, KernelRules, AppManifest, ContextMenuState, Notification, UserProfile, ScreensaverConfig } from '../types.ts';
+import { WindowState, KernelRules, AppManifest, ContextMenuState, Notification, UserProfile } from '../types.ts';
 import { Box } from 'lucide-react';
 import { vfs } from '../kernel/fileSystem';
 import { SYSTEM_APPS } from '../appRegistry';
 import { localBrain } from '../services/localBrain';
 import { processManager } from '../kernel/processManager';
+import { themeEngine } from '../kernel/themeEngine';
 
 interface OSState {
   booted: boolean;
@@ -31,9 +31,9 @@ interface OSState {
   currentSelfPrompt?: string;
   clipboard: { path: string; operation: 'copy' | 'cut' } | null;
   wallpaper: string;
+  accentColor: string;
   isStartMenuOpen: boolean;
   isSearchOpen: boolean;
-  // Forge mutex — prevents parallel app generation
   isForging: boolean;
   uiScale: number;
   setHasSeenIntro: (val: boolean) => void;
@@ -55,6 +55,7 @@ interface OSState {
   addAutonomyLog: (log: string) => void;
   setCurrentObjective: (obj: string) => void;
   setWallpaper: (url: string) => void;
+  setAccentColor: (color: string) => void;
   toggleStartMenu: () => void;
   toggleSearch: () => void;
   openContextMenu: (state: ContextMenuState) => void;
@@ -78,7 +79,7 @@ export const useOS = create<OSState>()(
       isLoggedIn: false,
       currentUser: null,
       profiles: [
-        { id: 'daemon', name: 'DAEMON Core', themeColor: '#ef4444', isAdmin: true }
+        { id: 'daemon', name: 'DAEMON Core', themeColor: '#10b981', isAdmin: true }
       ],
       windows: [],
       activeWindowId: null,
@@ -86,7 +87,7 @@ export const useOS = create<OSState>()(
       globalZIndex: 100,
       registry: SYSTEM_APPS,
       installedApps: SYSTEM_APPS.map(a => a.id),
-      pinnedApps: ['welcome', 'explorer', 'hyperide', 'terminal', 'netrunner'],
+      pinnedApps: ['introduction', 'explorer', 'hyperide', 'terminal', 'netrunner'],
       kernelRules: { verbosity: 0.7, creativity: 0.8, tone: 'god_mode', modelId: 'daemon-fractal', autonomyEnabled: false, autonomyInterval: 30000, secureBoot: true, cpuSpeed: 3.4, primaryBootDevice: 'VFS' },
       isForging: false,
       uiScale: 1.0,
@@ -97,7 +98,8 @@ export const useOS = create<OSState>()(
       currentObjective: 'System Monitoring',
       currentSelfPrompt: undefined,
       clipboard: null,
-      wallpaper: 'https://images.unsplash.com/photo-1605218427306-6354db696f36?q=80&w=2070&auto=format&fit=crop', // Neon District
+      wallpaper: 'https://images.unsplash.com/photo-1605218427306-6354db696f36?q=80&w=2070&auto=format&fit=crop',
+      accentColor: '#10b981',
       isStartMenuOpen: false,
       isSearchOpen: false,
       setHasSeenIntro: (val) => set({ hasSeenIntro: val }),
@@ -156,6 +158,10 @@ export const useOS = create<OSState>()(
       addAutonomyLog: (log) => set(state => ({ autonomyLog: [...state.autonomyLog.slice(-50), log] })),
       setCurrentObjective: (currentObjective) => set({ currentObjective }),
       setWallpaper: (wallpaper) => set({ wallpaper }),
+      setAccentColor: (accentColor) => {
+        themeEngine.setCustomAccent(accentColor);
+        set({ accentColor });
+      },
       toggleStartMenu: () => set(state => ({ isStartMenuOpen: !state.isStartMenuOpen })),
       toggleSearch: () => set(state => ({ isSearchOpen: !state.isSearchOpen })),
       openContextMenu: (contextMenu) => set({ contextMenu }),
@@ -195,12 +201,13 @@ export const useOS = create<OSState>()(
       }
     }),
     {
-      name: 'nexus-pro-ultimate-state-v3', // Bumped to force reset
+      name: 'nexus-pro-ultimate-state-v4',
       partialize: (state) => ({
         hasSeenIntro: state.hasSeenIntro,
         kernelRules: state.kernelRules,
         pinnedApps: state.pinnedApps,
         wallpaper: state.wallpaper,
+        accentColor: state.accentColor,
         installedApps: state.installedApps,
         globalZIndex: state.globalZIndex,
         activeWorkspace: state.activeWorkspace,

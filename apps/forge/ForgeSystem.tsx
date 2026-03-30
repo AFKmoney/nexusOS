@@ -6,10 +6,12 @@ import { vfs } from '../../kernel/fileSystem';
 import { memory } from '../../kernel/memory';
 import { Cpu, Zap, Code, Eye, RefreshCw, Rocket, Box, Loader2, Sparkles, AlertCircle, CheckCircle, RotateCcw, Braces, FileCode2, Command } from 'lucide-react';
 
+import { localBrain } from '../../services/localBrain';
+
 type ForgeStatus = 'IDLE' | 'ANALYZING' | 'ARCHITECTING' | 'CODING' | 'REPAIRING' | 'INSTALLING' | 'DONE' | 'ERROR';
 
 export default function ForgeSystem({ windowId }: { windowId: string }) {
-  const { kernelRules, windows, registerCustomApp, addNotification, openWindow, setForging } = useOS();
+  const { kernelRules, windows, registerCustomApp, addNotification, openWindow } = useOS();
   const win = windows.find(w => w.id === windowId);
 
   const [prompt, setPrompt] = useState(win?.data?.autoPrompt || '');
@@ -20,6 +22,16 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
   const [statusMsg, setStatusMsg] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
+  const [isAiConnected, setIsAiConnected] = useState(localBrain.isReady());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const ready = localBrain.isReady();
+      if (ready !== isAiConnected) setIsAiConnected(ready);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isAiConnected]);
+
 
   const previewRef = useRef<HTMLIFrameElement>(null);
   const codeRef = useRef('');
@@ -224,10 +236,10 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
             <Cpu size={18} className={isGenerating ? 'animate-spin text-emerald-400' : 'text-emerald-600'} />
           </div>
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Neural Forge</div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Neural Forge {isAiConnected ? '(Online)' : '(Offline)'}</div>
             <div className={`text-xs font-mono ${statusColor} flex items-center gap-1`}>
               {isGenerating && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
-              {statusMsg || status}
+              {isAiConnected ? (statusMsg || status) : 'Waiting for Neural Core...'}
               {isGenerating && tokenCount > 0 && (
                 <span className="text-zinc-700 ml-1">({tokenCount} tok)</span>
               )}
