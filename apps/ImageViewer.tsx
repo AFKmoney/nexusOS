@@ -1,103 +1,107 @@
-import React, { useState, useRef } from 'react';
-import { Image as ImgIcon, ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Image, ZoomIn, ZoomOut, Maximize, RotateCw, Trash2, ChevronLeft, ChevronRight, Share2, Info, FolderOpen } from 'lucide-react';
+import { useOS } from '../store/osStore';
+import { vfs } from '../kernel/fileSystem';
 
-export default function ImageViewerApp() {
-  const [images, setImages] = useState<{ name: string; url: string }[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
+export default function ImageViewer() {
+  const [images, setImages] = useState<{name: string, path: string}[]>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    Array.from(files as FileList).forEach((f: File) => {
-      if (!f.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImages(prev => [...prev, { name: f.name, url: reader.result as string }]);
-        if (images.length === 0) setCurrentIdx(0);
-      };
-      reader.readAsDataURL(f as Blob);
-    });
-  };
+  useEffect(() => {
+    const list = vfs.listDir('/home/user/Desktop');
+    const filtered = (list || [])
+      .filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f))
+      .map(f => ({ name: f, path: `/home/user/Desktop/${f}` }));
+    setImages(filtered);
+  }, []);
 
-  const img = images[currentIdx];
-  const prevImg = () => { if (currentIdx > 0) { setCurrentIdx(currentIdx - 1); setZoom(1); setRotation(0); } };
-  const nextImg = () => { if (currentIdx < images.length - 1) { setCurrentIdx(currentIdx + 1); setZoom(1); setRotation(0); } };
-  const zoomIn = () => setZoom(z => Math.min(z + 0.25, 5));
-  const zoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
-  const rotate = () => setRotation(r => (r + 90) % 360);
-  const fit = () => { setZoom(1); setRotation(0); };
+  const activeImage = images[activeIdx];
+
+  const nextImg = () => { setActiveIdx((activeIdx + 1) % images.length); setZoom(1); setRotation(0); };
+  const prevImg = () => { setActiveIdx((activeIdx - 1 + images.length) % images.length); setZoom(1); setRotation(0); };
 
   return (
-    <div className="h-full flex flex-col bg-[#050508] text-zinc-100">
-      <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-black/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <ImgIcon size={16} className="text-violet-400" />
-          <span className="font-bold text-sm tracking-widest uppercase">Image Viewer</span>
-          {img && <span className="text-xs text-zinc-500 ml-2">{img.name}</span>}
+    <div className="h-full bg-[#050508] text-white flex flex-col font-sans overflow-hidden">
+      {/* Header / Controls */}
+      <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+            <Image size={20} />
+          </div>
+          <div>
+            <h1 className="text-sm font-black uppercase tracking-[0.2em] truncate max-w-[200px]">{activeImage?.name || 'Artifact Browser'}</h1>
+            <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Visual Manifest Index</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={zoomOut} className="p-1.5 hover:bg-white/10 rounded-lg transition"><ZoomOut size={14} className="text-zinc-400" /></button>
-          <span className="text-xs text-zinc-500 w-12 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={zoomIn} className="p-1.5 hover:bg-white/10 rounded-lg transition"><ZoomIn size={14} className="text-zinc-400" /></button>
-          <button onClick={rotate} className="p-1.5 hover:bg-white/10 rounded-lg transition"><RotateCw size={14} className="text-zinc-400" /></button>
-          <button onClick={fit} className="p-1.5 hover:bg-white/10 rounded-lg transition"><Maximize2 size={14} className="text-zinc-400" /></button>
+
+        <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+          <button onClick={() => setZoom(z => Math.max(0.5, z - 0.2))} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><ZoomOut size={16}/></button>
+          <span className="text-[10px] font-mono text-zinc-500 w-12 text-center">{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom(z => Math.min(3, z + 0.2))} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><ZoomIn size={16}/></button>
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><RotateCw size={16}/></button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Share2 size={16}/></button>
+          <button className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center overflow-hidden relative bg-black/40">
-        {!img ? (
-          <div className="flex flex-col items-center gap-4 text-zinc-600">
-            <ImgIcon size={48} className="opacity-30" />
-            <span className="text-sm">No image loaded</span>
-            <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-violet-500/20 text-violet-400 rounded-xl text-sm hover:bg-violet-500/30 transition">
-              <Upload size={14} /> Open Image
-            </button>
-          </div>
-        ) : (
+      {/* Viewport */}
+      <div className="flex-1 relative flex items-center justify-center bg-black/60 p-10 group">
+        {activeImage ? (
           <>
-            <img
-              src={img.url}
-              alt={img.name}
-              className="max-w-full max-h-full object-contain transition-transform duration-200"
+            <div 
+              className="w-full h-full flex items-center justify-center transition-all duration-300"
               style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
-              draggable={false}
-            />
+            >
+              <img 
+                src={activeImage.path} // In a real VFS, this would be a Blob URL
+                alt={activeImage.name}
+                className="max-w-full max-h-full rounded shadow-2xl transition-opacity duration-500"
+                onError={(e) => { (e.target as any).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop'; }}
+              />
+            </div>
+
+            {/* Navigation Overlays */}
             {images.length > 1 && (
               <>
-                <button onClick={prevImg} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70 transition disabled:opacity-30" disabled={currentIdx === 0}>
-                  <ChevronLeft size={18} />
+                <button onClick={prevImg} className="absolute left-6 p-4 rounded-full bg-black/40 border border-white/5 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60 transition-all shadow-2xl active:scale-90">
+                  <ChevronLeft size={32} />
                 </button>
-                <button onClick={nextImg} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70 transition disabled:opacity-30" disabled={currentIdx === images.length - 1}>
-                  <ChevronRight size={18} />
+                <button onClick={nextImg} className="absolute right-6 p-4 rounded-full bg-black/40 border border-white/5 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60 transition-all shadow-2xl active:scale-90">
+                  <ChevronRight size={32} />
                 </button>
               </>
             )}
           </>
+        ) : (
+          <div className="flex flex-col items-center gap-4 opacity-20">
+            <FolderOpen size={64} className="text-zinc-600" />
+            <p className="text-sm font-black uppercase tracking-widest">No visual artifacts found on desktop</p>
+          </div>
         )}
       </div>
 
-      {/* Thumbnail Strip */}
-      {images.length > 1 && (
-        <div className="px-4 py-2 border-t border-white/5 flex gap-2 overflow-x-auto bg-black/20">
-          {images.map((im, i) => (
-            <button key={i} onClick={() => { setCurrentIdx(i); setZoom(1); setRotation(0); }}
-              className={`w-12 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition ${i === currentIdx ? 'border-violet-500' : 'border-transparent hover:border-white/20'}`}>
-              <img src={im.url} alt="" className="w-full h-full object-cover" />
+      {/* Thumbnails Strip */}
+      {images.length > 0 && (
+        <div className="h-24 border-t border-white/5 bg-black/40 flex items-center gap-3 px-6 overflow-x-auto custom-scrollbar shrink-0">
+          {images.map((img, i) => (
+            <button 
+              key={i}
+              onClick={() => setActiveIdx(i)}
+              className={`w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${i === activeIdx ? 'border-blue-500 scale-110 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent opacity-40 hover:opacity-100'}`}
+            >
+              <img 
+                src={img.path} 
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as any).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=100&auto=format&fit=crop'; }}
+              />
             </button>
           ))}
-        </div>
-      )}
-
-      <input ref={fileRef} type="file" accept="image/*" multiple onChange={loadImage} className="hidden" />
-
-      {images.length === 0 && (
-        <div className="px-4 py-2 border-t border-white/5 text-center">
-          <button onClick={() => fileRef.current?.click()} className="text-xs text-violet-400 hover:text-violet-300 transition">
-            Click to open images from your device
-          </button>
         </div>
       )}
     </div>

@@ -1,99 +1,101 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StickyNote, Plus, X, Palette, GripVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, StickyNote, Palette, ShieldAlert, Zap } from 'lucide-react';
+import { useOS } from '../store/osStore';
+import { uuid } from '../utils/uuid';
 
-interface Note { id: string; text: string; color: string; x: number; y: number; width: number; height: number; }
+interface Note { id: string; content: string; color: string; x: number; y: number; }
+const LS_KEY = 'nexus_notes_v2';
 
-const NOTES_KEY = 'nexus_sticky_v1';
-const COLORS = ['#fef08a', '#d9f99d', '#a5f3fc', '#ddd6fe', '#fecdd3', '#fed7aa'];
+const COLORS = [
+  'bg-yellow-400/90', 'bg-emerald-400/90', 'bg-blue-400/90', 
+  'bg-rose-400/90', 'bg-purple-400/90', 'bg-zinc-100/90'
+];
 
-export default function StickyNotesApp() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState<{ id: string; offX: number; offY: number } | null>(null);
+export default function StickyNotes() {
+  const [notes, setNotes] = useState<Note[]>(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [
+      { id: '1', content: 'DAEMON: Initialize neural uplink at 02:00.', color: COLORS[0], x: 20, y: 20 },
+      { id: '2', content: 'Remember to verify VFS integrity.', color: COLORS[1], x: 250, y: 50 },
+    ];
+  });
 
   useEffect(() => {
-    try { const raw = localStorage.getItem(NOTES_KEY); if (raw) setNotes(JSON.parse(raw)); } catch {}
-  }, []);
-
-  const persist = (n: Note[]) => { setNotes(n); localStorage.setItem(NOTES_KEY, JSON.stringify(n)); };
+    localStorage.setItem(LS_KEY, JSON.stringify(notes));
+  }, [notes]);
 
   const addNote = () => {
-    const n: Note = {
-      id: uuid(),
-      text: '',
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      x: 20 + Math.random() * 200,
-      y: 20 + Math.random() * 150,
-      width: 180,
-      height: 160,
+    const n: Note = { 
+      id: uuid(), 
+      content: '', 
+      color: COLORS[Math.floor(Math.random() * COLORS.length)], 
+      x: 50 + (notes.length * 20), 
+      y: 50 + (notes.length * 20) 
     };
-    persist([...notes, n]);
+    setNotes([...notes, n]);
   };
 
-  const updateText = (id: string, text: string) => { persist(notes.map(n => n.id === id ? { ...n, text } : n)); };
-  const removeNote = (id: string) => { persist(notes.filter(n => n.id !== id)); };
+  const updateNote = (id: string, content: string) => {
+    setNotes(notes.map(n => n.id === id ? { ...n, content } : n));
+  };
+
   const changeColor = (id: string) => {
-    persist(notes.map(n => {
-      if (n.id !== id) return n;
-      const idx = (COLORS.indexOf(n.color) + 1) % COLORS.length;
-      return { ...n, color: COLORS[idx] };
+    setNotes(notes.map(n => {
+      if (n.id === id) {
+        const currentIdx = COLORS.indexOf(n.color);
+        return { ...n, color: COLORS[(currentIdx + 1) % COLORS.length] };
+      }
+      return n;
     }));
   };
 
-  const onMouseDown = (id: string, e: React.MouseEvent) => {
-    const note = notes.find(n => n.id === id);
-    if (!note) return;
-    setDragging({ id, offX: e.clientX - note.x, offY: e.clientY - note.y });
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!dragging) return;
-    persist(notes.map(n => n.id === dragging.id ? { ...n, x: e.clientX - dragging.offX, y: e.clientY - dragging.offY } : n));
-  };
-
-  const onMouseUp = () => setDragging(null);
+  const deleteNote = (id: string) => setNotes(notes.filter(n => n.id !== id));
 
   return (
-    <div className="h-full flex flex-col bg-[#0a0a0f] text-zinc-100">
-      <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-black/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <StickyNote size={16} className="text-amber-400" />
-          <span className="font-bold text-sm tracking-widest uppercase">Sticky Notes</span>
+    <div className="h-full bg-[#050508]/50 backdrop-blur-md p-6 overflow-hidden relative">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <StickyNote size={20} className="text-yellow-400" />
+          <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Neural Sticky Memory</span>
         </div>
-        <button onClick={addNote} className="flex items-center gap-1 text-xs px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition">
-          <Plus size={13} /> New
+        <button onClick={addNote} className="p-2 bg-yellow-400 text-black rounded-xl hover:bg-yellow-300 transition-all shadow-lg active:scale-90">
+          <Plus size={20} />
         </button>
       </div>
 
-      <div ref={containerRef} className="flex-1 relative overflow-hidden" onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-        {notes.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-600">
-            <StickyNote size={32} className="mb-3 opacity-30" />
-            <span className="text-sm">Click + New to create a sticky note</span>
-          </div>
-        )}
+      <div className="relative w-full h-full">
         {notes.map(note => (
-          <div
+          <div 
             key={note.id}
-            className="absolute rounded-xl shadow-xl flex flex-col cursor-default"
-            style={{ left: note.x, top: note.y, width: note.width, minHeight: note.height, backgroundColor: note.color }}
+            className={`absolute w-56 min-h-[160px] ${note.color} rounded-2xl shadow-2xl flex flex-col p-4 transition-all hover:scale-[1.02] animate-in zoom-in-95 duration-200 group`}
+            style={{ left: note.x, top: note.y, zIndex: 10 }}
           >
-            <div className="flex items-center justify-between px-2 py-1 cursor-grab active:cursor-grabbing" onMouseDown={e => onMouseDown(note.id, e)}>
-              <GripVertical size={12} className="text-black/30" />
-              <div className="flex items-center gap-0.5">
-                <button onClick={() => changeColor(note.id)} className="p-0.5 hover:bg-black/10 rounded"><Palette size={11} className="text-black/40" /></button>
-                <button onClick={() => removeNote(note.id)} className="p-0.5 hover:bg-black/10 rounded"><X size={11} className="text-black/40" /></button>
-              </div>
+            <div className="flex items-center justify-between mb-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => changeColor(note.id)} className="p-1 hover:bg-black/10 rounded transition-colors"><Palette size={12} className="text-black/60"/></button>
+              <button onClick={() => deleteNote(note.id)} className="p-1 hover:bg-black/10 rounded transition-colors text-black/60 hover:text-red-600"><Trash2 size={12}/></button>
             </div>
-            <textarea
-              value={note.text}
-              onChange={e => updateText(note.id, e.target.value)}
-              placeholder="Write something..."
-              className="flex-1 bg-transparent text-black text-xs px-3 pb-3 resize-none outline-none placeholder-black/30"
-              style={{ minHeight: 100 }}
+            <textarea 
+              className="flex-1 bg-transparent border-none outline-none text-black font-medium text-xs resize-none placeholder:text-black/20 leading-relaxed"
+              placeholder="Enter thought node..."
+              value={note.content}
+              onChange={e => updateNote(note.id, e.target.value)}
             />
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-[8px] font-black uppercase tracking-tighter text-black/40 font-mono">NODE_ID: {note.id.slice(0, 8)}</div>
+              <Zap size={10} className="text-black/20" />
+            </div>
           </div>
         ))}
+
+        {notes.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center opacity-10">
+            <ShieldAlert size={80} />
+            <div className="text-sm font-black uppercase tracking-widest mt-4">Buffer Empty</div>
+          </div>
+        )}
       </div>
     </div>
   );
