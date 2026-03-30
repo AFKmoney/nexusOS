@@ -406,6 +406,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [openWindow, closeWindow]);
 
+  const handleGlobalClick = (e: React.MouseEvent) => {
+    // If we click the background or anything not inside a menu, close menus
+    const target = e.target as HTMLElement;
+    if (!target.closest('.start-menu') && isStartMenuOpen) toggleStartMenu();
+    if (useOS.getState().contextMenu.isOpen) useOS.getState().closeContextMenu();
+  };
+
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
     // Spatial boundary detection
     const target = e.target as HTMLElement;
@@ -523,6 +530,7 @@ export default function App() {
   return (
     <div
       className="h-screen w-screen overflow-hidden relative"
+      onClick={handleGlobalClick}
       onContextMenu={handleGlobalContextMenu}
     >
       {/* Wallpaper Layer */}
