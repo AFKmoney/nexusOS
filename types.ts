@@ -95,12 +95,16 @@ export interface Notification {
   timestamp: number;
 }
 
+export type MemoryCategory = 'episodic' | 'semantic' | 'system';
+
 export interface MemoryEntry {
   id: string;
   timestamp: number;
   content: string;
   tags: string[];
   embeddingVector: number[];
+  category?: MemoryCategory;
+  importance?: number;
   score?: number;
 }
 

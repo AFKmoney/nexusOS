@@ -1,4 +1,4 @@
-import { MemoryEntry } from '../types';
+import { MemoryEntry, MemoryCategory } from '../types';
 
 const MEMORY_KEY = 'nexus_memory_v1';
 const MAX_ENTRIES = 500; // Prevent localStorage bloat
@@ -33,7 +33,13 @@ export class MemorySystem {
     try {
       const saved = localStorage.getItem(MEMORY_KEY);
       if (saved) {
-        this.entries = JSON.parse(saved);
+        const legacy = JSON.parse(saved);
+        // Upgrade legacy entries to V2 schema
+        this.entries = legacy.map((e: any) => ({
+           ...e,
+           category: e.category || 'episodic',
+           importance: e.importance !== undefined ? e.importance : 0.5
+        }));
       }
     } catch {
       this.entries = [];
@@ -61,19 +67,44 @@ export class MemorySystem {
       .slice(0, keepCount);
   }
 
-  public remember(content: string, tags: string[] = []) {
+  // Memory Consolidation: condense old episodic memories
+  private consolidate() {
+    const episodic = this.entries.filter(e => e.category === 'episodic');
+    if (episodic.length > 200) {
+       // Sort by oldest first
+       episodic.sort((a, b) => a.timestamp - b.timestamp);
+       const toRemove = episodic.slice(0, 100);
+       const removeIds = new Set(toRemove.map(e => e.id));
+       
+       this.entries = this.entries.filter(e => !removeIds.has(e.id));
+       
+       // Create a summarized semantic memory
+       this.remember(
+          `Consolidated past episodic events. (${toRemove.length} events archived)`, 
+          ['system', 'archive', 'consolidation'], 
+          'semantic', 
+          0.8
+       );
+    } else {
+       this.prune(MAX_ENTRIES - 50); // Fallback to normal prune
+    }
+  }
+
+  public remember(content: string, tags: string[] = [], category: MemoryCategory = 'episodic', importance: number = 0.5) {
     const entry: MemoryEntry = {
       id: uuid(),
       timestamp: Date.now(),
       content,
       tags,
       embeddingVector: [],
+      category,
+      importance
     };
     this.entries.push(entry);
 
-    // Auto-prune when too large
+    // Auto-prune/consolidate when too large
     if (this.entries.length > MAX_ENTRIES) {
-      this.prune(MAX_ENTRIES);
+      this.consolidate();
     }
 
     this.save();
@@ -90,10 +121,17 @@ export class MemorySystem {
         // Recency boost: entries from last 24h get up to +0.2
         const ageDays = (now - entry.timestamp) / ONE_DAY_MS;
         const recency = ageDays < 1 ? 0.2 * (1 - ageDays) : 0;
-        return { ...entry, score: semantic + recency };
+        
+        let multiplier = 1.0;
+        if (entry.category === 'system') multiplier = 1.5;
+        if (entry.category === 'semantic') multiplier = 1.2;
+        
+        const importance = entry.importance || 0.5;
+
+        return { ...entry, score: (semantic + recency) * multiplier * (0.8 + importance * 0.4) };
       })
-      .filter(e => e.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .filter(e => e.score && e.score > 0)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
       .slice(0, limit);
   }
 

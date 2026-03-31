@@ -157,6 +157,15 @@ export class AutonomyEngine {
       // Trigger an immediate tick for urgent events
       if (this.isRunning) this.tick();
     });
+    
+    // Listen for internal Cron events mapped to OS Actions
+    eventBus.on('CRON_TRIGGERED', (payload) => {
+      this.queueEvent(`CRON_TRIGGERED: ${payload?.name || payload?.jobId}`);
+      if (payload?.action?.startsWith('OS::RUN_COMMAND:')) {
+         const cmd = payload.action.substring(16);
+         commander.execute(cmd, () => {}, useOS.getState().kernelRules);
+      }
+    });
   }
 
   private queueEvent(event: string) {

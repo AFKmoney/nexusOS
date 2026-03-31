@@ -390,9 +390,7 @@ export class ToolForge {
             if (interval > 0 && cmd) {
               const { cronScheduler } = await import('./cronScheduler');
               const { commander } = await import('./commander');
-              const jobId = cronScheduler.register(`daemon_task_${Date.now()}`, interval * 1000, () => {
-                commander.execute(cmd, () => {}, useOS.getState().kernelRules);
-              });
+              const jobId = cronScheduler.register(`daemon_task_${Date.now()}`, { intervalMs: interval * 1000 }, `OS::RUN_COMMAND:${cmd}`);
               result = `[OS::SCHEDULE_TASK] → ✅ Task scheduled every ${interval}s (job: ${jobId})`;
             }
           } else {

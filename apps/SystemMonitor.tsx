@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useOS } from '../store/osStore';
 import { autonomy } from '../kernel/autonomy';
+import { processManager } from '../kernel/processManager';
 import { Cpu, Brain, AlertTriangle, Power, RefreshCw, Terminal, Target, Activity, HardDrive, Wifi, Zap, ArrowUp, ArrowDown, MessageSquare, ChevronRight, ShieldCheck } from 'lucide-react';
 
 const Sparkline = ({ data, color }: { data: number[], color: string }) => {
@@ -34,8 +35,14 @@ export default function MonitorApp() {
 
   useEffect(() => {
       const interval = setInterval(() => {
-          const newCpu = Math.floor(Math.random() * 30) + (autonomyState !== 'IDLE' ? 45 : 10);
-          const newMem = Math.floor(Math.random() * 5) + 42;
+          const procs = processManager.listAll();
+          const baseCpu = procs.reduce((acc, p) => acc + p.cpuEstimate, 0);
+          const newCpu = Math.min(100, Math.floor(baseCpu + (autonomyState !== 'IDLE' ? 15 : 2)));
+          
+          const maxMem = (window.performance as any)?.memory?.jsHeapSizeLimit || 2000000;
+          const usedMem = processManager.getTotalMemory();
+          const newMem = Math.max(1, Math.min(100, Math.floor((usedMem / (maxMem / 1024)) * 100)));
+
           const newNetDown = Math.floor(Math.random() * 500);
           const newNetUp = Math.floor(Math.random() * 100);
           
