@@ -28,8 +28,8 @@ export default function TaskManager() {
 
   const getUptime = (windowId: string) => processManager.getUptime(windowId);
 
-  // Simulated CPU usage based on process count
-  const cpuUsage = Math.min(100, processes.length * 3 + Math.floor(Math.random() * 5));
+  // Real CPU usage based on V2 ProcessManager
+  const cpuUsage = Math.min(100, processes.reduce((acc, p) => acc + p.cpuEstimate, 0));
   const memUsageGB = (totalMem / 1024 / 1024).toFixed(2);
 
   return (
@@ -79,7 +79,8 @@ export default function TaskManager() {
             <tr className="text-[10px] text-zinc-500 uppercase tracking-widest border-b border-white/5 bg-zinc-900/50">
               <th className="p-3 font-medium">PID</th>
               <th className="p-3 font-medium">Process Name</th>
-              <th className="p-3 font-medium">Status</th>
+              <th className="p-3 font-medium">Status / Priority</th>
+              <th className="p-3 font-medium text-right">CPU</th>
               <th className="p-3 font-medium text-right">Uptime</th>
               <th className="p-3 font-medium text-right">Memory</th>
               <th className="p-3 font-medium text-center">Action</th>
@@ -99,14 +100,24 @@ export default function TaskManager() {
                   {p.name}
                 </td>
                 <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
-                    p.state === 'running' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                    p.state === 'minimized' ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' :
-                    'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                  }`}>
-                    {p.state}
-                  </span>
+                  <div className="flex flex-col gap-1 items-start">
+                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
+                      p.state === 'running' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                      p.state === 'minimized' ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' :
+                      'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                    }`}>
+                      {p.state}
+                    </span>
+                    <span className={`text-[9px] uppercase font-bold tracking-widest ${
+                      p.priority === 'real-time' ? 'text-purple-400' :
+                      p.priority === 'high' ? 'text-red-400' :
+                      p.priority === 'idle' ? 'text-zinc-500' : 'text-blue-400'
+                    }`}>
+                      PRIO: {p.priority}
+                    </span>
+                  </div>
                 </td>
+                <td className="p-3 text-right text-xs text-blue-400 font-bold">{p.cpuEstimate}%</td>
                 <td className="p-3 text-right text-xs text-zinc-400">{getUptime(p.windowId)}</td>
                 <td className="p-3 text-right text-xs text-cyan-400">{(p.memoryEstimate / 1024).toFixed(1)} MB</td>
                 <td className="p-3 text-center">

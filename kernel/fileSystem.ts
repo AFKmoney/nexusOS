@@ -1,5 +1,5 @@
-
 import { FileNode } from '../types';
+import { eventBus } from './eventBus';
 
 const VFS_STORAGE_KEY = 'nexus_vfs_v1';
 
@@ -212,12 +212,14 @@ export class VirtualFileSystem {
     if (!info) return false;
     const { parent, name } = info;
     if (!parent.children) parent.children = {};
+    const isNew = !parent.children[name];
     parent.children[name] = {
         name, type: 'file', content, permissions: 'rw-',
         created: parent.children[name]?.created || Date.now(),
         modified: Date.now()
     };
     this.save();
+    eventBus.emit(isNew ? 'VFS_FILE_CREATED' : 'VFS_FILE_MODIFIED', { path, appId });
     return true;
   }
 
@@ -233,6 +235,7 @@ export class VirtualFileSystem {
     if (parent.children[name]) return false;
     parent.children[name] = { name, type: 'directory', permissions: 'rwx', children: {}, created: Date.now(), modified: Date.now() };
     this.save();
+    eventBus.emit('VFS_DIR_CREATED', { path, appId });
     return true;
   }
 
@@ -266,6 +269,7 @@ export class VirtualFileSystem {
     if (parent.children && parent.children[name]) {
         delete parent.children[name];
         this.save();
+        eventBus.emit('VFS_FILE_DELETED', { path, appId });
         return true;
     }
     return false;

@@ -1,63 +1,176 @@
 // ── Cron/Scheduler System ─────────────────────────────────────────────────
-// Allows kernel-level periodic task execution
+// Allows kernel-level periodic task execution with Cron expressions and persistence
 
 import { uuid } from '../utils/uuid';
+import { eventBus } from './eventBus';
+
+const STORAGE_KEY = 'nexus_cron_v2';
 
 export interface CronJob {
   id: string;
   name: string;
-  intervalMs: number;
-  callback: () => void;
+  expression: string | null; // e.g., "*/5 * * * *" or null for pure interval
+  intervalMs: number | null; 
+  actionCmd: string; // The command or event to trigger
   lastRun: number;
   enabled: boolean;
+  history: { time: number, status: 'success' | 'error' }[];
 }
 
 class CronScheduler {
   private jobs: Map<string, CronJob> = new Map();
   private timers: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private cronTickTimer: ReturnType<typeof setInterval> | null = null;
+  private isLoaded = false;
 
-  register(name: string, intervalMs: number, callback: () => void): string {
-    const id = uuid();
-    const job: CronJob = { id, name, intervalMs, callback, lastRun: 0, enabled: true };
-    this.jobs.set(id, job);
-    this.startJob(id);
-    return id;
+  constructor() {
+    // Delay load to ensure browser API is ready
+    setTimeout(() => {
+      this.load();
+      this.startCronTick();
+    }, 100);
   }
 
-  private startJob(id: string) {
-    const job = this.jobs.get(id);
-    if (!job || !job.enabled) return;
-    const timer = setInterval(() => {
-      job.callback();
+  private save() {
+    if (!this.isLoaded) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.jobs.values())));
+    } catch (e) {
+      console.warn('[CronScheduler] Save failed:', e);
+    }
+  }
+
+  private load() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: CronJob[] = JSON.parse(saved);
+        parsed.forEach(job => {
+          this.jobs.set(job.id, job);
+          if (job.enabled && job.intervalMs) {
+            this.startIntervalJob(job.id);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[CronScheduler] Load failed:', e);
+    }
+    this.isLoaded = true;
+  }
+
+  private startCronTick() {
+    // Check every minute at exactly the top of the minute
+    const now = new Date();
+    const msToNextMin = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+    setTimeout(() => {
+      this.tick();
+      this.cronTickTimer = setInterval(() => this.tick(), 60000);
+    }, msToNextMin);
+  }
+
+  private tick() {
+    const now = new Date();
+    this.jobs.forEach(job => {
+      if (job.enabled && job.expression && this.matchCron(job.expression, now)) {
+        this.executeJob(job);
+      }
+    });
+  }
+
+  private matchCron(expr: string, date: Date): boolean {
+    const parts = expr.trim().split(/\s+/);
+    if (parts.length !== 5) return false;
+    
+    const m = date.getMinutes();
+    const h = date.getHours();
+    const dom = date.getDate();
+    const mon = date.getMonth() + 1;
+    const dow = date.getDay();
+
+    const matchPart = (part: string, val: number) => {
+      if (part === '*') return true;
+      if (part.startsWith('*/')) {
+        const step = parseInt(part.slice(2));
+        return !isNaN(step) && val % step === 0;
+      }
+      return parseInt(part) === val;
+    };
+
+    return matchPart(parts[0], m) &&
+           matchPart(parts[1], h) &&
+           matchPart(parts[2], dom) &&
+           matchPart(parts[3], mon) &&
+           matchPart(parts[4], dow);
+  }
+
+  public executeJob(job: CronJob) {
+    try {
+      // Emit the action so DAEMON or OS can catch it
+      eventBus.emit('CRON_TRIGGERED', { jobId: job.id, action: job.actionCmd, name: job.name });
       job.lastRun = Date.now();
+      job.history = [{ time: job.lastRun, status: 'success' as const }, ...job.history].slice(0, 50);
+      this.save();
+    } catch (e) {
+      job.history = [{ time: Date.now(), status: 'error' as const }, ...job.history].slice(0, 50);
+      this.save();
+    }
+  }
+
+  private startIntervalJob(id: string) {
+    const job = this.jobs.get(id);
+    if (!job || !job.enabled || !job.intervalMs) return;
+    const timer = setInterval(() => {
+      this.executeJob(job);
     }, job.intervalMs);
     this.timers.set(id, timer);
   }
 
-  unregister(id: string) {
+  public register(name: string, schedule: { expression?: string, intervalMs?: number }, actionCmd: string): string {
+    const id = uuid();
+    const job: CronJob = { 
+      id, name, 
+      expression: schedule.expression || null, 
+      intervalMs: schedule.intervalMs || null, 
+      actionCmd, 
+      lastRun: 0, 
+      enabled: true,
+      history: []
+    };
+    this.jobs.set(id, job);
+    if (job.intervalMs) this.startIntervalJob(id);
+    this.save();
+    return id;
+  }
+
+  public unregister(id: string) {
     const timer = this.timers.get(id);
     if (timer) clearInterval(timer);
     this.timers.delete(id);
     this.jobs.delete(id);
+    this.save();
   }
 
-  pause(id: string) {
+  public pause(id: string) {
     const job = this.jobs.get(id);
     if (job) job.enabled = false;
     const timer = this.timers.get(id);
     if (timer) { clearInterval(timer); this.timers.delete(id); }
+    this.save();
   }
 
-  resume(id: string) {
+  public resume(id: string) {
     const job = this.jobs.get(id);
-    if (job) { job.enabled = true; this.startJob(id); }
+    if (!job) return;
+    job.enabled = true;
+    if (job.intervalMs) this.startIntervalJob(id);
+    this.save();
   }
 
-  listJobs(): CronJob[] {
+  public listJobs(): CronJob[] {
     return Array.from(this.jobs.values());
   }
 
-  getJob(id: string): CronJob | undefined {
+  public getJob(id: string): CronJob | undefined {
     return this.jobs.get(id);
   }
 }
