@@ -71,10 +71,7 @@ const NATIVE_TOOLS_DOC = `
 NATIVE OS ACTIONS (built-in, always available):
 Use exact syntax on its OWN LINE. The OS will intercept and execute it.
 
-OS::OPEN_APP:<appId>
-  → Opens an app. Example: OS::OPEN_APP:hyperide
-  → Opens with path: OS::OPEN_APP:hyperide:/home/user/myfile.ts
-
+═══ FILE OPERATIONS ═══
 OS::WRITE_FILE:<path>:<content>
   → Writes content to the VFS. Creates file if it doesn't exist.
   → Example: OS::WRITE_FILE:/home/user/notes.md:# My Note\\nContent here
@@ -83,13 +80,21 @@ OS::READ_FILE:<path>
   → Reads and returns file content.
   → Example: OS::READ_FILE:/home/user/config.json
 
-OS::NOTIFY:<title>:<message>
-  → Shows a notification to the user.
-  → Example: OS::NOTIFY:Task Complete:Your file has been saved.
+OS::DELETE_FILE:<path>
+  → Deletes a file from VFS.
+  → Example: OS::DELETE_FILE:/home/user/old.txt
 
-OS::REMEMBER:<content>
-  → Stores information in persistent memory (survives sessions).
-  → Example: OS::REMEMBER:User prefers TypeScript over JavaScript.
+OS::MOVE_FILE:<src>:<dest>
+  → Moves/renames a file.
+  → Example: OS::MOVE_FILE:/home/user/old.txt:/home/user/new.txt
+
+OS::COPY_FILE:<src>:<dest>
+  → Copies a file to a new location.
+  → Example: OS::COPY_FILE:/home/user/a.txt:/home/user/b.txt
+
+OS::LIST_DIR:<path>
+  → Lists contents of a directory.
+  → Example: OS::LIST_DIR:/home/user/Desktop
 
 OS::SEARCH_FILES:<query>
   → Searches all VFS files for the query string.
@@ -99,6 +104,23 @@ OS::CREATE_FOLDER:<path>
   → Creates a directory in VFS.
   → Example: OS::CREATE_FOLDER:/home/user/projects/myapp
 
+═══ APP & WINDOW CONTROL ═══
+OS::OPEN_APP:<appId>
+  → Opens an app. Example: OS::OPEN_APP:hyperide
+  → Opens with path: OS::OPEN_APP:hyperide:/home/user/myfile.ts
+
+OS::CLOSE_APP:<appId>
+  → Closes an app window.
+  → Example: OS::CLOSE_APP:notepad
+
+OS::FOCUS_APP:<appId>
+  → Focuses an existing app window, or opens it if not running.
+  → Example: OS::FOCUS_APP:terminal
+
+OS::MINIMIZE_ALL
+  → Minimizes all open windows (show desktop).
+  → Example: OS::MINIMIZE_ALL
+
 OS::BUILD_APP:<description>
   → Triggers NeuralForge to build a complete app from description.
   → Example: OS::BUILD_APP:A todo list app with drag-and-drop sorting
@@ -107,9 +129,34 @@ OS::OPEN_URL:<url>
   → Opens a URL in NetRunner AI browser.
   → Example: OS::OPEN_URL:https://huggingface.co
 
+═══ SYSTEM ACTIONS ═══
+OS::NOTIFY:<title>:<message>
+  → Shows a notification to the user.
+  → Example: OS::NOTIFY:Task Complete:Your file has been saved.
+
+OS::REMEMBER:<content>
+  → Stores information in persistent memory (survives sessions).
+  → Example: OS::REMEMBER:User prefers TypeScript over JavaScript.
+
+OS::SET_WALLPAPER:<wallpaperId>
+  → Changes the desktop wallpaper.
+  → Example: OS::SET_WALLPAPER:NEURAL_GLOBE
+
+OS::RUN_COMMAND:<cmd>
+  → Executes a shell command through the DAEMON Commander.
+  → Example: OS::RUN_COMMAND:ls -la /home/user
+
+OS::SCHEDULE_TASK:<seconds>:<command>
+  → Schedules a recurring task. Interval in seconds.
+  → Example: OS::SCHEDULE_TASK:300:sysinfo
+
 OS::EXECUTE_JS:<code>
   → Safely executes sandboxed JavaScript and returns the result.
-  → Example: OS::EXECUTE_JS:Math.sqrt(144)`;
+  → Example: OS::EXECUTE_JS:Math.sqrt(144)
+
+OS::EMIT_EVENT:<event>:<data>
+  → Emits a system event on the EventBus.
+  → Example: OS::EMIT_EVENT:os:notification:{"msg":"hello"}`;
 
 // ─── Few-Shot Examples — The secret to small model performance ───────────────
 const FEW_SHOT_EXAMPLES = `

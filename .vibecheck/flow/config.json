@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "projectName": "nexusOS",
+  "userName": "developer",
+  "skillLevel": "intermediate",
+  "outputFolder": ".vibecheck/flow",
+  "planningArtifacts": ".vibecheck\\flow\\planning-artifacts",
+  "implementationArtifacts": ".vibecheck\\flow\\implementation-artifacts",
+  "installedAt": "2026-03-30T22:12:22.391Z",
+  "ide": [
+    "vscode"
+  ]
+}
