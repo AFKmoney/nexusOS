@@ -324,7 +324,7 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 }
 
 export default function App() {
-  const { booted, isLoggedIn, hasSeenIntro, uiScale, windows, activeWorkspace, wallpaper, login, openContextMenu, openWindow, closeWindow, addNotification, isSearchOpen, toggleSearch, profiles, currentUser } = useOS();
+  const { booted, isLoggedIn, hasSeenIntro, uiScale, windows, activeWorkspace, wallpaper, login, openContextMenu, openWindow, closeWindow, addNotification, isSearchOpen, toggleSearch, profiles, currentUser, isStartMenuOpen, toggleStartMenu } = useOS();
   const [locked, setLocked] = useState(false);
 
   // ── First Boot Intro ────────────────────────────────────────────────────

@@ -65,6 +65,7 @@ export interface KernelRules {
   secureBoot: boolean;
   cpuSpeed: number;
   primaryBootDevice: 'VFS' | 'CLOUD' | 'GGUF';
+  daemonInjected?: boolean;
 }
 
 export interface ScreensaverConfig {

@@ -28,8 +28,9 @@ export default function DashboardApp() {
       setIsOnline(navigator.onLine);
 
       // Update tools asynchronously loaded
-      const allTools = toolForge.getAllTools();
-      setTools(allTools.map(t => t.name));
+      toolForge.getAllTools().then(allTools => {
+        setTools(allTools.map(t => t.name));
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, []);
