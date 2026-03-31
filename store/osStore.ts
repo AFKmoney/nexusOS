@@ -69,6 +69,7 @@ interface OSState {
   autoArrangeWindows: () => void;
   setForging: (v: boolean) => void;
   setUiScale: (scale: number) => void;
+  updateProfile: (updates: Partial<UserProfile>) => void;
 }
 
 export const useOS = create<OSState>()(
@@ -192,6 +193,14 @@ export const useOS = create<OSState>()(
       setClipboard: (clipboard) => set({ clipboard }),
       setForging: (v) => set({ isForging: v }),
       setUiScale: (uiScale) => set({ uiScale }),
+      updateProfile: (updates) => set(state => {
+        if (!state.currentUser) return {};
+        const updatedUser = { ...state.currentUser, ...updates };
+        return {
+          currentUser: updatedUser,
+          profiles: state.profiles.map(p => p.id === updatedUser.id ? updatedUser : p)
+        };
+      }),
       autoArrangeWindows: () => {
         const { windows, globalZIndex } = get();
         const grid = 50;

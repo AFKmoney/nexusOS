@@ -80,12 +80,14 @@ function fileIcon(name: string, size = 14) {
 }
 
 // ─── Pro File Tree Node ─────────────────────────────────────────
-function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath }: {
+interface FileTreeNodeProps {
   path: string; name: string; depth: number;
   onSelect: (path: string) => void;
   onContextMenu: (e: React.MouseEvent, path: string, isDir: boolean) => void;
   selectedPath: string;
-}) {
+}
+
+const FileTreeNode: React.FC<FileTreeNodeProps> = ({ path, name, depth, onSelect, onContextMenu, selectedPath }) => {
   const [expanded, setExpanded] = useState(depth === 0);
   const stat = vfs.stat(path);
   const isDir = stat?.type === 'directory';
@@ -140,7 +142,7 @@ function FileTreeNode({ path, name, depth, onSelect, onContextMenu, selectedPath
       <span className="truncate">{name}</span>
     </button>
   );
-}
+};
 
 import { localBrain } from '../services/localBrain';
 
@@ -250,6 +252,19 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     vfs.delete(path);
     setTabs(prev => prev.filter(t => t.path !== path));
     setContextMenu(null);
+  };
+
+  const duplicateFile = (filePath: string) => {
+    const content = vfs.readFile(filePath) || '';
+    const parts = filePath.split('/');
+    const fileName = parts.pop() || 'file';
+    const dir = parts.join('/');
+    const ext = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
+    const baseName = ext ? fileName.slice(0, -ext.length) : fileName;
+    const newPath = `${dir}/${baseName}_copy${ext}`;
+    vfs.writeFile(newPath, content);
+    setContextMenu(null);
+    addNotification({ title: 'File Duplicated', message: `Created ${baseName}_copy${ext}`, type: 'success' });
   };
 
   const startRename = (path: string) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, Sun, CloudRain, Wind, Thermometer, MapPin, RefreshCw, Droplets, CloudLightning, Zap, Search } from 'lucide-react';
+import { Cloud, Sun, CloudRain, Wind, Thermometer, MapPin, RefreshCw, Droplets, CloudLightning, Zap, Search, Clock } from 'lucide-react';
 import { useOS } from '../store/osStore';
 
 export default function WeatherApp() {
