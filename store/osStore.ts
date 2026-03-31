@@ -36,6 +36,8 @@ interface OSState {
   isSearchOpen: boolean;
   isForging: boolean;
   uiScale: number;
+  daemonLocked: boolean;
+  daemonLockLog: string[];
   setHasSeenIntro: (val: boolean) => void;
   switchWorkspace: (id: number) => void;
   setBooted: (val: boolean) => void;
@@ -62,6 +64,7 @@ interface OSState {
   closeContextMenu: () => void;
   systemReset: (wipe: boolean) => void;
   installApp: (appId: string) => void;
+  uninstallApp: (appId: string) => void;
   registerCustomApp: (manifest: AppManifest) => void;
   pinApp: (appId: string) => void;
   unpinApp: (appId: string) => void;
@@ -70,6 +73,9 @@ interface OSState {
   setForging: (v: boolean) => void;
   setUiScale: (scale: number) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  setDaemonLocked: (locked: boolean, initialLog?: string) => void;
+  appendDaemonLockLog: (log: string) => void;
+  clearDaemonLockLog: () => void;
 }
 
 export const useOS = create<OSState>()(
@@ -92,6 +98,8 @@ export const useOS = create<OSState>()(
       kernelRules: { verbosity: 0.7, creativity: 0.8, tone: 'god_mode', modelId: 'daemon-fractal', autonomyEnabled: false, autonomyInterval: 30000, secureBoot: true, cpuSpeed: 3.4, primaryBootDevice: 'VFS' },
       isForging: false,
       uiScale: 1.0,
+      daemonLocked: false,
+      daemonLockLog: [],
       contextMenu: { isOpen: false, x: 0, y: 0, targetType: 'desktop' },
       notifications: [],
       autonomyState: 'IDLE',
@@ -181,6 +189,10 @@ export const useOS = create<OSState>()(
       },
       switchWorkspace: (id) => set({ activeWorkspace: id }),
       installApp: (appId) => set(state => ({ installedApps: Array.from(new Set([...state.installedApps, appId])) })),
+      uninstallApp: (appId) => set(state => ({ 
+        installedApps: state.installedApps.filter(id => id !== appId),
+        pinnedApps: state.pinnedApps.filter(id => id !== appId)
+      })),
       registerCustomApp: (manifest) => set(state => {
         const iconComponent = typeof manifest.icon === 'function' ? manifest.icon : Box;
         return {
@@ -215,7 +227,15 @@ export const useOS = create<OSState>()(
           })),
           globalZIndex: globalZIndex + windows.length + 1
         });
-      }
+      },
+      setDaemonLocked: (locked: boolean, initialLog?: string) => set(s => ({ 
+         daemonLocked: locked, 
+         daemonLockLog: initialLog ? [initialLog] : s.daemonLockLog 
+      })),
+      appendDaemonLockLog: (log: string) => set(s => ({ 
+         daemonLockLog: [...s.daemonLockLog.slice(-49), log] 
+      })),
+      clearDaemonLockLog: () => set({ daemonLockLog: [] })
     }),
     {
       name: 'nexus-pro-ultimate-state-v4',

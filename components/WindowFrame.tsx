@@ -5,6 +5,7 @@ import { useOS } from '../store/osStore';
 import { vfs } from '../kernel/fileSystem';
 import { getSmartIcon } from '../utils/smartIcons';
 import { sounds } from '../kernel/sounds';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => {
   const { 
@@ -115,7 +116,11 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
 
           {/* Window Content Spatial */}
           <div className="flex-1 overflow-hidden relative bg-[#050508]/40">
-            {AppComponent ? <AppComponent windowId={windowState.id} /> : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800"><Box size={48} className="opacity-10 mb-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span></div>}
+            {AppComponent ? (
+              <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
+                <AppComponent windowId={windowState.id} />
+              </ErrorBoundary>
+            ) : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800"><Box size={48} className="opacity-10 mb-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span></div>}
             
             {/* Focus Overlay */}
             {!isActive && <div className="absolute inset-0 bg-black/10 pointer-events-none transition-opacity duration-500" />}
