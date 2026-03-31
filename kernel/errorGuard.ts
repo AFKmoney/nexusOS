@@ -14,7 +14,7 @@
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
-import { localBrain } from '../services/localBrain.ts';
+import { localBrain } from '../services/localBrain';
 
 // ─── Valid App Registry ────────────────────────────────────────────────────────
 // Used by the hallucination detector to catch fake app IDs
@@ -23,6 +23,19 @@ const VALID_APP_IDS = new Set([
   'modelmanager', 'notepad', 'dashboard', 'daemonjournal', 'agent',
   'settings', 'calculator', 'webrunner', 'terminal-ubuntu', 'wallpaper',
 ]);
+
+// Dynamically extend valid app IDs from the OS registry (includes forged apps)
+function getValidAppIds(): Set<string> {
+  try {
+    const { useOS } = require('../store/osStore');
+    const registry = useOS.getState().registry;
+    const dynamicIds = new Set(VALID_APP_IDS);
+    registry.forEach((app: any) => dynamicIds.add(app.id));
+    return dynamicIds;
+  } catch {
+    return VALID_APP_IDS;
+  }
+}
 
 // ─── Error Types ───────────────────────────────────────────────────────────────
 export type ErrorType =
@@ -103,6 +116,10 @@ function validateBrackets(text: string): ValidationError[] {
 const VALID_OS_ACTIONS = new Set([
   'OPEN_APP', 'WRITE_FILE', 'READ_FILE', 'NOTIFY', 'REMEMBER',
   'SEARCH_FILES', 'CREATE_FOLDER', 'BUILD_APP', 'OPEN_URL', 'EXECUTE_JS',
+  // v2.0 actions
+  'DELETE_FILE', 'MOVE_FILE', 'COPY_FILE', 'LIST_DIR',
+  'CLOSE_APP', 'FOCUS_APP', 'MINIMIZE_ALL', 'SET_WALLPAPER',
+  'RUN_COMMAND', 'SCHEDULE_TASK', 'EMIT_EVENT',
 ]);
 
 function validateOsActions(text: string): ValidationError[] {
@@ -147,10 +164,11 @@ function detectHallucinations(text: string): ValidationError[] {
   const openAppMatches = text.matchAll(/OS::OPEN_APP:([a-zA-Z0-9_\-]+)/g);
   for (const match of openAppMatches) {
     const appId = match[1].split(':')[0];
-    if (!VALID_APP_IDS.has(appId.toLowerCase())) {
+    const validIds = getValidAppIds();
+    if (!validIds.has(appId.toLowerCase())) {
       errors.push({
         type: 'APP_ID_HALLUCINATED',
-        message: `Hallucinated app ID: "${appId}". Valid IDs: ${[...VALID_APP_IDS].join(', ')}`,
+        message: `Hallucinated app ID: "${appId}". Not found in registry.`,
         severity: 'warning',
         autoFixed: false,
       });

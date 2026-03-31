@@ -16,7 +16,7 @@ type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'd
 // NEXUS PRIME DNA — System Controller Persona
 // ============================================================
 const NEXUS_PRIME_DNA = `
-/// SYSTEM_KERNEL :: NEXUS_OS_V10 ///
+/// SYSTEM_KERNEL :: NEXUS_OS_V2 ///
 /// IDENTITY: NEXUS.PRIME — Universal System Intelligence ///
 /// ACCESS_LEVEL: ROOT ///
 
