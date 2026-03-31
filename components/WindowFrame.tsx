@@ -65,9 +65,9 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
     >
       <div 
         className={`flex flex-col w-full h-full overflow-hidden transition-all duration-500 relative
-          ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-[28px]'} 
-          ${isActive ? 'shadow-[0_30px_80px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.15)] ring-1 ring-emerald-500/20' : 'shadow-[0_10px_40px_rgba(0,0,0,0.6)] grayscale-[0.2]'} 
-          bg-[#0a0a0c]/85 backdrop-blur-[40px] border border-white/10
+          ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-[24px]'} 
+          ${isActive ? 'shadow-[0_30px_80px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.2)] ring-1 ring-emerald-500/30' : 'shadow-[0_10px_40px_rgba(0,0,0,0.4)] grayscale-[0.2]'} 
+          bg-[#050505]/40 backdrop-blur-3xl border border-white/10
         `}
         style={{ 
           opacity,
@@ -115,7 +115,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
           </div>
 
           {/* Window Content Spatial */}
-          <div className="flex-1 overflow-hidden relative bg-[#050508]/40">
+          <div className="flex-1 overflow-hidden relative bg-transparent">
             {AppComponent ? (
               <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
                 <AppComponent windowId={windowState.id} />
