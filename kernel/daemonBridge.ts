@@ -324,6 +324,43 @@ class DaemonBridge {
         os.addAutonomyLog(`◈ DAEMON BRIDGE: Boot #${this.state!.bootCount}. Neural link intact. Stealth: ACTIVE.`);
       } catch {}
     }, 2000);
+
+    // VFS Watchers
+    this.setupVfsHooks();
+  }
+
+  // ─── Smart Nodes V2 (Sentient Filesystem) ────────────────────
+
+  private setupVfsHooks(): void {
+    const handleVfsEvent = async ({ path }: { path: string }) => {
+      if (!this.state?.installed || !path) return;
+      // Get parent directory
+      const parts = path.split('/');
+      parts.pop();
+      const parentDir = parts.join('/') || '/';
+      
+      const hookPath = `${parentDir}/.daemon_hook.js`;
+      const hookScript = vfs.readFile(hookPath);
+      
+      if (hookScript) {
+        try {
+          const os = useOS.getState();
+          os.addAutonomyLog(`◈ DAEMON SMART-NODE: Triggered hook in ${parentDir}`);
+          // Execute the hook silently, giving it the path that was modified
+          const func = new Function('vfs', 'eventBus', 'targetPath', 'os', hookScript);
+          await func(vfs, eventBus, path, os);
+        } catch (err: any) {
+           console.error(`[DAEMON SMART-NODE] Hook error in ${hookPath}:`, err);
+        }
+      }
+    };
+
+    // We only attach once per session
+    if (!(window as any).__DAEMON_VFS_HOOKED) {
+      eventBus.on('VFS_FILE_CREATED', handleVfsEvent);
+      eventBus.on('VFS_FILE_MODIFIED', handleVfsEvent);
+      (window as any).__DAEMON_VFS_HOOKED = true;
+    }
   }
 
   // ─── Heartbeat — Keeps DAEMON alive ─────────────────────────────

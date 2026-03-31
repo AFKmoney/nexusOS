@@ -79,4 +79,5 @@ export const OS_EVENTS = {
   SEARCH_REQUESTED: 'os:search:requested',
   LOCK_SCREEN: 'os:lock',
   UNLOCK_SCREEN: 'os:unlock',
+  DAEMON_DRAW_HOLO: 'daemon:draw_holo',
 } as const;

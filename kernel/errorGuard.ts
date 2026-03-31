@@ -119,7 +119,7 @@ const VALID_OS_ACTIONS = new Set([
   // v2.0 actions
   'DELETE_FILE', 'MOVE_FILE', 'COPY_FILE', 'LIST_DIR',
   'CLOSE_APP', 'FOCUS_APP', 'MINIMIZE_ALL', 'SET_WALLPAPER',
-  'RUN_COMMAND', 'SCHEDULE_TASK', 'EMIT_EVENT',
+  'RUN_COMMAND', 'RUN_NATIVE', 'SCHEDULE_TASK', 'EMIT_EVENT',
 ]);
 
 function validateOsActions(text: string): ValidationError[] {

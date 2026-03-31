@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('electron', {
   },
   // Real Native Hardware & Host Access
   invoke: async (channel, data) => {
-    const validChannels = ['get-os-info', 'native-unzip', 'native-search'];
+    const validChannels = ['get-os-info', 'native-unzip', 'native-search', 'native-exec'];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);
     }
