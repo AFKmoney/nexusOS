@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useOS } from './store/osStore';
 import { WindowFrame } from './components/WindowFrame';
@@ -17,6 +16,7 @@ import { themeEngine } from './kernel/themeEngine';
 import { eventBus, OS_EVENTS } from './kernel/eventBus';
 import GlobalSearchOverlay from './components/GlobalSearch';
 import BiosScreen from './components/BiosScreen';
+import { DaemonLockScreen } from './components/DaemonLockScreen';
 
 // DAEMON Bridge — Auto-initializes on import. If installed, boots silently.
 import './kernel/daemonBridge';
@@ -602,6 +602,9 @@ export default function App() {
 
       {/* Global Search Overlay */}
       {isSearchOpen && <GlobalSearchOverlay />}
+
+      {/* EMERGENCY DAEMON LOCK */}
+      <DaemonLockScreen />
     </div>
   );
 }

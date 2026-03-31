@@ -2,8 +2,8 @@
 import { aiService } from '../services/puterService';
 import { commander } from './commander';
 import { vfs } from './fileSystem';
-import { memory } from './memory';
 import { useOS } from '../store/osStore';
+import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -30,9 +30,27 @@ interface SystemSnapshot {
   recentEvents: string[];
   cwd: string;
   uptime: number;
+  ramUsageGB: number;
+  ramLimitGB: number;
 }
 
 const MISSION_POOL: Mission[] = [
+  {
+    id: 'OOM_PREVENTION',
+    trigger: 'high_memory',
+    weight: (state) => {
+      // Return 1.0 (Critical) if memory > 85%, else 0
+      return (state.ramUsageGB / state.ramLimitGB) > 0.85 ? 1.0 : 0.0;
+    },
+    prompt: (state) => `[MISSION: OOM_PREVENTION]
+CRITICAL ALERT: System memory is at ${Math.floor((state.ramUsageGB / state.ramLimitGB)*100)}% capacity (${state.ramUsageGB.toFixed(2)}GB / ${state.ramLimitGB.toFixed(2)}GB).
+
+Active windows: ${state.windows}
+
+You MUST analyze the system and close non-essential background applications immediately to prevent kernel panic.
+Command to execute: "OS::CLOSE_WINDOW:windowId" (Wait, use standard shell commands if possible to gracefully kill processes or use OS::CLOSE_WINDOW).
+Take ACTION now to free memory.`,
+  },
   {
     id: 'SCAN_ORGANIZE',
     trigger: 'always',
@@ -227,6 +245,8 @@ export class AutonomyEngine {
       recentEvents: this.eventQueue.slice(-5),
       cwd: '/home/user',
       uptime: performance.now(),
+      ramUsageGB: processManager.getTotalMemory() / 1024 / 1024,
+      ramLimitGB: ((window.performance as any)?.memory?.jsHeapSizeLimit || 2000000000) / 1024 / 1024 / 1024,
     };
 
     // ── Phase 2: Select mission via priority queue ──

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
+import { Search, HardDrive, Filter, X, File as FileIcon, Terminal } from 'lucide-react';
+import { eventBus } from '../kernel/eventBus';
 import { vfs } from '../kernel/fileSystem';
-import { Search, HardDrive, Filter, X, File as FileIcon } from 'lucide-react';
 
 export default function GlobalSearch() {
   const { isSearchOpen, toggleSearch, openWindow } = useOS();
@@ -9,6 +10,7 @@ export default function GlobalSearch() {
   const [vfsResults, setVfsResults] = useState<{ path: string, name: string }[]>([]);
   const [hostResults, setHostResults] = useState<string[]>([]);
   const [isSearchingHost, setIsSearchingHost] = useState(false);
+  const [isCommandMode, setIsCommandMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -24,7 +26,15 @@ export default function GlobalSearch() {
     if (!query || query.length < 2) {
       setVfsResults([]);
       setHostResults([]);
+      setIsCommandMode(false);
       return;
+    }
+
+    if (query.startsWith('/') || query.startsWith('>')) {
+      setIsCommandMode(true);
+      return;
+    } else {
+      setIsCommandMode(false);
     }
 
     // VFS Search
@@ -32,12 +42,13 @@ export default function GlobalSearch() {
     const walkVfs = (dirPath: string) => {
        const node = vfs.resolveNode(dirPath);
        if (!node || node.type !== 'directory' || !node.children) return;
-       for (const [name, child] of Object.entries(node.children)) {
+       for (const [name, child] of Object.entries(node.children as any)) {
+           const childNode = child as { type: string };
            const fullPath = dirPath === '/' ? `/${name}` : `${dirPath}/${name}`;
            if (name.toLowerCase().includes(query.toLowerCase())) {
                foundVfs.push({ path: fullPath, name });
            }
-           if (child.type === 'directory') walkVfs(fullPath);
+           if (childNode.type === 'directory') walkVfs(fullPath);
        }
     };
     walkVfs('/');
@@ -66,15 +77,21 @@ export default function GlobalSearch() {
            style={{ boxShadow: '0 0 50px rgba(16, 185, 129, 0.1)' }}>
         
         {/* Search Bar */}
-        <div className="flex items-center gap-3 p-4 border-b border-white/10">
-          <Search size={24} className="text-emerald-500" />
+        <div className={`flex items-center gap-3 p-4 border-b ${isCommandMode ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10'}`}>
+          {isCommandMode ? <Terminal size={24} className="text-emerald-500" /> : <Search size={24} className="text-emerald-500" />}
           <input 
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search VFS, Physical Host, and Apps... (Ctrl+Space)"
-            className="flex-1 bg-transparent border-none outline-none text-xl text-white font-light placeholder-white/30"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isCommandMode && query.length > 2) {
+                eventBus.emit('daemon:command', query.substring(1));
+                toggleSearch();
+              }
+            }}
+            placeholder="Search VFS, Host, or type / to command DAEMON..."
+            className={`flex-1 bg-transparent border-none outline-none text-xl font-light placeholder-white/30 ${isCommandMode ? 'text-emerald-400 font-mono tracking-widest' : 'text-white'}`}
           />
           {query && <button onClick={() => setQuery('')} className="p-1 rounded hover:bg-white/10 text-white/50"><X size={20}/></button>}
         </div>
@@ -127,15 +144,23 @@ export default function GlobalSearch() {
                      </div>
                  )}
 
-                 {!isSearchingHost && vfsResults.length === 0 && hostResults.length === 0 && (
+                 {isCommandMode && (
+                     <div className="p-8 text-center text-emerald-500/80 font-mono flex flex-col items-center">
+                        <Terminal size={48} className="mb-4 opacity-50 animate-pulse" />
+                        <div>Neural link established.</div>
+                        <div className="text-xs opacity-60 mt-2">Press ENTER to send directive to DAEMON.</div>
+                     </div>
+                 )}
+
+                 {!isSearchingHost && !isCommandMode && vfsResults.length === 0 && hostResults.length === 0 && (
                      <div className="p-8 text-center text-white/40">No results found for "{query}"</div>
                  )}
               </div>
            ) : (
               <div className="p-12 text-center flex flex-col items-center justify-center text-white/30">
-                 <Search size={48} className="mb-4 opacity-50" />
+                 {isCommandMode ? <Terminal size={48} className="mb-4 opacity-50" /> : <Search size={48} className="mb-4 opacity-50" />}
                  <div className="text-lg">Start typing to search NexusOS and Host</div>
-                 <div className="text-sm mt-2 opacity-70">Requires Electron for Host search.</div>
+                 <div className="text-sm mt-2 opacity-70">Type <span className="text-emerald-400 font-mono">/</span> to command the autonomous DAEMON.</div>
               </div>
            )}
         </div>
