@@ -1,6 +1,8 @@
 // ── Cron/Scheduler System ─────────────────────────────────────────────────
 // Allows kernel-level periodic task execution
 
+import { uuid } from '../utils/uuid';
+
 export interface CronJob {
   id: string;
   name: string;

@@ -3,6 +3,7 @@ import { localBrain } from '../services/localBrain';
 import { parseOsActions, ParsedOsAction } from './osManifest';
 import { vfs } from './fileSystem';
 import { memory } from './memory';
+import { useOS } from '../store/osStore';
 
 interface DaemonTool {
   name: string;
@@ -240,6 +241,179 @@ export class ToolForge {
             } catch (e: any) {
               result = `[OS::EXECUTE_JS ERROR] → ${e.message}`;
             }
+          }
+          break;
+        }
+
+        // ─── NEW OS ACTIONS (DAEMON v2.0) ─────────────────────────────
+
+        case 'DELETE_FILE': {
+          const [path] = action.args;
+          if (path) {
+            const success = vfs.delete(path);
+            result = success
+              ? `[OS::DELETE_FILE] → ✅ ${path} deleted`
+              : `[OS::DELETE_FILE] → ⚠ File not found: ${path}`;
+          }
+          break;
+        }
+
+        case 'MOVE_FILE': {
+          const rawArgs = action.args[0];
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const src = rawArgs.slice(0, colonIdx);
+            const dest = rawArgs.slice(colonIdx + 1);
+            const content = vfs.readFile(src);
+            if (content !== null) {
+              vfs.writeFile(dest, content);
+              vfs.delete(src);
+              memory.remember(`File moved: ${src} → ${dest}`, ['file', 'vfs']);
+              result = `[OS::MOVE_FILE] → ✅ ${src} → ${dest}`;
+            } else {
+              result = `[OS::MOVE_FILE] → ⚠ Source not found: ${src}`;
+            }
+          } else {
+            result = `[OS::MOVE_FILE] → ⚠ Format: OS::MOVE_FILE:/src/path:/dest/path`;
+          }
+          break;
+        }
+
+        case 'COPY_FILE': {
+          const rawArgs = action.args[0];
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const src = rawArgs.slice(0, colonIdx);
+            const dest = rawArgs.slice(colonIdx + 1);
+            const content = vfs.readFile(src);
+            if (content !== null) {
+              vfs.writeFile(dest, content);
+              result = `[OS::COPY_FILE] → ✅ ${src} copied to ${dest}`;
+            } else {
+              result = `[OS::COPY_FILE] → ⚠ Source not found: ${src}`;
+            }
+          } else {
+            result = `[OS::COPY_FILE] → ⚠ Format: OS::COPY_FILE:/src/path:/dest/path`;
+          }
+          break;
+        }
+
+        case 'LIST_DIR': {
+          const [path] = action.args;
+          const dirPath = path || '/home/user';
+          const items = vfs.listDir(dirPath) || [];
+          if (items.length > 0) {
+            const listing = items.map(item => {
+              const stat = vfs.stat(`${dirPath}/${item}`);
+              return stat?.type === 'directory' ? `📁 ${item}/` : `📄 ${item}`;
+            }).join('\n');
+            result = `[OS::LIST_DIR: ${dirPath}]\n${listing}`;
+          } else {
+            result = `[OS::LIST_DIR: ${dirPath}] → (empty directory)`;
+          }
+          break;
+        }
+
+        case 'CLOSE_APP': {
+          const [windowIdOrAppId] = action.args;
+          if (windowIdOrAppId) {
+            const osState = useOS.getState();
+            const win = osState.windows.find(
+              (w: any) => w.id === windowIdOrAppId || w.appId === windowIdOrAppId
+            );
+            if (win) {
+              osState.closeWindow(win.id);
+              result = `[OS::CLOSE_APP] → ✅ Closed ${win.title}`;
+            } else {
+              result = `[OS::CLOSE_APP] → ⚠ Window not found: ${windowIdOrAppId}`;
+            }
+          }
+          break;
+        }
+
+        case 'FOCUS_APP': {
+          const [appId] = action.args;
+          if (appId) {
+            const osState = useOS.getState();
+            const win = osState.windows.find((w: any) => w.appId === appId);
+            if (win) {
+              osState.focusWindow(win.id);
+              result = `[OS::FOCUS_APP] → ✅ Focused ${win.title}`;
+            } else {
+              // Open it if not already open
+              osState.openWindow(appId);
+              result = `[OS::FOCUS_APP] → ✅ Opened and focused ${appId}`;
+            }
+          }
+          break;
+        }
+
+        case 'MINIMIZE_ALL': {
+          const osState = useOS.getState();
+          osState.windows.forEach((w: any) => {
+            if (!w.isMinimized) osState.minimizeWindow(w.id);
+          });
+          result = `[OS::MINIMIZE_ALL] → ✅ All ${osState.windows.length} windows minimized`;
+          break;
+        }
+
+        case 'SET_WALLPAPER': {
+          const [wallpaperId] = action.args;
+          if (wallpaperId) {
+            useOS.getState().setWallpaper(wallpaperId);
+            result = `[OS::SET_WALLPAPER] → ✅ Wallpaper set to ${wallpaperId}`;
+          }
+          break;
+        }
+
+        case 'RUN_COMMAND': {
+          const [cmd] = action.args;
+          if (cmd) {
+            const { commander } = await import('./commander');
+            const output: string[] = [];
+            await commander.execute(
+              cmd,
+              (text, type) => { if (type === 'out') output.push(text); },
+              useOS.getState().kernelRules
+            );
+            result = `[OS::RUN_COMMAND: ${cmd}]\n${output.join('\n')}`;
+          }
+          break;
+        }
+
+        case 'SCHEDULE_TASK': {
+          const rawArgs = action.args[0];
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const interval = parseInt(rawArgs.slice(0, colonIdx));
+            const cmd = rawArgs.slice(colonIdx + 1);
+            if (interval > 0 && cmd) {
+              const { cronScheduler } = await import('./cronScheduler');
+              const { commander } = await import('./commander');
+              const jobId = cronScheduler.register(`daemon_task_${Date.now()}`, interval * 1000, () => {
+                commander.execute(cmd, () => {}, useOS.getState().kernelRules);
+              });
+              result = `[OS::SCHEDULE_TASK] → ✅ Task scheduled every ${interval}s (job: ${jobId})`;
+            }
+          } else {
+            result = `[OS::SCHEDULE_TASK] → ⚠ Format: OS::SCHEDULE_TASK:<seconds>:<command>`;
+          }
+          break;
+        }
+
+        case 'EMIT_EVENT': {
+          const rawArgs = action.args[0];
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const event = rawArgs.slice(0, colonIdx);
+            const data = rawArgs.slice(colonIdx + 1);
+            const { eventBus } = await import('./eventBus');
+            try {
+              eventBus.emit(event, JSON.parse(data));
+            } catch {
+              eventBus.emit(event, data);
+            }
+            result = `[OS::EMIT_EVENT] → ✅ Event "${event}" emitted`;
           }
           break;
         }

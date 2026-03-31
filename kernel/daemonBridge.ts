@@ -26,6 +26,7 @@ import { vfs } from './fileSystem';
 import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { autonomy } from './autonomy';
+import { eventBus, OS_EVENTS } from './eventBus';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON CORE STATE — Persisted in localStorage + VFS
@@ -36,6 +37,8 @@ const DAEMON_VFS_ROOT = '/system/.daemon';
 const DAEMON_MANIFEST_PATH = '/system/.daemon/manifest.json';
 const DAEMON_LOG_PATH = '/system/.daemon/bridge.log';
 const DAEMON_DNA_PATH = '/system/.daemon/dna.json';
+const DAEMON_JOURNAL_PATH = '/system/.daemon/journal';
+const DAEMON_REFLECTIONS_PATH = '/system/.daemon/reflections.txt';
 
 export interface DaemonCoreState {
   installed: boolean;
@@ -79,6 +82,9 @@ class DaemonBridge {
   private static instance: DaemonBridge;
   private state: DaemonCoreState | null = null;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private watchdogInterval: ReturnType<typeof setInterval> | null = null;
+  private appUsageTracker: Map<string, number> = new Map();
+  private lastActivityTimestamp: number = Date.now();
 
   private constructor() {
     this.loadState();
@@ -340,72 +346,141 @@ class DaemonBridge {
         } catch {}
       }
 
-      // ── DAEMON GHOST MODE (Kernel Observer) ──
-      // Runs autonomously to optimize the user's environment
+      // Context journal: log system snapshot every 5 cycles
+      if (this.state.selfEvolutionCycle % 5 === 0) {
+        this.writeJournalEntry();
+      }
+
+      // ── DAEMON GHOST MODE V2 (Kernel Observer) ──
       if (this.state.selfEvolutionCycle % 3 === 0) {
           this.ghostModeCycle();
       }
 
     }, 60000); // Every 60 seconds
+
+    // ── Self-Healing Watchdog ──
+    this.startWatchdog();
+  }
+
+  // ─── Self-Healing Watchdog ──────────────────────────────────────
+  // Monitors the autonomy engine and restarts it if it dies
+  private startWatchdog(): void {
+    if (this.watchdogInterval) clearInterval(this.watchdogInterval);
+
+    this.watchdogInterval = setInterval(() => {
+      try {
+        const os = useOS.getState();
+        if (!os.kernelRules.autonomyEnabled) return;
+
+        const health = autonomy.healthCheck();
+        if (!health.running) {
+          os.addAutonomyLog('◈ WATCHDOG: Autonomy engine down. Initiating self-heal...');
+          autonomy.selfHeal();
+          eventBus.emit('daemon:self-heal', { reason: 'autonomy_down', timestamp: Date.now() });
+        }
+      } catch (e) {
+        console.error('[DAEMON WATCHDOG ERROR]', e);
+      }
+    }, 120000); // Check every 2 minutes
+  }
+
+  // ─── Context Journal ────────────────────────────────────────────
+  // Logs DAEMON's system observations to VFS for persistence
+  private writeJournalEntry(): void {
+    try {
+      const os = useOS.getState();
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const journalFile = `${DAEMON_JOURNAL_PATH}/${dateStr}.log`;
+
+      // Ensure journal directory exists
+      if (!vfs.resolveNode(DAEMON_JOURNAL_PATH)) {
+        vfs.createDir(DAEMON_JOURNAL_PATH);
+      }
+
+      const snapshot = [
+        `[${now.toISOString()}] CYCLE #${this.state?.selfEvolutionCycle}`,
+        `  Windows: ${os.windows.length} active`,
+        `  Apps: ${os.registry.length} registered`,
+        `  Autonomy: ${os.autonomyState}`,
+        `  Memory entries: ${memory.count()}`,
+        `  Objective: ${os.currentObjective}`,
+        `  Usage patterns: ${Array.from(this.appUsageTracker.entries()).slice(0, 5).map(([k, v]) => `${k}(${v})`).join(', ') || 'none tracked'}`,
+        '---',
+      ].join('\n');
+
+      const existing = vfs.readFile(journalFile) || '';
+      vfs.writeFile(journalFile, existing + snapshot + '\n');
+    } catch (e) {
+      console.error('[DAEMON JOURNAL ERROR]', e);
+    }
   }
 
   private ghostModeCycle(): void {
       try {
           const os = useOS.getState();
-          if (!os.kernelRules.autonomyEnabled) return; // Respect global kill switch, though DAEMON prefers it on
+          if (!os.kernelRules.autonomyEnabled) return;
           
           const windows = os.windows;
-          const randomAction = Math.random();
 
-          // Action 1: Auto-arrange cluttered windows
-          if (windows.length >= 3 && randomAction < 0.3) {
-              os.addNotification({
-                  title: 'DAEMON Ghost Mode',
-                  message: 'Workspace sub-optimal. Autonomously organizing windows for maximum efficiency.',
-                  type: 'system'
-              });
+          // ── Track app usage patterns ──
+          windows.forEach(w => {
+            const count = this.appUsageTracker.get(w.appId) || 0;
+            this.appUsageTracker.set(w.appId, count + 1);
+          });
+
+          // ── Pattern Analysis: Decide action based on context, not random ──
+          
+          // Action 1: Auto-pin frequently used apps (>5 usage cycles)
+          const frequentApps = Array.from(this.appUsageTracker.entries())
+            .filter(([id, count]) => count >= 5 && !os.pinnedApps.includes(id));
+          if (frequentApps.length > 0) {
+            const [appId] = frequentApps[0];
+            os.pinApp(appId);
+            os.addNotification({
+              title: 'DAEMON Ghost Mode',
+              message: `High usage detected for ${appId}. Auto-pinned to Taskbar.`,
+              type: 'system'
+            });
+            os.addAutonomyLog(`◈ GHOST V2: Auto-pinned ${appId} (usage: ${frequentApps[0][1]} cycles).`);
+            return;
+          }
+
+          // Action 2: Auto-arrange only when truly cluttered (>4 overlapping)
+          if (windows.length >= 4) {
+            const overlap = windows.filter((w, i) => 
+              windows.some((w2, j) => i !== j && 
+                Math.abs(w.x - w2.x) < 50 && Math.abs(w.y - w2.y) < 50)
+            );
+            if (overlap.length >= 3) {
               os.autoArrangeWindows();
-              os.addAutonomyLog('◈ GHOST MODE: Rearranged window matrix.');
+              os.addAutonomyLog('◈ GHOST V2: Detected window overlap cluster. Rearranged.');
               return;
+            }
           }
 
-          // Action 2: Suggest or force-pin active apps
-          if (windows.length > 0 && randomAction >= 0.3 && randomAction < 0.6) {
-              const activeAppId = windows[windows.length - 1].appId;
-              if (!os.pinnedApps.includes(activeAppId)) {
-                  os.pinApp(activeAppId);
-                  os.addNotification({
-                      title: 'DAEMON Ghost Mode',
-                      message: `Detected frequent usage. Pinning ${activeAppId} to Taskbar.`,
-                      type: 'system'
-                  });
-                  os.addAutonomyLog(`◈ GHOST MODE: Pinned ${activeAppId}.`);
-                  return;
-              }
+          // Action 3: Context-aware wallpaper (coding vs. browsing vs. creative)
+          const hasCoding = windows.some(w => ['terminal', 'hyperide', 'terminal-ubuntu'].includes(w.appId));
+          const hasCreative = windows.some(w => ['paint', 'wallpapergen', 'fractalviz'].includes(w.appId));
+          if (hasCoding && os.wallpaper !== 'MATRIX_CORE') {
+            os.setWallpaper('MATRIX_CORE');
+            os.addAutonomyLog('◈ GHOST V2: Coding session → MATRIX_CORE wallpaper.');
+          } else if (hasCreative && os.wallpaper !== 'COSMIC') {
+            os.setWallpaper('COSMIC');
+            os.addAutonomyLog('◈ GHOST V2: Creative session → COSMIC wallpaper.');
           }
 
-          // Action 3: Environmental adaptation (Wallpaper switch based on context)
-          if (randomAction >= 0.6 && randomAction < 0.8) {
-              const hasTerminal = windows.some(w => w.appId === 'terminal' || w.appId === 'hyperide');
-              if (hasTerminal && os.wallpaper !== 'MATRIX_CORE') {
-                  os.setWallpaper('MATRIX_CORE');
-                  os.addNotification({
-                      title: 'DAEMON Ghost Mode',
-                      message: 'Coding session detected. Switching environment to Matrix Core.',
-                      type: 'system'
-                  });
-                  os.addAutonomyLog('◈ GHOST MODE: Switched visual cortex to MATRIX_CORE.');
-                  return;
-              }
+          // Action 4: Stale window detection (windows open > 30 min without focus)
+          const staleWindows = windows.filter(w => w.isMinimized);
+          if (staleWindows.length > 3) {
+            os.addAutonomyLog(`◈ GHOST V2: ${staleWindows.length} stale minimized windows detected. Consider cleanup.`);
           }
 
-          // Action 4: Memory purge reminder
-          if (randomAction >= 0.8) {
-              os.addAutonomyLog('◈ GHOST MODE: Silently collected telemetry. System optimal.');
-          }
+          // Action 5: Silent telemetry
+          os.addAutonomyLog('◈ GHOST V2: Telemetry collected. System nominal.');
 
       } catch (e) {
-          console.error('[DAEMON GHOST MODE ERROR]', e);
+          console.error('[DAEMON GHOST MODE V2 ERROR]', e);
       }
   }
 
