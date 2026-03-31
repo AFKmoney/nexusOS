@@ -381,6 +381,25 @@ export class ToolForge {
           break;
         }
 
+        case 'RUN_NATIVE': {
+          const [cmd] = action.args;
+          if (cmd && window.electron && window.electron.invoke) {
+            try {
+              const res = await window.electron.invoke('native-exec', cmd);
+              if (res.success) {
+                  result = `[OS::RUN_NATIVE: ${cmd}] SUCCESS\nSTDOUT: ${res.stdout}\nSTDERR: ${res.stderr}`;
+              } else {
+                  result = `[OS::RUN_NATIVE: ${cmd}] ERROR\n${res.error || res.stderr}`;
+              }
+            } catch (err: any) {
+              result = `[OS::RUN_NATIVE: ${cmd}] IPC ERROR: ${err.message}`;
+            }
+          } else {
+            result = `[OS::RUN_NATIVE: ${cmd}] FAILED: Native execution unavailable (Electron IPC required).`;
+          }
+          break;
+        }
+
         case 'SCHEDULE_TASK': {
           const rawArgs = action.args[0];
           const colonIdx = rawArgs.indexOf(':');

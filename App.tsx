@@ -17,6 +17,7 @@ import { eventBus, OS_EVENTS } from './kernel/eventBus';
 import GlobalSearchOverlay from './components/GlobalSearch';
 import BiosScreen from './components/BiosScreen';
 import { DaemonLockScreen } from './components/DaemonLockScreen';
+import { NeuralHoloUI } from './components/NeuralHoloUI';
 
 // DAEMON Bridge — Auto-initializes on import. If installed, boots silently.
 import './kernel/daemonBridge';
@@ -605,6 +606,9 @@ export default function App() {
 
       {/* EMERGENCY DAEMON LOCK */}
       <DaemonLockScreen />
+
+      {/* HOLO UI INJECTION (Hardware Overlord Mode) */}
+      <NeuralHoloUI />
     </div>
   );
 }

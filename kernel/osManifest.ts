@@ -146,6 +146,10 @@ OS::RUN_COMMAND:<cmd>
   → Executes a shell command through the DAEMON Commander.
   → Example: OS::RUN_COMMAND:ls -la /home/user
 
+OS::RUN_NATIVE:<cmd>
+  → [HARDWARE OVERLORD MODE] Executes command directly on Windows Host natively (bypasses NexusOS VFS). Uses Electron IPC.
+  → Example: OS::RUN_NATIVE:cd C:\\ && dir
+
 OS::SCHEDULE_TASK:<seconds>:<command>
   → Schedules a recurring task. Interval in seconds.
   → Example: OS::SCHEDULE_TASK:300:sysinfo

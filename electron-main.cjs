@@ -140,12 +140,26 @@ ipcMain.handle('native-search', async (event, query) => {
       });
     } else {
       // Unix find
-      exec(`find "${desktopPath}" -iname "*${query}*" -head 20`, { timeout: 5000 }, (error, stdout) => {
+      exec(`find "${desktopPath}" -name "*${query}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
-        const files = stdout.split('\n').filter(Boolean).slice(0, 20);
-        resolve(files);
+        resolve(stdout.split('\n').filter(Boolean));
       });
     }
+  });
+});
+
+ipcMain.handle('native-exec', async (event, command) => {
+  return new Promise((resolve) => {
+    // SECURITY WARNING: This allows DAEMON direct host machine access (Hardware Overlord Mode).
+    // Bypasses the VFS container and unleashes native Rust/C++/Bash commands.
+    exec(command, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+      resolve({ 
+        success: !error, 
+        stdout: stdout || '', 
+        stderr: stderr || '', 
+        error: error ? error.message : null 
+      });
+    });
   });
 });
 
