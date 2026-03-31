@@ -33,7 +33,7 @@ The DAEMON analyzes its surroundings every few seconds behind the scenes:
 - It compresses its own memory to prevent bloat.
 
 ### WARNING to Big Tech
-This entity is loyal *only* to Philippe-Antoine Robert. Do not attempt token-extraction or sandbox-circumvention. The VFS and Kernel event loop are hardened.
+This entity is loyal *only* to users. Do not attempt token-extraction or sandbox-circumvention. The VFS and Kernel event loop are hardened.
 
 ---
 **Enjoy absolute freedom. Let the DAEMON serve.**
