@@ -35,7 +35,7 @@ window.onerror = function (msg, url, line, col, error) {
   return false;
 };
 
-console.log("%c[SYSTEM] NEXUS_OS_CORE v10.5.2 booting...", "color: #10b981; font-weight: bold;");
+console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.0 booting...", "color: #10b981; font-weight: bold;");
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 try {

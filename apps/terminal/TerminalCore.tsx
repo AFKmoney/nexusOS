@@ -6,7 +6,7 @@ import { Sparkles, ChevronRight } from 'lucide-react';
 
 const INITIAL_MESSAGES = [
   { type: 'out' as const, text: '╔══════════════════════════════════════╗' },
-  { type: 'out' as const, text: '║  NEXUS OS  ·  Terminal v11.0         ║' },
+  { type: 'out' as const, text: '║  NEXUS OS  ·  Terminal v2.0          ║' },
   { type: 'out' as const, text: '║  DAEMON Neural Shell Active          ║' },
   { type: 'out' as const, text: '╚══════════════════════════════════════╝' },
   { type: 'out' as const, text: 'Type "help" for available commands.' },
@@ -95,9 +95,9 @@ export default function TerminalCore() {
         '   ██║╚███║███████╗██╔╝╚██╗╚██████╔╝███████║',
         '   ╚═╝ ╚══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝',
         '',
-        `   OS:       NexusOS v10.5 DAEMON Edition`,
+        `   OS:       NexusOS v2.0 DAEMON Edition`,
         `   Kernel:   DAEMON v2.0 (AutonomyEngine + LocalBrain)`,
-        `   Shell:    Neural Shell v11.0`,
+        `   Shell:    NXSH v2.0 (30+ commands)`,
         `   CPU:      ${navigator.hardwareConcurrency || '?'} cores`,
         `   Memory:   ${Math.round((performance as any)?.memory?.totalJSHeapSize / 1024 / 1024) || '?'} MB`,
         `   Apps:     ${registry.length} installed`,
@@ -221,7 +221,13 @@ export default function TerminalCore() {
     // Tab completion
     if (e.key === 'Tab') {
       e.preventDefault();
-      const cmds = ['help', 'clear', 'ls', 'cd', 'cat', 'write', 'rm', 'mkdir', 'inspect', 'build', 'forge', 'open', 'close', 'ps', 'sysinfo', 'history', 'neofetch', 'remember', 'recall', 'alias'];
+      const cmds = [
+        'help', 'clear', 'ls', 'cd', 'cat', 'write', 'rm', 'mkdir', 'inspect',
+        'build', 'forge', 'open', 'close', 'ps', 'sysinfo', 'history', 'neofetch',
+        'remember', 'recall', 'alias', 'grep', 'find', 'head', 'tail', 'wc',
+        'cp', 'mv', 'touch', 'echo', 'pwd', 'whoami', 'uptime', 'date', 'env',
+        'export', 'hostname', 'man', 'df', 'du', 'tree', 'diff', 'chmod', 'kill'
+      ];
       const match = cmds.find(c => c.startsWith(input.toLowerCase()) && c !== input.toLowerCase());
       if (match) setInput(match);
     }

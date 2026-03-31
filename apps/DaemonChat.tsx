@@ -181,7 +181,7 @@ Only use this when specifically asked to code or create a file.
               DAEMON
             </div>
             <div className="text-xs text-zinc-500 truncate">
-              Local Engine · v11.0 · Autonomous Mode
+              Local Engine · v2.0 · Autonomous Mode
             </div>
           </div>
         </div>

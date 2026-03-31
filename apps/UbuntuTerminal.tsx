@@ -257,7 +257,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">user</span>@<span class="text-[#E95420] font-bold">nexus-ubuntu</span></div>' });
         print('<div>-----------------</div>');
         print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">OS</span>: Ubuntu 22.04.3 LTS x86_64</div>' });
-        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Host</span>: Nexus VFS Subsystem v10.5</div>' });
+        print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Host</span>: Nexus VFS Subsystem v2.0</div>' });
         print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Kernel</span>: 5.15.0-89-generic</div>' });
         print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Uptime</span>: 1 hour, 23 mins</div>' });
         print({ type: 'html', content: '<div><span class="text-[#E95420] font-bold">Packages</span>: ' + escapeHtml(installedPackages.length.toString()) + ' (dpkg)</div>' });

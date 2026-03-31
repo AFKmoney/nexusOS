@@ -29,7 +29,7 @@ const INITIAL_FS: { [key: string]: FileNode } = {
                 name: 'ReadMe.txt',
                 type: 'file',
                 permissions: 'rw-',
-                content: 'Welcome to Aion OS v10.\nAI Core is now recursive. Try "Refactor the Terminal" in Neural Forge.',
+                content: 'Welcome to NexusOS v2.0.\nDAEMON AI Core is now recursive. Try "Refactor the Terminal" in Neural Forge.',
                 created: Date.now(),
                 modified: Date.now()
               }
@@ -58,7 +58,7 @@ const INITIAL_FS: { [key: string]: FileNode } = {
         name: 'kernel.log',
         type: 'file',
         permissions: 'r--',
-        content: '[BOOT] Recursive Kernel v10.0 Initialized.\n[INFO] AI Self-Access Granted.',
+        content: '[BOOT] DAEMON Kernel v2.0 Initialized.\n[INFO] AI Self-Access Granted.',
         created: Date.now(),
         modified: Date.now()
       },
