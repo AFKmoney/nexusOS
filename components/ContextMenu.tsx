@@ -89,6 +89,26 @@ export default function ContextMenu() {
                <MenuItem icon={Trash2} label="Uninstall Node" onClick={() => {}} danger />
             </>
         )}
+
+        {contextMenu.targetType === 'window' && (
+            <>
+               <div className="px-4 py-2 text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] flex justify-between">
+                 <span>{contextMenu.appId?.toUpperCase() || 'NODE'}</span>
+                 <span className="text-emerald-500">ACTIVE</span>
+               </div>
+               {contextMenu.appId && (
+                 <>
+                   <MenuItem icon={ExternalLink} label={`New ${contextMenu.appId}`} onClick={() => openWindow(contextMenu.appId!)} />
+                   <MenuItem icon={Zap} label="Neural Inspect" onClick={() => openWindow('forge', { autoPrompt: `Analyze window instance of ${contextMenu.appId}` })} />
+                   <Divider />
+                 </>
+               )}
+               <MenuItem icon={Minimize} label="Minimize" onClick={() => useOS.getState().minimizeWindow(contextMenu.targetId!)} />
+               <MenuItem icon={Maximize2} label="Toggle Maximize" onClick={() => useOS.getState().toggleMaximizeWindow(contextMenu.targetId!)} />
+               <Divider />
+               <MenuItem icon={X} label="Terminate instance" onClick={() => { closeWindow(contextMenu.targetId!); closeContextMenu(); }} danger />
+            </>
+        )}
     </div>
   );
 }
