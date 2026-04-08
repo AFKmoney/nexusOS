@@ -56,7 +56,7 @@ export default function StartMenu() {
 
   return (
      <div 
-      className="start-menu fixed bottom-20 left-6 z-[9990] w-[680px] max-w-[calc(100vw-48px)] h-[760px] max-h-[calc(85vh-80px)] bg-[#050508]/80 backdrop-blur-[60px] border border-white/10 rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 zoom-in-95 duration-500 ring-1 ring-white/10"
+      className="start-menu fixed bottom-20 left-6 z-[9990] w-[860px] max-w-[calc(100vw-48px)] h-[820px] max-h-[calc(90vh-80px)] bg-[#050508]/80 backdrop-blur-[60px] border border-white/10 rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 zoom-in-95 duration-500 ring-1 ring-white/10"
       onClick={(e) => e.stopPropagation()} 
     >
       {/* Background Decorative Glows */}

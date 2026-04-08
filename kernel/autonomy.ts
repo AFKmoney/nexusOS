@@ -2,6 +2,7 @@
 import { aiService } from '../services/puterService';
 import { commander } from './commander';
 import { vfs } from './fileSystem';
+import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';

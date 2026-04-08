@@ -42,6 +42,14 @@ const INITIAL_FS: { [key: string]: FileNode } = {
               created: Date.now(),
               modified: Date.now(),
               children: {}
+          },
+          Wallpapers: {
+              name: 'Wallpapers',
+              type: 'directory',
+              permissions: 'rwx',
+              created: Date.now(),
+              modified: Date.now(),
+              children: {}
           }
         }
       }
@@ -54,6 +62,14 @@ const INITIAL_FS: { [key: string]: FileNode } = {
     created: Date.now(),
     modified: Date.now(),
     children: {
+      wallpapers: {
+          name: 'wallpapers',
+          type: 'directory',
+          permissions: 'r-x',
+          created: Date.now(),
+          modified: Date.now(),
+          children: {}
+      },
       'kernel.log': {
         name: 'kernel.log',
         type: 'file',

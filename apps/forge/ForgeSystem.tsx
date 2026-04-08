@@ -62,26 +62,29 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
 
     setStatus('INSTALLING');
 
-    const appId = `forge_${Date.now()}`;
-    const appDir = `/system/apps/${appId}`;
-    vfs.createDir(appDir);
-
+    const timestamp = Date.now();
     const cleanName = prompt
       .replace(/^(build|create|make|forge)\s+/i, '')
       .replace(/['":]/g, '').trim();
     const manifestName = cleanName.split(' ').slice(0, 4).join(' ').slice(0, 25) || 'Forged App';
+    
+    // Save to user Apps directory
+    const appsDir = `/home/user/Apps`;
+    if (!vfs.resolveNode(appsDir)) vfs.createDir(appsDir);
+    
+    const fileName = `${manifestName.replace(/\s+/g, '_')}_${timestamp}.html`;
+    const filePath = `${appsDir}/${fileName}`;
+    vfs.writeFile(filePath, content);
 
+    const appId = `forge_${timestamp}`;
     const manifest = {
       id: appId,
       name: manifestName,
       icon: 'box',
       defaultSize: { width: 960, height: 720 },
       isCustom: true,
-      sourcePath: `${appDir}/index.html`
+      sourcePath: filePath
     };
-
-    vfs.writeFile(`${appDir}/manifest.json`, JSON.stringify(manifest));
-    vfs.writeFile(`${appDir}/index.html`, content);
 
     registerCustomApp({
       ...manifest,
@@ -91,11 +94,11 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     });
 
     // Remember the creation for AI context
-    memory.remember(`Created app: "${manifestName}" — ${prompt}`, ['forge', 'app', 'created']);
+    memory.remember(`Created app: "${manifestName}" — ${prompt} (saved to ${filePath})`, ['forge', 'app', 'created']);
 
     addNotification({
       title: '✅ App Installed',
-      message: `"${manifestName}" is now in your Start Menu.`,
+      message: `"${manifestName}" saved to ${filePath} and added to menu.`,
       type: 'success'
     });
 

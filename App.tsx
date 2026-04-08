@@ -18,6 +18,7 @@ import GlobalSearchOverlay from './components/GlobalSearch';
 import BiosScreen from './components/BiosScreen';
 import { DaemonLockScreen } from './components/DaemonLockScreen';
 import { NeuralHoloUI } from './components/NeuralHoloUI';
+import { WALLPAPER_LIBRARY } from './kernel/wallpaperLibrary';
 
 // DAEMON Bridge — Auto-initializes on import. If installed, boots silently.
 import './kernel/daemonBridge';
@@ -342,6 +343,29 @@ export default function App() {
   useEffect(() => {
     const homeDir = `/home/${currentUser?.id || 'user'}/Desktop`;
     if (!vfs.resolveNode(homeDir)) vfs.createDir(homeDir);
+    
+    // Ensure Wallpaper directories exist
+    const wallDir = `/home/${currentUser?.id || 'user'}/Wallpapers`;
+    if (!vfs.resolveNode(wallDir)) vfs.createDir(wallDir);
+    if (!vfs.resolveNode('/system/wallpapers')) vfs.createDir('/system/wallpapers');
+
+    // Populate system wallpapers from library
+    WALLPAPER_LIBRARY.forEach(wp => {
+      const path = `/system/wallpapers/${wp.id}.html`;
+      if (!vfs.resolveNode(path) && (wp.code.startsWith('<!DOCTYPE') || wp.code.startsWith('<html'))) {
+        vfs.writeFile(path, wp.code);
+      }
+    });
+
+    // Re-register persisted custom apps
+    const { customApps, registerCustomApp } = useOS.getState();
+    customApps.forEach(app => {
+      // Avoid double registration if already in registry
+      if (!useOS.getState().registry.find(r => r.id === app.id)) {
+        registerCustomApp(app);
+      }
+    });
+
     themeEngine.apply();
     bindOsStore(() => ({ ...useOS.getState(), windows: useOS.getState().windows }));
 
@@ -415,19 +439,62 @@ export default function App() {
   };
 
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
-    // Spatial boundary detection
     const target = e.target as HTMLElement;
-    if (
-      target.closest('.taskbar') || 
-      target.closest('.start-menu') || 
-      target.closest('.window-frame') ||
-      target.closest('.context-menu')
-    ) {
-      return; 
-    }
     
+    // 1. Text Selection or Input (Highest Priority)
+    const selection = window.getSelection()?.toString();
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    
+    if (selection || isInput) {
+      e.preventDefault();
+      e.stopPropagation();
+      openContextMenu({ 
+        isOpen: true, 
+        x: e.clientX, 
+        y: e.clientY, 
+        targetType: 'text',
+        textSelection: selection || undefined,
+        textElement: isInput ? (target as HTMLTextAreaElement) : undefined
+      });
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
+
+    // 2. Taskbar Detection
+    if (target.closest('.taskbar')) {
+      openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'taskbar' });
+      return;
+    }
+
+    // 3. Desktop Icon Detection
+    const iconEl = target.closest('[data-vfs-path]') as HTMLElement;
+    if (iconEl) {
+      const path = iconEl.getAttribute('data-vfs-path');
+      if (path) {
+        openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: path });
+        return;
+      }
+    }
+
+    // 4. Window Frame Detection (Anywhere inside the window)
+    const windowEl = target.closest('.window-frame') as HTMLElement;
+    if (windowEl) {
+      const windowId = windowEl.getAttribute('data-window-id');
+      if (windowId) {
+        openContextMenu({ 
+          isOpen: true, 
+          x: e.clientX, 
+          y: e.clientY, 
+          targetType: 'window',
+          targetId: windowId
+        });
+        return;
+      }
+    }
+
+    // 5. Default: Desktop Background
     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'desktop' });
   };
 
@@ -528,6 +595,21 @@ export default function App() {
     </div>
   );
 
+  const getWallpaperContent = () => {
+    if (PROCEDURAL_WALLPAPERS[wallpaper]) return PROCEDURAL_WALLPAPERS[wallpaper];
+    if (wallpaper.startsWith('<!DOCTYPE') || wallpaper.startsWith('<html')) return wallpaper;
+    if (wallpaper.startsWith('/')) {
+      const file = vfs.readFile(wallpaper);
+      if (file) return file;
+    }
+    // Fallback: check wallpaper library by ID
+    const preset = WALLPAPER_LIBRARY.find(p => p.id === wallpaper);
+    if (preset && (preset.code.startsWith('<!DOCTYPE') || preset.code.startsWith('<html'))) return preset.code;
+    return null;
+  };
+
+  const wallpaperContent = getWallpaperContent();
+
   return (
     <div
       className="h-screen w-screen overflow-hidden relative"
@@ -535,9 +617,9 @@ export default function App() {
       onContextMenu={handleGlobalContextMenu}
     >
       {/* Wallpaper Layer */}
-      {(PROCEDURAL_WALLPAPERS[wallpaper] || wallpaper.startsWith('<!DOCTYPE') || wallpaper.startsWith('<html')) ? (
+      {wallpaperContent ? (
         <iframe
-          srcDoc={PROCEDURAL_WALLPAPERS[wallpaper] || wallpaper}
+          srcDoc={wallpaperContent}
           className="absolute inset-0 w-full h-full border-none pointer-events-none"
         />
       ) : (
@@ -574,10 +656,7 @@ export default function App() {
                 onDragStart={(e) => { e.dataTransfer.setData('text/plain', `/home/${currentUser?.id || 'user'}/Desktop/${name}`); }}
                 className="flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group"
                 onDoubleClick={() => handleFileOpen(`/home/${currentUser?.id || 'user'}/Desktop/${name}`)}
-                onContextMenu={(e) => {
-                  e.preventDefault(); e.stopPropagation();
-                  openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: `/home/${currentUser?.id || 'user'}/Desktop/${name}` });
-                }}
+                data-vfs-path={`/home/${currentUser?.id || 'user'}/Desktop/${name}`}
               >
                 <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                   {getSmartIcon(`/home/${currentUser?.id || 'user'}/Desktop/${name}`, 24)}
