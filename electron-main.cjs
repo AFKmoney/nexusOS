@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain } = require('electron');
+const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const os = require('os');
@@ -112,14 +112,19 @@ ipcMain.handle('get-os-info', async () => {
 });
 
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
+  // Basic path sanitization to prevent injection
+  const sanitize = (p) => p.replace(/['";&|]/g, '');
+  const s = sanitize(source);
+  const d = sanitize(dest);
+
   return new Promise((resolve, reject) => {
     if (os.platform() === 'win32') {
-      exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
+      exec(`powershell -command "Expand-Archive -Path '${s}' -DestinationPath '${d}' -Force"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
         else resolve({ success: true });
       });
     } else {
-      exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
+      exec(`unzip -o "${s}" -d "${d}"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
         else resolve({ success: true });
       });
@@ -130,17 +135,16 @@ ipcMain.handle('native-unzip', async (event, { source, dest }) => {
 ipcMain.handle('native-search', async (event, query) => {
   return new Promise((resolve) => {
     if (!query) return resolve([]);
+    const q = query.replace(/[^a-zA-Z0-9._-]/g, ''); // Very strict sanitization for search
     const desktopPath = path.join(os.homedir(), 'Desktop');
     if (os.platform() === 'win32') {
-      // Find matching files in Desktop
-      exec(`dir "${desktopPath}\\*${query}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
+      exec(`dir "${desktopPath}\\*${q}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
-        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20); // max 20 results
+        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20);
         resolve(files);
       });
     } else {
-      // Unix find
-      exec(`find "${desktopPath}" -name "*${query}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
+      exec(`find "${desktopPath}" -name "*${q}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
         resolve(stdout.split('\n').filter(Boolean));
       });
@@ -149,9 +153,24 @@ ipcMain.handle('native-search', async (event, query) => {
 });
 
 ipcMain.handle('native-exec', async (event, command) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  
+  // MANDATORY USER CONFIRMATION (P0 Audit Fix)
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'warning',
+    title: 'Security Alert: Native Execution',
+    message: 'A request was made to execute a native command on your host system.',
+    detail: `Command: ${command}\n\nThis could be dangerous. Do you want to allow this?`,
+    buttons: ['Deny', 'Allow'],
+    defaultId: 0,
+    cancelId: 0
+  });
+
+  if (response !== 1) {
+    return { success: false, error: 'User denied native execution request.' };
+  }
+
   return new Promise((resolve) => {
-    // SECURITY WARNING: This allows DAEMON direct host machine access (Hardware Overlord Mode).
-    // Bypasses the VFS container and unleashes native Rust/C++/Bash commands.
     exec(command, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       resolve({ 
         success: !error, 
@@ -165,7 +184,7 @@ ipcMain.handle('native-exec', async (event, command) => {
 
 app.whenReady().then(() => {
   // Start bridge BEFORE creating window
-  startBridgeServer();
+  // startBridgeServer(); // TODO: Re-enable once daemon-bridge-server.cjs is implemented
   createWindow();
 
   app.on('activate', () => {

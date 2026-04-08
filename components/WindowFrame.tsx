@@ -7,6 +7,43 @@ import { getSmartIcon } from '../utils/smartIcons';
 import { sounds } from '../kernel/sounds';
 import { ErrorBoundary } from './ErrorBoundary';
 
+const VfsAppRunner: React.FC<{ sourcePath: string }> = ({ sourcePath }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [content, setContent] = useState<string | null>(null);
+
+  useEffect(() => {
+    const file = vfs.readFile(sourcePath);
+    if (file) setContent(file);
+  }, [sourcePath]);
+
+  useEffect(() => {
+    if (content && iframeRef.current?.contentDocument) {
+      const doc = iframeRef.current.contentDocument;
+      doc.open();
+      doc.write(content);
+      doc.close();
+    }
+  }, [content]);
+
+  if (!content) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center gap-4 bg-black/20">
+        <Loader2 size={32} className="text-emerald-500 animate-spin opacity-40" />
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600">Loading App Node...</span>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      ref={iframeRef}
+      className="w-full h-full border-none bg-[#050508]"
+      sandbox="allow-scripts allow-modals allow-forms allow-same-origin"
+      title="VFS App Runner"
+    />
+  );
+};
+
 export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => {
   const { 
     closeWindow, focusWindow, minimizeWindow, toggleMaximizeWindow, 
@@ -64,6 +101,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
       className={`window-frame transition-opacity duration-300 ${isClosing ? 'opacity-0 scale-95' : 'opacity-100'}`}
     >
       <div 
+        data-window-id={windowState.id}
         className={`flex flex-col w-full h-full overflow-hidden transition-all duration-500 relative
           ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-[24px]'} 
           ${isActive ? 'shadow-[0_30px_80px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.2)] ring-1 ring-emerald-500/30' : 'shadow-[0_10px_40px_rgba(0,0,0,0.4)] grayscale-[0.2]'} 
@@ -120,6 +158,8 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
               <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
                 <AppComponent windowId={windowState.id} />
               </ErrorBoundary>
+            ) : app?.sourcePath ? (
+              <VfsAppRunner sourcePath={app.sourcePath} />
             ) : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800"><Box size={48} className="opacity-10 mb-4 animate-pulse" /><span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span></div>}
             
             {/* Focus Overlay */}

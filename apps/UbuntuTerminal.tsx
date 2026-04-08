@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { vfs } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
 import { Info, Terminal as TerminalIcon } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 type TerminalLine = { type: 'text'; content: string } | { type: 'html'; content: string };
 
@@ -332,7 +333,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
             {line.type === 'text' ? (
               line.content || ' '
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: line.content || ' ' }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(line.content || ' ') }} />
             )}
           </div>
         ))}

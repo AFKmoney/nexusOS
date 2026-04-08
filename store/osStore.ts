@@ -55,7 +55,8 @@ interface OSState {
   removeNotification: (id: string) => void;
   setAutonomyState: (s: any) => void;
   addAutonomyLog: (log: string) => void;
-  setCurrentObjective: (obj: string) => void;
+  wallpaper: string;
+  customApps: AppManifest[];
   setWallpaper: (url: string) => void;
   setAccentColor: (color: string) => void;
   toggleStartMenu: () => void;
@@ -109,6 +110,7 @@ export const useOS = create<OSState>()(
       clipboard: null,
       wallpaper: 'NEURAL_GLOBE',
       accentColor: '#10b981',
+      customApps: [],
       isStartMenuOpen: false,
       isSearchOpen: false,
       setHasSeenIntro: (val) => set({ hasSeenIntro: val }),
@@ -148,7 +150,16 @@ export const useOS = create<OSState>()(
       },
       closeWindow: (id) => {
         processManager.kill(id);
-        set(state => ({ windows: state.windows.filter(w => w.id !== id) }));
+        set(state => {
+          const nextWindows = state.windows.filter(w => w.id !== id);
+          const nextActiveId = state.activeWindowId === id 
+            ? (nextWindows.length > 0 ? nextWindows[nextWindows.length - 1].id : null)
+            : state.activeWindowId;
+          return {
+            windows: nextWindows,
+            activeWindowId: nextActiveId
+          };
+        });
       },
       focusWindow: (id) => set(state => {
         const nextZ = state.globalZIndex + 1;
@@ -197,7 +208,8 @@ export const useOS = create<OSState>()(
         const iconComponent = typeof manifest.icon === 'function' ? manifest.icon : Box;
         return {
           registry: [...state.registry, { ...manifest, icon: iconComponent }],
-          installedApps: [...state.installedApps, manifest.id]
+          installedApps: [...state.installedApps, manifest.id],
+          customApps: [...state.customApps, manifest]
         };
       }),
       pinApp: (appId) => set(state => ({ pinnedApps: Array.from(new Set([...state.pinnedApps, appId])) })),
@@ -250,6 +262,7 @@ export const useOS = create<OSState>()(
         activeWorkspace: state.activeWorkspace,
         uiScale: state.uiScale,
         windows: state.windows,
+        customApps: state.customApps,
       })
     }
   )
