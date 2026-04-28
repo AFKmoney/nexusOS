@@ -41,17 +41,25 @@ Every action DAEMON takes is logged, governed, and reversible. You remain sovere
 
 <div align="center">
 
-### DAEMON Dashboard
-<img src="docs/screenshots/dashboard.png" alt="DAEMON Dashboard showing system metrics" width="800"/>
-<p><em>DAEMON Dashboard — 49 apps, real-time system metrics, ErrorGuard, and autonomy feed</em></p>
+### Desktop
+<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop — clean dark interface with taskbar, clock, and workspace switcher" width="800"/>
+<p><em>Clean desktop with glassmorphic taskbar, system tray, workspace switcher, and live clock</em></p>
 
-### Desktop & Start Menu
-<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop with Start Menu" width="800"/>
-<p><em>Start Menu with category filters, app grid, theme controls, and DAEMON status</em></p>
+### Start Menu
+<img src="docs/screenshots/startmenu.png" alt="NexusOS Start Menu with 49 apps and category filters" width="800"/>
+<p><em>49 native apps organized by category — AI & Dev, System, Media, Productivity, Utilities</em></p>
 
-### Multi-Window Environment
-<img src="docs/screenshots/ai_forge.png" alt="NexusOS multi-window desktop" width="800"/>
-<p><em>Multiple windows, glassmorphic taskbar, workspace switcher, and system tray</em></p>
+### AI Provider Gateway
+<img src="docs/screenshots/ai_providers.png" alt="Settings panel showing multi-provider AI configuration" width="800"/>
+<p><em>Connect any AI API — OpenAI, Anthropic, Google, Groq, Mistral — or run 100% local with GGUF models</em></p>
+
+### Multi-Window + DAEMON Copilot
+<img src="docs/screenshots/multiwindow.png" alt="NexusOS multi-window desktop with Calculator and DAEMON Copilot" width="800"/>
+<p><em>Calculator, HyperIDE with DAEMON Neural Copilot — all running simultaneously with window management</em></p>
+
+### HyperIDE — AI-Powered Code Editor
+<img src="docs/screenshots/hyperide.png" alt="HyperIDE code editor with file explorer and AI copilot" width="800"/>
+<p><em>Full IDE with file explorer, syntax highlighting, and integrated DAEMON AI copilot for code generation</em></p>
 
 </div>
 
