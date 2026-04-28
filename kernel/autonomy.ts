@@ -6,7 +6,6 @@ import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
-import { memory } from './memory';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate

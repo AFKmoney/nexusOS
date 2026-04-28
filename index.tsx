@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { hydrateOSRegistry } from './store/osStore';
+
+// CRITICAL: Hydrate app registry before first render
+hydrateOSRegistry().catch(e => console.error('[SYSTEM] Registry hydration failed:', e));
 
 // CRITICAL DEBUGGING: Global Error Handler
 window.onerror = function (msg, url, line, col, error) {

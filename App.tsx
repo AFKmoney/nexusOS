@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
-import { useOS } from './store/osStore';
+import { useOS, hydrateOSRegistry } from './store/osStore';
 import { WindowFrame } from './components/WindowFrame';
 import TaskSwitcher from './components/TaskSwitcher';
 import ContextMenu from './components/ContextMenu';
@@ -202,6 +202,10 @@ export default function App() {
   useEffect(() => {
     if (isLoggedIn && !hasSeenIntro) {
       useOS.getState().setHasSeenIntro(true);
+    }
+    // Safety net: ensure registry is loaded on login
+    if (isLoggedIn) {
+      hydrateOSRegistry().catch(() => {});
     }
   }, [isLoggedIn, hasSeenIntro]);
 
