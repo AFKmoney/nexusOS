@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useOS } from '../store/osStore';
 import { vfs } from '../kernel/fileSystem';
-import { RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
 
 export default function WebRunnerApp({ windowId }: { windowId: string }) {
-  const { windows, updateWindow } = useOS();
+  const { windows, updateWindow, addNotification } = useOS();
   const win = windows.find(w => w.id === windowId);
   const path = win?.data?.path || '';
   const lastUpdate = win?.data?.lastUpdate || 0;
-  
+
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
 
   const loadContent = () => {
     if (!path) {

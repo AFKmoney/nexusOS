@@ -8,24 +8,26 @@ interface Column { id: string; title: string; tasks: Task[]; color: string; }
 const LS_KEY = 'nexus_kanban_v2';
 
 const COLUMN_COLORS = [
-  'border-emerald-500', 
-  'border-blue-500', 
-  'border-violet-500', 
-  'border-amber-500', 
+  'border-emerald-500',
+  'border-blue-500',
+  'border-violet-500',
+  'border-amber-500',
   'border-rose-500'
-];
+] as const;
+
+const getColumnColor = (index: number) => COLUMN_COLORS[index % COLUMN_COLORS.length] ?? COLUMN_COLORS[0];
 
 export default function KanbanApp() {
   const { addNotification } = useOS();
   const [columns, setColumns] = useState<Column[]>(() => {
-    try { 
+    try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [
-      { id: 'todo', title: 'To Do', tasks: [], color: COLUMN_COLORS[0] },
-      { id: 'progress', title: 'In Progress', tasks: [], color: COLUMN_COLORS[1] },
-      { id: 'done', title: 'Completed', tasks: [], color: COLUMN_COLORS[2] },
+      { id: 'todo', title: 'To Do', tasks: [], color: getColumnColor(0) },
+      { id: 'progress', title: 'In Progress', tasks: [], color: getColumnColor(1) },
+      { id: 'done', title: 'Completed', tasks: [], color: getColumnColor(2) },
     ];
   });
 
@@ -60,15 +62,23 @@ export default function KanbanApp() {
   const moveTask = (fromColId: string, taskId: string, direction: 1 | -1) => {
     const fromIdx = columns.findIndex(c => c.id === fromColId);
     const toIdx = fromIdx + direction;
-    if (toIdx < 0 || toIdx >= columns.length) return;
+    if (fromIdx < 0 || toIdx < 0 || toIdx >= columns.length) return;
+
+    const fromColumn = columns[fromIdx];
+    const toColumn = columns[toIdx];
+    if (!fromColumn || !toColumn) return;
     
-    const task = columns[fromIdx].tasks.find(t => t.id === taskId);
+    const task = fromColumn.tasks.find(t => t.id === taskId);
     if (!task) return;
 
     setColumns(prev => {
       const newCols = [...prev];
-      newCols[fromIdx] = { ...newCols[fromIdx], tasks: newCols[fromIdx].tasks.filter(t => t.id !== taskId) };
-      newCols[toIdx] = { ...newCols[toIdx], tasks: [...newCols[toIdx].tasks, task] };
+      const nextFromColumn = newCols[fromIdx];
+      const nextToColumn = newCols[toIdx];
+      if (!nextFromColumn || !nextToColumn) return prev;
+
+      newCols[fromIdx] = { ...nextFromColumn, tasks: nextFromColumn.tasks.filter(t => t.id !== taskId) };
+      newCols[toIdx] = { ...nextToColumn, tasks: [...nextToColumn.tasks, task] };
       return newCols;
     });
   };
@@ -76,7 +86,7 @@ export default function KanbanApp() {
   const addColumn = () => {
     const title = prompt('Enter column name:');
     if (!title?.trim()) return;
-    const color = COLUMN_COLORS[columns.length % COLUMN_COLORS.length];
+    const color = getColumnColor(columns.length);
     setColumns(prev => [...prev, { id: uuid(), title, tasks: [], color }]);
   };
 
@@ -88,9 +98,9 @@ export default function KanbanApp() {
   const purgeBoard = () => {
     if (!confirm('Purge ALL tasks and columns? This cannot be undone.')) return;
     setColumns([
-      { id: 'todo', title: 'To Do', tasks: [], color: COLUMN_COLORS[0] },
-      { id: 'progress', title: 'In Progress', tasks: [], color: COLUMN_COLORS[1] },
-      { id: 'done', title: 'Completed', tasks: [], color: COLUMN_COLORS[2] },
+      { id: 'todo', title: 'To Do', tasks: [], color: getColumnColor(0) },
+      { id: 'progress', title: 'In Progress', tasks: [], color: getColumnColor(1) },
+      { id: 'done', title: 'Completed', tasks: [], color: getColumnColor(2) },
     ]);
     addNotification({ title: 'Board Purged', message: 'Kanban board has been reset.', type: 'info' });
   };
@@ -170,7 +180,7 @@ export default function KanbanApp() {
                     autoFocus
                     value={newTaskTitle}
                     onChange={e => setNewTaskTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(e as any, col.id); } }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTask(e, col.id); } }}
                     placeholder="Enter task directive..."
                     className="w-full bg-black/60 border border-violet-500/50 rounded-xl p-3 text-sm text-white outline-none resize-none min-h-[80px] shadow-inner font-sans"
                   />

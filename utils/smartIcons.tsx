@@ -10,9 +10,9 @@ export function getSmartIcon(path: string, size: number = 24, className: string 
   }
 
   const parts = path.split('/');
-  const fileName = parts[parts.length - 1];
+  const fileName = parts[parts.length - 1] ?? '';
   const ext = fileName.split('.').pop()?.toLowerCase();
-  
+
   // 1. Extension Check
   if (ext === 'html' || ext === 'htm') return <Globe size={size} className={`text-orange-500 ${className}`} />;
   if (ext === 'json') return <FileJson size={size} className={`text-yellow-500 ${className}`} />;
@@ -26,17 +26,17 @@ export function getSmartIcon(path: string, size: number = 24, className: string 
   const content = vfs.readFile(path);
   if (content !== null) {
       const start = content.trim().substring(0, 100);
-      
+
       // Code detection
       if (start.includes('import ') || start.includes('function ') || start.includes('const ') || start.includes('class ') || start.includes('<!DOCTYPE')) {
           return <FileCode size={size} className={`text-blue-400 ${className}`} />;
       }
-      
+
       // Config/JSON detection (if no extension)
       if (start.startsWith('{') || start.startsWith('[')) {
           return <FileJson size={size} className={`text-yellow-500 ${className}`} />;
       }
-      
+
       // Logs
       if (start.startsWith('[') && start.includes(']')) {
           return <Database size={size} className={`text-zinc-400 ${className}`} />;

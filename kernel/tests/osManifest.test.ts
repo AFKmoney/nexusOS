@@ -27,48 +27,53 @@ import { vfs } from '../fileSystem.ts';
 test('parseOsActions - parses action with no arguments', () => {
   const text = 'OS::DO_SOMETHING';
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'DO_SOMETHING');
-  assert.deepStrictEqual(actions[0].args, []);
-  assert.strictEqual(actions[0].raw, 'OS::DO_SOMETHING');
+  assert.strictEqual(action?.type, 'DO_SOMETHING');
+  assert.deepStrictEqual(action?.args, []);
+  assert.strictEqual(action?.raw, 'OS::DO_SOMETHING');
 });
 
 test('parseOsActions - parses action with one argument', () => {
   const text = 'OS::OPEN_APP:terminal';
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'OPEN_APP');
-  assert.deepStrictEqual(actions[0].args, ['terminal']);
-  assert.strictEqual(actions[0].raw, 'OS::OPEN_APP:terminal');
+  assert.strictEqual(action?.type, 'OPEN_APP');
+  assert.deepStrictEqual(action?.args, ['terminal']);
+  assert.strictEqual(action?.raw, 'OS::OPEN_APP:terminal');
 });
 
 test('parseOsActions - parses action with multiple arguments including colons', () => {
   // OPEN_APP can have an extra arg (the path to open)
   const text = 'OS::OPEN_APP:hyperide:/home/user/app.ts';
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'OPEN_APP');
+  assert.strictEqual(action?.type, 'OPEN_APP');
   // NOTE: Except for WRITE_FILE, the code simply takes everything after the first colon as args[0].
-  assert.deepStrictEqual(actions[0].args, ['hyperide:/home/user/app.ts']);
-  assert.strictEqual(actions[0].raw, 'OS::OPEN_APP:hyperide:/home/user/app.ts');
+  assert.deepStrictEqual(action?.args, ['hyperide:/home/user/app.ts']);
+  assert.strictEqual(action?.raw, 'OS::OPEN_APP:hyperide:/home/user/app.ts');
 });
 
 test('parseOsActions - parses WRITE_FILE converting \\n to newlines', () => {
   const text = 'OS::WRITE_FILE:/home/user/test.txt:Line1\\nLine2';
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'WRITE_FILE');
-  assert.deepStrictEqual(actions[0].args, ['/home/user/test.txt', 'Line1\nLine2']);
-  assert.strictEqual(actions[0].raw, 'OS::WRITE_FILE:/home/user/test.txt:Line1\\nLine2');
+  assert.strictEqual(action?.type, 'WRITE_FILE');
+  assert.deepStrictEqual(action?.args, ['/home/user/test.txt', 'Line1\nLine2']);
+  assert.strictEqual(action?.raw, 'OS::WRITE_FILE:/home/user/test.txt:Line1\\nLine2');
 });
 
 test('parseOsActions - parses WRITE_FILE missing content', () => {
   const text = 'OS::WRITE_FILE:/home/user/test.txt';
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'WRITE_FILE');
-  assert.deepStrictEqual(actions[0].args, ['/home/user/test.txt']);
-  assert.strictEqual(actions[0].raw, 'OS::WRITE_FILE:/home/user/test.txt');
+  assert.strictEqual(action?.type, 'WRITE_FILE');
+  assert.deepStrictEqual(action?.args, ['/home/user/test.txt']);
+  assert.strictEqual(action?.raw, 'OS::WRITE_FILE:/home/user/test.txt');
 });
 
 test('parseOsActions - ignores non-action text', () => {
@@ -79,9 +84,10 @@ test('parseOsActions - ignores non-action text', () => {
     And here is some more text afterwards.
   `;
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'OPEN_APP');
-  assert.deepStrictEqual(actions[0].args, ['dashboard']);
+  assert.strictEqual(action?.type, 'OPEN_APP');
+  assert.deepStrictEqual(action?.args, ['dashboard']);
 });
 
 test('parseOsActions - parses multiple actions', () => {
@@ -93,14 +99,18 @@ test('parseOsActions - parses multiple actions', () => {
   const actions = parseOsActions(text);
   assert.strictEqual(actions.length, 3);
 
-  assert.strictEqual(actions[0].type, 'CREATE_FOLDER');
-  assert.deepStrictEqual(actions[0].args, ['/home/test']);
+  const first = actions[0];
+  const second = actions[1];
+  const third = actions[2];
 
-  assert.strictEqual(actions[1].type, 'WRITE_FILE');
-  assert.deepStrictEqual(actions[1].args, ['/home/test/hello.txt', 'Hello World']);
+  assert.strictEqual(first?.type, 'CREATE_FOLDER');
+  assert.deepStrictEqual(first?.args, ['/home/test']);
 
-  assert.strictEqual(actions[2].type, 'OPEN_APP');
-  assert.deepStrictEqual(actions[2].args, ['notepad:/home/test/hello.txt']);
+  assert.strictEqual(second?.type, 'WRITE_FILE');
+  assert.deepStrictEqual(second?.args, ['/home/test/hello.txt', 'Hello World']);
+
+  assert.strictEqual(third?.type, 'OPEN_APP');
+  assert.deepStrictEqual(third?.args, ['notepad:/home/test/hello.txt']);
 });
 
 test('parseOsActions - handles empty text and whitespace', () => {
@@ -110,11 +120,12 @@ test('parseOsActions - handles empty text and whitespace', () => {
     OS::NOTIFY:Test:  Whitespace
   `;
   const actions = parseOsActions(text);
+  const action = actions[0];
   assert.strictEqual(actions.length, 1);
-  assert.strictEqual(actions[0].type, 'NOTIFY');
-  assert.deepStrictEqual(actions[0].args, ['Test:  Whitespace']);
+  assert.strictEqual(action?.type, 'NOTIFY');
+  assert.deepStrictEqual(action?.args, ['Test:  Whitespace']);
   // The raw string keeps whatever was after trimming
-  assert.strictEqual(actions[0].raw, 'OS::NOTIFY:Test:  Whitespace');
+  assert.strictEqual(action?.raw, 'OS::NOTIFY:Test:  Whitespace');
 });
 
 test('generateOSManifest - empty state', () => {

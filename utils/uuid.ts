@@ -9,7 +9,7 @@ export function uuid(): string {
   }
   // Fallback: RFC 4122 v4 UUID using crypto.getRandomValues or Math.random
   const getRandomValues =
-    typeof crypto !== 'undefined' && crypto.getRandomValues
+    typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function'
       ? (buf: Uint8Array) => crypto.getRandomValues(buf)
       : (buf: Uint8Array) => {
           for (let i = 0; i < buf.length; i++) buf[i] = (Math.random() * 256) | 0;
@@ -18,10 +18,17 @@ export function uuid(): string {
 
   const rnds = new Uint8Array(16);
   getRandomValues(rnds);
-  rnds[6] = (rnds[6] & 0x0f) | 0x40; // version 4
-  rnds[8] = (rnds[8] & 0x3f) | 0x80; // variant 10
 
-  const hex = Array.from(rnds, (b) => b.toString(16).padStart(2, '0'));
+  const byte6 = rnds[6];
+  const byte8 = rnds[8];
+  if (byte6 === undefined || byte8 === undefined) {
+    throw new Error('UUID entropy buffer incomplete');
+  }
+
+  rnds[6] = (byte6 & 0x0f) | 0x40; // version 4
+  rnds[8] = (byte8 & 0x3f) | 0x80; // variant 10
+
+  const hex = Array.from(rnds, (b: number) => b.toString(16).padStart(2, '0'));
   return (
     hex.slice(0, 4).join('') +
     '-' +

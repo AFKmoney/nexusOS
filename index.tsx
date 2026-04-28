@@ -35,16 +35,34 @@ window.onerror = function (msg, url, line, col, error) {
   return false;
 };
 
+// Safeguard: Reboot Loop Detection
+const CRASH_KEY = 'nexus_crash_count';
+const LAST_CRASH_TIME = 'nexus_last_crash';
+const now = Date.now();
+const lastCrash = parseInt(localStorage.getItem(LAST_CRASH_TIME) || '0');
+let crashCount = parseInt(localStorage.getItem(CRASH_KEY) || '0');
+
+if (now - lastCrash < 10000) {
+  crashCount++;
+} else {
+  crashCount = 1;
+}
+
+localStorage.setItem(LAST_CRASH_TIME, now.toString());
+localStorage.setItem(CRASH_KEY, crashCount.toString());
+
+if (crashCount > 3) {
+  console.error("CRITICAL: Reboot loop detected. Clearing system state...");
+  localStorage.clear();
+  localStorage.setItem(CRASH_KEY, '0');
+}
+
 console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.0 booting...", "color: #10b981; font-weight: bold;");
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 try {
   console.log("[SYSTEM] Mounting React Root...");
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  root.render(<App />);
   console.log("[SYSTEM] React Mount Requested.");
 } catch (e: any) {
   console.error("[SYSTEM] MOUNT ERROR:", e);

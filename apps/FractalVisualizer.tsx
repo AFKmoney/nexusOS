@@ -94,19 +94,25 @@ export default function FractalVisualizer() {
             // Draw connections
             ctx.lineWidth = 1;
             for (let i = 0; i < nodes.length; i++) {
+                const nodeA = nodes[i];
+                if (!nodeA) continue;
+
                 for (let j = i + 1; j < nodes.length; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
+                    const nodeB = nodes[j];
+                    if (!nodeB) continue;
+
+                    const dx = nodeA.x - nodeB.x;
+                    const dy = nodeA.y - nodeB.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     
                     // Connect to core or if tags overlap
-                    const sameTags = nodes[i].tags && nodes[j].tags && nodes[i].tags.some(tag => nodes[j].tags.includes(tag));
-                    const isCoreResonance = nodes[i].type === 'core' || nodes[j].type === 'core';
+                    const sameTags = nodeA.tags && nodeB.tags && nodeA.tags.some(tag => nodeB.tags.includes(tag));
+                    const isCoreResonance = nodeA.type === 'core' || nodeB.type === 'core';
 
                     if (dist < 200 && (sameTags || isCoreResonance)) {
                         ctx.beginPath();
-                        ctx.moveTo(nodes[i].x, nodes[i].y);
-                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.moveTo(nodeA.x, nodeA.y);
+                        ctx.lineTo(nodeB.x, nodeB.y);
                         const opacity = 1 - (dist / 200);
                         ctx.strokeStyle = isCoreResonance ? `rgba(16, 185, 129, ${opacity * 0.5})` : `rgba(139, 92, 246, ${opacity * 0.3})`;
                         ctx.stroke();

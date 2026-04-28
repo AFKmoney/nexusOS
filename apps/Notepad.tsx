@@ -91,7 +91,8 @@ export default function NotepadApp({ windowId }: { windowId: string }) {
     const newTabs = tabs.filter(t => t.id !== tabId);
     setTabs(newTabs);
     if (activeTabId === tabId) {
-      setActiveTabId(newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null);
+      const lastTab = newTabs[newTabs.length - 1];
+      setActiveTabId(lastTab ? lastTab.id : null);
     }
     if (newTabs.length === 0) {
       const nt = { id: uuid(), path: '', content: '', savedContent: '' };

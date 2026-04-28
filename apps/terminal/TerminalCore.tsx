@@ -1,7 +1,8 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useOS } from '../../store/osStore';
 import { commander } from '../../kernel/commander';
+import { vfs } from '../../kernel/fileSystem';
+import { memory } from '../../kernel/memory';
 import { Sparkles, ChevronRight } from 'lucide-react';
 
 const INITIAL_MESSAGES = [
@@ -39,9 +40,8 @@ MEMORY:
   recall "query"          Search memory
 
 SYSTEM:
+  host <command>         Execute host OS command (Electron only)
   alias <name> <cmd>      Create command alias
-  history                 Show command history
-  neofetch                System info display
 `.trim();
 
 export default function TerminalCore() {
@@ -55,7 +55,7 @@ export default function TerminalCore() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { kernelRules, windows, registry } = useOS();
+  const { kernelRules, windows, registry, addNotification } = useOS();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,27 +66,53 @@ export default function TerminalCore() {
   }, []);
 
   const handleCommand = async (rawCmd: string) => {
-    const cmd = rawCmd.trim();
-    if (!cmd) return;
+    const cmdInput = rawCmd.trim();
+    if (!cmdInput) return;
 
-    // Handle aliases
-    const expanded = aliases[cmd.split(' ')[0]] 
-      ? cmd.replace(cmd.split(' ')[0], aliases[cmd.split(' ')[0]])
-      : cmd;
-
-    // Update command history
-    setCmdHistory(prev => [cmd, ...prev.slice(0, 99)]);
+    const cmdParts = cmdInput.split(' ');
+    const cmdName = cmdParts[0] || '';
+    const expanded = aliases[cmdName] ? `${aliases[cmdName]} ${cmdParts.slice(1).join(' ')}`.trim() : cmdInput;
+    
+    setCmdHistory(prev => [cmdInput, ...prev.slice(0, 99)]);
     setCmdHistoryIdx(-1);
-    addLine(`${currentDir} $ ${cmd}`, 'in');
+    addLine(`${currentDir} $ ${cmdInput}`, 'in');
 
-    if (cmd === 'clear') { setHistory([]); return; }
-    if (cmd === 'help') { addLine(HELP_TEXT); return; }
-    if (cmd === 'history') {
+    if (cmdName === 'clear') { setHistory([]); return; }
+    if (cmdName === 'help') { addLine(HELP_TEXT); return; }
+    
+    if (cmdName === 'host') {
+        const hostCmd = cmdInput.substring(5).trim();
+        if (!hostCmd) {
+            addLine('Usage: host <command>');
+            return;
+        }
+        
+        const electron = (window as any).electron;
+        if (!electron || !electron.invoke) {
+            addLine('[ERR] Host commands only available in Electron desktop mode.', 'out');
+            return;
+        }
+        
+        setIsProcessing(true);
+        try {
+            const res = await electron.invoke('native-exec', hostCmd);
+            if (res.stdout) addLine(res.stdout);
+            if (res.stderr) addLine(res.stderr, 'out');
+            if (res.error) addLine(`[PROCESS ERR] ${res.error}`, 'out');
+        } catch (e: any) {
+            addLine(`[FATAL] ${e.message}`, 'out');
+        } finally {
+            setIsProcessing(false);
+        }
+        return;
+    }
+    if (cmdName === 'history') {
       addLine(cmdHistory.slice(0, 20).map((c, i) => `  ${i + 1}  ${c}`).join('\n'));
       return;
     }
 
-    if (cmd === 'neofetch') {
+    if (cmdName === 'neofetch') {
+      const memoryInfo = (performance as Performance & { memory?: { totalJSHeapSize?: number } }).memory?.totalJSHeapSize;
       addLine([
         '   ██╗  ██╗███████╗██╗  ██╗██╗   ██╗███████╗',
         '   ███╗ ██║██╔════╝╚██╗██╔╝██║   ██║██╔════╝',
@@ -99,7 +125,7 @@ export default function TerminalCore() {
         `   Kernel:   DAEMON v2.0 (AutonomyEngine + LocalBrain)`,
         `   Shell:    NXSH v2.0 (30+ commands)`,
         `   CPU:      ${navigator.hardwareConcurrency || '?'} cores`,
-        `   Memory:   ${Math.round((performance as any)?.memory?.totalJSHeapSize / 1024 / 1024) || '?'} MB`,
+        `   Memory:   ${memoryInfo ? Math.round(memoryInfo / 1024 / 1024) : '?'} MB`,
         `   Apps:     ${registry.length} installed`,
         `   Windows:  ${windows.length} open`,
         `   Built:    March 2026`,
@@ -107,7 +133,7 @@ export default function TerminalCore() {
       return;
     }
 
-    if (cmd === 'ps') {
+    if (cmdName === 'ps') {
       if (windows.length === 0) { addLine('No active processes.'); return; }
       addLine('PID  APP_ID           TITLE');
       addLine('─────────────────────────────────────────');
@@ -118,7 +144,7 @@ export default function TerminalCore() {
     }
 
     const parts = expanded.split(' ');
-    const base = parts[0].toLowerCase();
+    const base = (parts[0] ?? '').toLowerCase();
 
     if (base === 'cd') {
       const target = parts[1] || '/home/user';
@@ -131,7 +157,6 @@ export default function TerminalCore() {
     if (base === 'cat') {
       const file = parts.slice(1).join(' ').replace(/^"|"$/g, '');
       const path = file.startsWith('/') ? file : `${currentDir}/${file}`;
-      const { vfs } = await import('../../kernel/fileSystem');
       const content = vfs.readFile(path);
       if (content !== null) addLine(content);
       else addLine(`cat: ${path}: No such file`);
@@ -142,7 +167,6 @@ export default function TerminalCore() {
       const dir = parts[1];
       if (!dir) { addLine('Usage: mkdir <path>'); return; }
       const path = dir.startsWith('/') ? dir : `${currentDir}/${dir}`;
-      const { vfs } = await import('../../kernel/fileSystem');
       vfs.createDir(path);
       addLine(`Directory created: ${path}`);
       return;
@@ -160,6 +184,7 @@ export default function TerminalCore() {
       if (parts.length < 3) { addLine('Usage: alias <name> <command>'); return; }
       const name = parts[1];
       const aliasCmd = parts.slice(2).join(' ');
+      if (!name) { addLine('Usage: alias <name> <command>'); return; }
       setAliases(prev => ({ ...prev, [name]: aliasCmd }));
       addLine(`Alias set: ${name} → ${aliasCmd}`);
       return;
@@ -167,7 +192,6 @@ export default function TerminalCore() {
 
     if (base === 'remember') {
       const text = expanded.replace(/^remember\s+/, '').replace(/^"|"$/g, '');
-      const { memory } = await import('../../kernel/memory');
       memory.remember(text);
       addLine(`Memory stored: "${text.slice(0, 60)}..."`);
       return;
@@ -175,14 +199,12 @@ export default function TerminalCore() {
 
     if (base === 'recall') {
       const query = expanded.replace(/^recall\s+/, '').replace(/^"|"$/g, '');
-      const { memory } = await import('../../kernel/memory');
       const results = memory.recall(query, 5);
       if (results.length === 0) { addLine('No matching memories.'); return; }
       results.forEach((r, i) => addLine(`  ${i + 1}. ${r.content.slice(0, 100)}`));
       return;
     }
 
-    // Fall through to commander
     setIsProcessing(true);
     const onStream = (text: string) => {
       setHistory(prev => {
@@ -218,7 +240,6 @@ export default function TerminalCore() {
       setCmdHistoryIdx(nextIdx);
       setInput(nextIdx === -1 ? '' : cmdHistory[nextIdx] || '');
     }
-    // Tab completion
     if (e.key === 'Tab') {
       e.preventDefault();
       const cmds = [

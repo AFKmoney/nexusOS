@@ -9,14 +9,14 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   receive: (channel, func) => {
-    let validChannels = [];
+    let validChannels = ['download-progress'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
   },
   // Real Native Hardware & Host Access
   invoke: async (channel, data) => {
-    const validChannels = ['get-os-info', 'native-unzip', 'native-search', 'native-exec'];
+    const validChannels = ['get-os-info', 'native-unzip', 'native-search', 'native-exec', 'native-download'];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);
     }

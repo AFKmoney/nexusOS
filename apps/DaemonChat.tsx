@@ -107,7 +107,11 @@ Only use this when specifically asked to code or create a file.
       let filesInjected = 0;
       while ((match = vfsRegex.exec(buf)) !== null) {
         const path = match[1];
-        const code = match[2].trim();
+        const rawCode = match[2];
+        if (!path || rawCode === undefined) {
+          continue;
+        }
+        const code = rawCode.trim();
         try {
           // Ensure parent directory exists
           const parts = path.split('/').filter(Boolean);
@@ -134,7 +138,7 @@ Only use this when specifically asked to code or create a file.
   };
 
   const clearHistory = () => {
-    setMessages(prev => [prev[0]]);
+    setMessages(prev => prev[0] ? [prev[0]] : []);
     setShowQuick(true);
   };
 

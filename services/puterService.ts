@@ -222,7 +222,12 @@ export class PuterService {
         // ──────────────────────────────────────────────────────────
         const manifest = generateOSManifest(memoryEntries);
         const tone = rules.tone ? `\n[TONE]: ${rules.tone.toUpperCase()}` : '';
-        return NEXUS_PRIME_DNA + tone + '\n\n' + manifest;
+        const activeModelId = rules.activeLocalModel || localBrain.getActiveModelId();
+        const activeModel = localBrain.getActiveModel();
+        const modelContext = activeModelId
+          ? `\n[ACTIVE_LOCAL_MODEL]: ${activeModel.name} (${activeModel.id})`
+          : '';
+        return NEXUS_PRIME_DNA + tone + modelContext + '\n\n' + manifest;
       }
     }
   }
@@ -242,12 +247,28 @@ export class PuterService {
     return await localBrain.getLoadedModels();
   }
 
+  public async activateLocalModel(modelId: string): Promise<void> {
+    await localBrain.switchModel(modelId);
+  }
+
+  public getActiveLocalModelId(): string {
+    return localBrain.getActiveModelId();
+  }
+
+  public getActiveLocalModelName(): string {
+    return localBrain.getActiveModel().name;
+  }
+
   private getContextualPrompt(prompt: string): string {
     const relevant = memory.recall(prompt);
-    if (relevant.length === 0) return prompt;
-    let contextStr = '[MEMORY]: ' + relevant[0].content;
+    const first = relevant[0];
+    if (!first) return prompt;
+
+    let contextStr = '[MEMORY]: ' + first.content;
     for (let i = 1; i < relevant.length; i++) {
-      contextStr += '\n[MEMORY]: ' + relevant[i].content;
+      const entry = relevant[i];
+      if (!entry) continue;
+      contextStr += '\n[MEMORY]: ' + entry.content;
     }
     return `[SYSTEM_MEMORY_DUMP]\n${contextStr}\n\n[USER_QUERY]\n${prompt}`;
   }
@@ -376,6 +397,9 @@ export class PuterService {
       const callMatch = /<CALL_TOOL>\s*([a-zA-Z0-9_]+)\((.*?)\)\s*<\/CALL_TOOL>/s.exec(fullResponse);
       if (callMatch) {
         const toolName = callMatch[1];
+        if (!toolName) {
+          return;
+        }
         const toolArgs = callMatch[2] || "''";
         onToken(`\n\n⚙️ **[DAEMON EXECUTING]** → ${toolName}(${toolArgs})\n`);
         const result = await toolForge.executeTool(toolName, toolArgs);

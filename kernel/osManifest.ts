@@ -1,4 +1,3 @@
-
 /**
  * OS MANIFEST — Real-time Neural Context Engine
  * 
@@ -32,7 +31,7 @@ function getStore() {
 function getVFSTree(path: string, depth = 0, maxDepth = 3): string {
   if (depth > maxDepth) return '';
   const items = vfs.listDir(path) || [];
-  return items.map(name => {
+  return items.map((name) => {
     const fullPath = `${path}/${name}`;
     const stat = vfs.stat(fullPath);
     const isDir = stat?.type === 'directory';
@@ -57,7 +56,7 @@ INSTALLED APPS (open with: OS::OPEN_APP:<appId>)
 │ neuralforge    │ AI app builder — generates full apps from prompts       │
 │ modelmanager   │ Download & manage local GGUF AI models from HuggingFace│
 │ notepad        │ Text editor with markdown preview                       │
-│ dashboard      │ System overview: DAEMON status, metrics, autonomy feed  │
+│ dashboard     │ System overview: DAEMON status, metrics, autonomy feed  │
 │ daemonjournal  │ Full autonomy log viewer with filters and export        │
 │ agent          │ DAEMON agent UI — command your AI directly              │
 │ settings       │ OS settings, AI config, zoom, wallpaper, models        │
@@ -212,11 +211,11 @@ OS::NOTIFY:Project Ready:myapp project created and opened in HyperIDE
 export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
   const store = getStore();
   const now = new Date().toLocaleString();
-  
+
   // Active windows
   let windowsContext = 'None open.';
   if (store?.windows?.length > 0) {
-    windowsContext = store.windows.map((w: any) => 
+    windowsContext = store.windows.map((w: any) =>
       `  • ${w.title} (appId: ${w.appId}${w.isMinimized ? ', minimized' : ''})`
     ).join('\n');
   }
@@ -230,15 +229,19 @@ export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
   // Memory context
   let memCtx = '  (no relevant memory)';
   if (memoryEntries.length > 0) {
-    memCtx = '  • ' + memoryEntries[0].content;
+    const firstEntry = memoryEntries[0];
+    memCtx = firstEntry ? `  • ${firstEntry.content}` : '  (no relevant memory)';
     for (let i = 1; i < memoryEntries.length; i++) {
-      memCtx += '\n  • ' + memoryEntries[i].content;
+      const entry = memoryEntries[i];
+      if (entry) {
+        memCtx += `\n  • ${entry.content}`;
+      }
     }
   }
 
   return `
 ╔══════════════════════════════════════════════════════════════════╗
-║            NEXUSOS LIVE STATE — ${now.slice(0,16).padEnd(20)}   ║
+║            NEXUSOS LIVE STATE — ${now.slice(0, 16).padEnd(20)}   ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 [OPEN WINDOWS]

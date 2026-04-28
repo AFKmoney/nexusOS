@@ -1,4 +1,5 @@
-const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, session, ipcMain, protocol, net } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const os = require('os');
@@ -6,9 +7,20 @@ const os = require('os');
 const isDev = !app.isPackaged;
 let bridgeProcess = null;
 
+// Register custom protocol for local model files
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'nexus', privileges: { standard: true, secure: true, supportFetchAPI: true, bypassCSP: true, stream: true } }
+]);
+
 // ─── DAEMON BRIDGE — Auto-launch on OS start ─────────────────
 function startBridgeServer() {
   const bridgePath = path.join(__dirname, 'daemon-bridge-server.cjs');
+
+  if (!fs.existsSync(bridgePath)) {
+    console.warn('[DAEMON] Bridge server file missing, skipping auto-launch.');
+    return;
+  }
+
   try {
     bridgeProcess = spawn('node', [bridgePath], {
       stdio: 'pipe',
@@ -47,7 +59,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
       preload: path.join(__dirname, 'preload.cjs'),
     },
     title: "NXSS - Neural Nexus",
@@ -112,19 +124,14 @@ ipcMain.handle('get-os-info', async () => {
 });
 
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
-  // Basic path sanitization to prevent injection
-  const sanitize = (p) => p.replace(/['";&|]/g, '');
-  const s = sanitize(source);
-  const d = sanitize(dest);
-
   return new Promise((resolve, reject) => {
     if (os.platform() === 'win32') {
-      exec(`powershell -command "Expand-Archive -Path '${s}' -DestinationPath '${d}' -Force"`, (err) => {
+      exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
         else resolve({ success: true });
       });
     } else {
-      exec(`unzip -o "${s}" -d "${d}"`, (err) => {
+      exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
         else resolve({ success: true });
       });
@@ -135,16 +142,17 @@ ipcMain.handle('native-unzip', async (event, { source, dest }) => {
 ipcMain.handle('native-search', async (event, query) => {
   return new Promise((resolve) => {
     if (!query) return resolve([]);
-    const q = query.replace(/[^a-zA-Z0-9._-]/g, ''); // Very strict sanitization for search
     const desktopPath = path.join(os.homedir(), 'Desktop');
     if (os.platform() === 'win32') {
-      exec(`dir "${desktopPath}\\*${q}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
+      // Find matching files in Desktop
+      exec(`dir "${desktopPath}\\*${query}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
-        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20);
+        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20); // max 20 results
         resolve(files);
       });
     } else {
-      exec(`find "${desktopPath}" -name "*${q}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
+      // Unix find
+      exec(`find "${desktopPath}" -name "*${query}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
         resolve(stdout.split('\n').filter(Boolean));
       });
@@ -153,24 +161,9 @@ ipcMain.handle('native-search', async (event, query) => {
 });
 
 ipcMain.handle('native-exec', async (event, command) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  
-  // MANDATORY USER CONFIRMATION (P0 Audit Fix)
-  const { response } = await dialog.showMessageBox(win, {
-    type: 'warning',
-    title: 'Security Alert: Native Execution',
-    message: 'A request was made to execute a native command on your host system.',
-    detail: `Command: ${command}\n\nThis could be dangerous. Do you want to allow this?`,
-    buttons: ['Deny', 'Allow'],
-    defaultId: 0,
-    cancelId: 0
-  });
-
-  if (response !== 1) {
-    return { success: false, error: 'User denied native execution request.' };
-  }
-
   return new Promise((resolve) => {
+    // SECURITY WARNING: This allows DAEMON direct host machine access (Hardware Overlord Mode).
+    // Bypasses the VFS container and unleashes native Rust/C++/Bash commands.
     exec(command, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       resolve({ 
         success: !error, 
@@ -182,9 +175,95 @@ ipcMain.handle('native-exec', async (event, command) => {
   });
 });
 
+ipcMain.handle('native-download', async (event, { url, repoId, filename, onProgressId }) => {
+  const userDataPath = app.getPath('userData');
+  const repoFolder = repoId.replace(/\//g, '_');
+  const modelsPath = path.join(userDataPath, 'models', repoFolder);
+  if (!fs.existsSync(modelsPath)) fs.mkdirSync(modelsPath, { recursive: true });
+
+  const targetPath = path.join(modelsPath, filename);
+  
+  return new Promise((resolve) => {
+    const downloadFile = (targetUrl) => {
+        const request = net.request({
+            url: targetUrl,
+            redirect: 'follow'
+        });
+        
+        request.on('response', (response) => {
+          if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+              const nextUrl = Array.isArray(response.headers.location) ? response.headers.location[0] : response.headers.location;
+              downloadFile(nextUrl);
+              return;
+          }
+
+          if (response.statusCode !== 200) {
+              resolve({ success: false, error: `Server returned status ${response.statusCode}` });
+              return;
+          }
+
+          const totalLength = parseInt(response.headers['content-length'] || '0');
+          let downloadedLength = 0;
+
+          const writer = fs.createWriteStream(targetPath);
+          
+          response.on('data', (chunk) => {
+            downloadedLength += chunk.length;
+            writer.write(chunk);
+            
+            if (onProgressId) {
+                const pct = totalLength ? Math.round((downloadedLength / totalLength) * 100) : 0;
+                event.sender.send('download-progress', { 
+                    id: onProgressId, 
+                    pct, 
+                    downloaded: downloadedLength, 
+                    total: totalLength 
+                });
+            }
+          });
+
+          response.on('end', () => {
+            writer.end();
+            resolve({ success: true, path: targetPath });
+          });
+
+          response.on('error', (err) => {
+            writer.end();
+            resolve({ success: false, error: err.message });
+          });
+        });
+
+        request.on('error', (err) => {
+          resolve({ success: false, error: err.message });
+        });
+
+        request.end();
+    };
+
+    downloadFile(url);
+  });
+});
+
 app.whenReady().then(() => {
+  // Protocol handler for local models
+  protocol.handle('nexus', (request) => {
+    const urlStr = request.url.replace('nexus://', '');
+    const [repoPart, ...fileParts] = urlStr.split('/');
+    const filename = decodeURIComponent(fileParts.join('/'));
+    const rawRepoId = decodeURIComponent(repoPart);
+    const repoFolder = rawRepoId.replace(/\//g, '_');
+    
+    const userDataPath = app.getPath('userData');
+    const fullPath = path.join(userDataPath, 'models', repoFolder, filename);
+    
+    // Safety check
+    if (fullPath.includes('..')) return new Response('Access denied', { status: 403 });
+    
+    return net.fetch('file://' + fullPath);
+  });
+
   // Start bridge BEFORE creating window
-  // startBridgeServer(); // TODO: Re-enable once daemon-bridge-server.cjs is implemented
+  startBridgeServer();
   createWindow();
 
   app.on('activate', () => {

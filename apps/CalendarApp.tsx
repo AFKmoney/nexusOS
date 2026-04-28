@@ -4,6 +4,7 @@ import { useOS } from '../store/osStore';
 import { uuid } from '../utils/uuid';
 
 interface Event { id: string; title: string; time: string; date: string; type: 'work' | 'personal' | 'system'; }
+type EventType = Event['type'];
 const LS_KEY = 'nexus_calendar_v2';
 
 export default function CalendarApp() {
@@ -15,13 +16,17 @@ export default function CalendarApp() {
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [
-      { id: '1', title: 'Neural Core Maintenance', time: '02:00', date: new Date().toISOString().split('T')[0], type: 'system' },
-      { id: '2', title: 'Global Sync Protocol', time: '14:30', date: new Date().toISOString().split('T')[0], type: 'work' },
+      { id: '1', title: 'Neural Core Maintenance', time: '02:00', date: new Date().toISOString().split('T')[0] ?? '', type: 'system' },
+      { id: '2', title: 'Global Sync Protocol', time: '14:30', date: new Date().toISOString().split('T')[0] ?? '', type: 'work' },
     ];
   });
 
   const [showAdd, setShowAdd] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', time: '', type: 'personal' as any });
+  const [newEvent, setNewEvent] = useState<{ title: string; time: string; type: EventType }>({
+    title: '',
+    time: '',
+    type: 'personal'
+  });
 
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify(events));
@@ -40,7 +45,7 @@ export default function CalendarApp() {
       id: uuid(), 
       title: newEvent.title, 
       time: newEvent.time || '12:00', 
-      date: currentDate.toISOString().split('T')[0], 
+      date: currentDate.toISOString().split('T')[0] ?? '', 
       type: newEvent.type 
     };
     setEvents([...events, event]);
@@ -117,7 +122,7 @@ export default function CalendarApp() {
                 <input autoFocus placeholder="Event title..." className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none focus:border-purple-500/50" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
                 <div className="flex gap-2 mb-4">
                   <input type="time" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-400 outline-none focus:border-purple-500/50" value={newEvent.time} onChange={e => setNewEvent({...newEvent, time: e.target.value})} />
-                  <select className="bg-black/40 border border-white/10 rounded-xl px-2 text-[10px] text-zinc-400 uppercase font-black tracking-widest outline-none" value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value})}>
+                  <select className="bg-black/40 border border-white/10 rounded-xl px-2 text-[10px] text-zinc-400 uppercase font-black tracking-widest outline-none" value={newEvent.type} onChange={e => setNewEvent({...newEvent, type: e.target.value as EventType})}>
                     <option value="personal">Personal</option>
                     <option value="work">Work</option>
                     <option value="system">System</option>

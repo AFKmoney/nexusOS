@@ -10,7 +10,7 @@ export interface CronJob {
   id: string;
   name: string;
   expression: string | null; // e.g., "*/5 * * * *" or null for pure interval
-  intervalMs: number | null; 
+  intervalMs: number | null;
   actionCmd: string; // The command or event to trigger
   lastRun: number;
   enabled: boolean;
@@ -80,14 +80,21 @@ class CronScheduler {
   private matchCron(expr: string, date: Date): boolean {
     const parts = expr.trim().split(/\s+/);
     if (parts.length !== 5) return false;
-    
+
+    const minutePart = parts[0];
+    const hourPart = parts[1];
+    const dayOfMonthPart = parts[2];
+    const monthPart = parts[3];
+    const dayOfWeekPart = parts[4];
+
     const m = date.getMinutes();
     const h = date.getHours();
     const dom = date.getDate();
     const mon = date.getMonth() + 1;
     const dow = date.getDay();
 
-    const matchPart = (part: string, val: number) => {
+    const matchPart = (part: string | undefined, val: number) => {
+      if (!part) return false;
       if (part === '*') return true;
       if (part.startsWith('*/')) {
         const step = parseInt(part.slice(2));
@@ -96,11 +103,11 @@ class CronScheduler {
       return parseInt(part) === val;
     };
 
-    return matchPart(parts[0], m) &&
-           matchPart(parts[1], h) &&
-           matchPart(parts[2], dom) &&
-           matchPart(parts[3], mon) &&
-           matchPart(parts[4], dow);
+    return matchPart(minutePart, m) &&
+           matchPart(hourPart, h) &&
+           matchPart(dayOfMonthPart, dom) &&
+           matchPart(monthPart, mon) &&
+           matchPart(dayOfWeekPart, dow);
   }
 
   public executeJob(job: CronJob) {
@@ -127,12 +134,12 @@ class CronScheduler {
 
   public register(name: string, schedule: { expression?: string, intervalMs?: number }, actionCmd: string): string {
     const id = uuid();
-    const job: CronJob = { 
-      id, name, 
-      expression: schedule.expression || null, 
-      intervalMs: schedule.intervalMs || null, 
-      actionCmd, 
-      lastRun: 0, 
+    const job: CronJob = {
+      id, name,
+      expression: schedule.expression || null,
+      intervalMs: schedule.intervalMs || null,
+      actionCmd,
+      lastRun: 0,
       enabled: true,
       history: []
     };

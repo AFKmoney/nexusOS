@@ -6,13 +6,21 @@ import { memory } from './memory';
 
 export interface AIContext {
   activeApp: string;
-  activeFile?: string;
-  windowTitle?: string;
+  activeFile: string | undefined;
+  windowTitle: string | undefined;
   recentActions: string[];
   vfsSnapshot: string[];
   memoryRecall: string[];
   systemState: Record<string, any>;
 }
+
+export type AIContextRequest = {
+  actionType: string;
+  appId: string;
+  activeWindowCount: number;
+  activeWorkspace: string | null;
+  currentUserId: string | null;
+};
 
 class AIContextRouter {
   private recentActions: string[] = [];
@@ -23,12 +31,29 @@ class AIContextRouter {
     if (this.recentActions.length > this.maxActions) this.recentActions.shift();
   }
 
+  collect(request: AIContextRequest): string[] {
+    const snapshots = [
+      `Action type: ${request.actionType}`,
+      `Target app: ${request.appId}`,
+      `Active windows: ${request.activeWindowCount}`,
+      `Active workspace: ${request.activeWorkspace ?? 'none'}`,
+      `Current user: ${request.currentUserId ?? 'none'}`
+    ];
+
+    const path = request.currentUserId ? `/home/${request.currentUserId}` : '/home/user';
+    const safeListing = vfs.listDir(path).slice(0, 10);
+    if (safeListing.length > 0) {
+      snapshots.push(`Workspace files: ${safeListing.join(', ')}`);
+    }
+
+    return snapshots;
+  }
+
   buildContext(activeApp: string, activeFile?: string, windowTitle?: string): AIContext {
-    // Recall relevant memories
     const query = activeFile || windowTitle || activeApp;
     const memories = memory.recall(query);
 
-    return {
+    const context = {
       activeApp,
       activeFile,
       windowTitle,
@@ -41,7 +66,9 @@ class AIContextRouter {
         online: navigator.onLine,
         language: navigator.language,
       },
-    };
+    } satisfies AIContext;
+
+    return context;
   }
 
   buildSystemPromptInjection(ctx: AIContext): string {

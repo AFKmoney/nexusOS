@@ -34,7 +34,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
       '"': '&quot;',
       "'": '&#039;',
     };
-    return text.replace(/[&<>"']/g, m => map[m]);
+    return text.replace(/[&<>"']/g, m => map[m] ?? m);
   };
 
   useEffect(() => {
@@ -87,7 +87,9 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
     const args = rawArgs.map(a => a.startsWith('"') && a.endsWith('"') ? a.slice(1, -1) : a);
     if (!args.length) return;
 
-    const cmd = args[0].toLowerCase();
+    const rawCmd = args[0];
+    if (!rawCmd) return;
+    const cmd = rawCmd.toLowerCase();
     
     switch (cmd) {
       case 'clear':
@@ -106,7 +108,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         print(args[1] === '-a' ? 'Linux nexus-ubuntu 5.15.0-89-generic #99-Ubuntu SMP Mon Oct 30 20:42:41 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux' : 'Linux');
         break;
 
-      case 'ls':
+      case 'ls': {
         const targetDir = args[1] && !args[1].startsWith('-') ? resolvePath(args[1]) : cwd;
         const stat = vfs.stat(targetDir);
         if (!stat || stat.type !== 'directory') {
@@ -136,18 +138,21 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
           }
         }
         break;
+      }
 
-      case 'cd':
-        const newDir = args[1] ? resolvePath(args[1]) : '/home/user';
+      case 'cd': {
+        const targetArg = args[1];
+        const newDir = targetArg ? resolvePath(targetArg) : '/home/user';
         const st = vfs.stat(newDir);
         if (!st) {
-          print(`bash: cd: ${args[1]}: No such file or directory`);
+          print(`bash: cd: ${targetArg ?? ''}: No such file or directory`);
         } else if (st.type !== 'directory') {
-          print(`bash: cd: ${args[1]}: Not a directory`);
+          print(`bash: cd: ${targetArg ?? ''}: Not a directory`);
         } else {
           setCwd(newDir);
         }
         break;
+      }
 
       case 'mkdir':
         if (!args[1]) { print('mkdir: missing operand'); break; }
@@ -171,27 +176,32 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         else content.split('\n').forEach(l => print(l));
         break;
         
-      case 'echo':
+      case 'echo': {
         const text = args.slice(1).join(' ');
         if (text.includes('>')) {
            const parts = text.split('>');
-           const val = parts[0].trim();
-           const file = parts[parts.length-1].trim();
-           vfs.writeFile(resolvePath(file), val);
+           const val = parts[0]?.trim() ?? '';
+           const file = parts[parts.length - 1]?.trim() ?? '';
+           if (file) {
+             vfs.writeFile(resolvePath(file), val);
+           }
         } else {
            print(text);
         }
         break;
+      }
         
       case 'grep':
         if (args.length < 3) { print('grep: missing operand'); break; }
-        const term = args[1];
-        const gcontent = vfs.readFile(resolvePath(args[2]));
+        const term = args[1] ?? '';
+        const grepTarget = args[2];
+        if (!grepTarget) { print('grep: missing operand'); break; }
+        const gcontent = vfs.readFile(resolvePath(grepTarget));
         if (gcontent === null) {
-            print(`grep: ${args[2]}: No such file or directory`);
+            print(`grep: ${grepTarget}: No such file or directory`);
         } else {
             gcontent.split('\n').forEach(line => {
-                if (line.includes(term)) {
+                if (term && line.includes(term)) {
                     // Highlight term
                     const escapedLine = escapeHtml(line);
                     const escapedTerm = escapeHtml(term);
@@ -285,7 +295,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
             // simple eval just for fun
             if (args.length > 1 && args[1] === '-c') {
                 const input = args[2];
-                if (/^[0-9+\-*/().\s]+$/.test(input)) {
+                if (input && /^[0-9+\-*/().\s]+$/.test(input)) {
                     const res = Function(`"use strict";return (${input})`)();
                     print(String(res));
                 } else {

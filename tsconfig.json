@@ -16,7 +16,10 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
-    "allowJs": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": false,
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
@@ -24,6 +27,10 @@
       ]
     },
     "allowImportingTsExtensions": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "noEmit": true
   }
 }

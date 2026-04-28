@@ -145,7 +145,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
         {/* Breadcrumb */}
         <div className="flex-1 flex items-center gap-1 text-sm bg-zinc-900/50 px-3 py-1.5 rounded-lg border border-white/5 text-zinc-400 overflow-x-auto no-scrollbar">
           <button onClick={() => navigate('/')} className="hover:text-white transition shrink-0"><HardDrive size={14} /></button>
-          {breadcrumbs.map((crumb, i) => {
+          {breadcrumbs.map((crumb: string, i: number) => {
             const path = '/' + breadcrumbs.slice(0, i + 1).join('/');
             return (
               <React.Fragment key={path}>
