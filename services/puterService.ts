@@ -1,4 +1,5 @@
 import { localBrain } from './localBrain';
+import { aiGateway } from './aiProviders';
 import { daemon } from './daemonLogic';
 import { memory } from '../kernel/memory';
 import { toolForge } from '../kernel/toolForge';
@@ -275,10 +276,44 @@ export class PuterService {
 
 
   public async generateOnce(prompt: string, rules: KernelRules, mode: ChatMode = 'chat'): Promise<string> {
-    // Check if model is ready
+    // ─── ROUTE 1: External AI Provider (cloud APIs) ─────────────────
+    const cloudProvider = aiGateway.getActiveProvider();
+    if (cloudProvider) {
+      try {
+        const relevantMem = memory.recall(prompt);
+        const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
+        const toolCtx = await toolForge.getSystemToolContext();
+        const fullSystemPrompt = systemPrompt + toolCtx;
+        const contextualPrompt = (mode === 'chat' || mode === 'coder' || mode === 'architect')
+          ? this.getContextualPrompt(prompt)
+          : prompt;
+
+        const rawResponse = await aiGateway.generate(fullSystemPrompt, contextualPrompt);
+
+        // ErrorGuard validation
+        const { output: response, fixApplied, errors: guardErrors } = await errorGuard.guard(
+          rawResponse, contextualPrompt, fullSystemPrompt, mode
+        );
+        if (fixApplied && guardErrors.length > 0) {
+          console.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
+        }
+
+        await toolForge.parseAndRegister(response);
+        const osActionResults = await toolForge.executeOsActions(response);
+        const cleanedResponse = response.split('\n')
+          .filter(line => !line.trim().startsWith('OS::'))
+          .join('\n');
+        return this.cleanResponse(cleanedResponse + osActionResults, mode);
+      } catch (cloudErr: any) {
+        console.warn('[AI_GATEWAY] Cloud provider failed, falling back to local:', cloudErr.message);
+        // Fall through to local inference
+      }
+    }
+
+    // ─── ROUTE 2: Local GGUF Inference (Wllama / LM Studio) ──────
     if (!localBrain.isReady()) {
       try { await localBrain.initialize(); } catch {
-        return '[DAEMON]: No AI model loaded. Open Model Manager to download a HuggingFace model.';
+        return '[DAEMON]: No AI model loaded. Open Model Manager to download a HuggingFace model, or configure a cloud provider in Settings > AI Providers.';
       }
     }
     try {
@@ -290,10 +325,8 @@ export class PuterService {
         ? this.getContextualPrompt(prompt) 
         : prompt;
 
-      // ─── 100% OFFLINE LOCAL INFERENCE ────────────────────────────────
       const rawResponse = await localBrain.generate(contextualPrompt, fullSystemPrompt);
 
-      // ─── ERROR GUARD: Validate + self-correct before delivery ─────────
       const { output: response, fixApplied, errors: guardErrors } = await errorGuard.guard(
         rawResponse, contextualPrompt, fullSystemPrompt, mode
       );
@@ -301,17 +334,11 @@ export class PuterService {
         console.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
       }
 
-      // Post-process: register any new tools the AI created
       await toolForge.parseAndRegister(response);
-
-      // Post-process: execute native OS actions from AI response
       const osActionResults = await toolForge.executeOsActions(response);
-
-      // Strip raw OS action lines from visible output (they've been executed)
       const cleanedResponse = response.split('\n')
         .filter(line => !line.trim().startsWith('OS::'))
         .join('\n');
-
       return this.cleanResponse(cleanedResponse + osActionResults, mode);
     } catch (error: any) {
       console.error('[AI SERVICE ERROR]:', error);
@@ -334,18 +361,50 @@ export class PuterService {
       processedPrompt = this.getContextualPrompt(prompt);
     }
 
+    // ─── ROUTE 1: External AI Provider (cloud APIs) ─────────────────
+    const cloudProvider = aiGateway.getActiveProvider();
+    if (cloudProvider) {
+      try {
+        const relevantMem = memory.recall(processedPrompt);
+        const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
+        const toolCtx = await toolForge.getSystemToolContext();
+        const stPrompt = systemPrompt + toolCtx;
+
+        let fullResponse = '';
+        await aiGateway.stream(stPrompt, processedPrompt, (token) => {
+          fullResponse += token;
+          const lastLine = fullResponse.split('\n').pop() || '';
+          if (!lastLine.trim().startsWith('OS::')) {
+            onToken(token);
+          }
+        });
+
+        // Post-processing: tools, OS actions
+        if (await toolForge.parseAndRegister(fullResponse)) {
+          onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
+        }
+        const osActionResults = await toolForge.executeOsActions(fullResponse);
+        if (osActionResults.trim()) {
+          onToken(osActionResults);
+        }
+        return;
+      } catch (cloudErr: any) {
+        onToken(`\n[Cloud provider error: ${cloudErr.message}. Falling back to local...]\n`);
+        // Fall through to local
+      }
+    }
+
+    // ─── ROUTE 2: Local GGUF Inference ───────────────────────────────
     try {
       const relevantMem = memory.recall(processedPrompt);
       const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem);
       const toolCtx = await toolForge.getSystemToolContext();
       const stPrompt = systemPrompt + toolCtx;
 
-      // ─── 100% OFFLINE LOCAL INFERENCE ────────────────────────────────
       let fullResponse = '';
       let osActionLines: string[] = [];
       await localBrain.stream(processedPrompt, stPrompt, (token) => {
         fullResponse += token;
-        // Buffer OS action lines — don't stream them raw, execute silently
         const lastLine = fullResponse.split('\n').pop() || '';
         if (!lastLine.trim().startsWith('OS::')) {
           onToken(token);
@@ -354,35 +413,27 @@ export class PuterService {
         }
       });
 
-      // Post-Processing 1: Register any new tools DAEMON created
       if (await toolForge.parseAndRegister(fullResponse)) {
         onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
       }
 
-      // Post-Processing 2: ErrorGuard — check if stream was truncated
       const streamCheck = errorGuard.analyzeStreamCompletion(fullResponse, mode);
       if (!streamCheck.complete && streamCheck.needsContinuation) {
         onToken(`\n\n🔄 *[ErrorGuard: ${streamCheck.issue} — continuing...]*\n\n`);
         const contPrompt = `${streamCheck.continuationHint}\n\nPrevious output ended with:\n${fullResponse.slice(-300)}`;
-        let contBuffer = '';
         await localBrain.stream(contPrompt, stPrompt, (token) => {
           fullResponse += token;
-          contBuffer += token;
           onToken(token);
         });
-        // Final validation after continuation
         const finalCheck = errorGuard.analyzeStreamCompletion(fullResponse, mode);
         if (!finalCheck.complete && mode === 'architect') {
           onToken('\n</body></html>');
         }
       }
 
-      // Post-Processing 3: Execute native OS:: actions
       const osActionResults = await toolForge.executeOsActions(fullResponse);
       if (osActionResults.trim()) {
         onToken(osActionResults);
-
-        // Post-Processing 3: Resume AI with results so it can confirm/explain
         const hasRead = fullResponse.includes('OS::READ_FILE') || fullResponse.includes('OS::SEARCH_FILES') || fullResponse.includes('OS::EXECUTE_JS');
         if (hasRead) {
           onToken('\n\n');
@@ -393,13 +444,10 @@ export class PuterService {
         }
       }
 
-      // Post-Processing 4: Detect and execute forged tool calls
       const callMatch = /<CALL_TOOL>\s*([a-zA-Z0-9_]+)\((.*?)\)\s*<\/CALL_TOOL>/s.exec(fullResponse);
       if (callMatch) {
         const toolName = callMatch[1];
-        if (!toolName) {
-          return;
-        }
+        if (!toolName) return;
         const toolArgs = callMatch[2] || "''";
         onToken(`\n\n⚙️ **[DAEMON EXECUTING]** → ${toolName}(${toolArgs})\n`);
         const result = await toolForge.executeTool(toolName, toolArgs);
@@ -410,7 +458,6 @@ export class PuterService {
           onToken(token);
         });
       }
-
     } catch (error: any) {
       onToken(`\n[NEURAL LINK SEVERED: ${error?.message}]`);
     }
@@ -499,3 +546,4 @@ export class PuterService {
 }
 
 export const aiService = PuterService.getInstance();
+export { aiGateway } from './aiProviders';

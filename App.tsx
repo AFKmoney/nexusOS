@@ -322,12 +322,7 @@ export default function App() {
 
       <div
         className="absolute inset-0 z-10 overflow-hidden"
-        style={{
-          transform: `scale(${uiScale})`,
-          transformOrigin: 'top left',
-          width: `${100 / uiScale}%`,
-          height: `${100 / uiScale}%`,
-        }}
+        style={uiScale !== 1.0 ? { zoom: uiScale } : undefined}
       >
         <DesktopIconGrid
           currentUserId={currentUser?.id ?? null}
@@ -335,7 +330,7 @@ export default function App() {
           openWindow={openWindow}
         />
 
-        <div className="absolute inset-0 bottom-12 p-6 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bottom-24 overflow-hidden pointer-events-none">
           {(windows || []).filter(w => w.workspaceId === activeWorkspace || !w.workspaceId).map(win => (
             <WindowFrame key={win.id} windowState={win} />
           ))}
