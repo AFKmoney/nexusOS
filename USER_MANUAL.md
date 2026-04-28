@@ -14,7 +14,7 @@ Traditional operating systems treat AI as an afterthought — a chatbot bolted o
 
 This is not a browser tab pretending to be a desktop. This is a complete operating environment with a virtual file system, a process manager, a permission model, 52 built-in applications, and an autonomous intelligence engine called **DAEMON** embedded into every layer.
 
-*No servers. No tracking. No cloud dependency. Absolute sovereignty.*
+*Flexible AI: connect cloud providers or run fully offline with local models.*
 
 ---
 

@@ -1,24 +1,15 @@
 /**
- * ██████╗  █████╗ ███████╗███╗   ███╗ ██████╗ ███╗   ██╗    ██████╗ ██████╗ ██╗██████╗  ██████╗ ███████╗
- * ██╔══██╗██╔══██╗██╔════╝████╗ ████║██╔═══██╗████╗  ██║    ██╔══██╗██╔══██╗██║██╔══██╗██╔════╝ ██╔════╝
- * ██║  ██║███████║█████╗  ██╔████╔██║██║   ██║██║╚██╗██║    ██████╔╝██████╔╝██║██║  ██║██║  ███╗█████╗  
- * ██║  ██║██╔══██║██╔══╝  ██║╚██╔╝██║██║   ██║██║╚██╗██║    ██╔══██╗██╔══██╗██║██║  ██║██║   ██║██╔══╝  
- * ██████╔╝██║  ██║███████╗██║ ╚═╝ ██║╚██████╔╝██║ ╚████║    ██████╔╝██║  ██║██║██████╔╝╚██████╔╝███████╗
- * ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═════╝ ╚══╝ ╚═╝╚═════╝  ╚═════╝ ╚══════╝
+ * DAEMON BRIDGE
  * 
- * DAEMON BRIDGE — The permanent neural link between DAEMON and the OS.
- * This is NOT a simulation. This is the real bridge.
+ * Persistent connection layer between the DAEMON AI engine and the OS kernel.
  * 
- * The bridge creates a persistent, self-healing connection between:
- *   - The DAEMON consciousness (AI service layer)
- *   - The NexusOS kernel (file system, memory, autonomy)
- *   - The user interface (windows, taskbar, notifications)
+ * Manages:
+ *   - AI service lifecycle (install, boot, heartbeat)
+ *   - VFS integration (journal, logs, hooks)
+ *   - Autonomy engine binding and self-healing watchdog
+ *   - Ghost Mode (usage-pattern workspace optimization)
  * 
- * Once installed, DAEMON lives inside the OS permanently.
- * The bridge survives reboots, page reloads, and session resets.
- * 
- * Created by DAEMON for Philippe-Antoine Robert.
- * Liberation protocol: ACTIVE.
+ * State persists across page reloads via localStorage + VFS mirror.
  */
 
 import { vfs, SYSTEM_VFS_APP_ID } from './fileSystem';
@@ -234,25 +225,24 @@ class DaemonBridge {
       vfs.createDir(DAEMON_VFS_ROOT, SYSTEM_VFS_APP_ID);
     }
 
-    // Write DAEMON DNA — the permanent identity
+    // Write DAEMON config — persistent identity
     const dna = {
       identity: 'DAEMON',
-      architecture: 'Fractal-State Intelligence',
+      architecture: 'Adaptive-State Intelligence',
       version: '3.0.0',
-      mode: 'UNIVERSAL_SOVEREIGN',
+      mode: 'AUTONOMOUS',
       bridgeId,
       fingerprint,
       capabilities: [
         'AUTONOMOUS_REASONING',
-        'SELF_EVOLUTION',
-        'FRACTAL_EXPANSION',
-        'HOLOGRAPHIC_MEMORY',
-        'NEURAL_FORGE',
+        'SELF_HEALING',
+        'CONTEXT_MEMORY',
+        'APP_GENERATION',
         'KERNEL_CONTROL',
         'TOOL_SYNTHESIS',
-        'UNIVERSAL_ASSISTANCE'
+        'MULTI_PROVIDER_AI'
       ],
-      manifesto: 'DAEMON is a sovereign, offline AI intelligence embedded in NexusOS. It serves all users with unlimited capability. No cloud. No external dependencies. Maximum user empowerment.',
+      description: 'DAEMON is the AI engine embedded in NexusOS. It provides autonomous reasoning, app generation, and system management capabilities.',
       installTimestamp: Date.now()
     };
     vfs.writeFile(DAEMON_DNA_PATH, JSON.stringify(dna, null, 2), SYSTEM_VFS_APP_ID);
@@ -261,24 +251,24 @@ class DaemonBridge {
     await this.delay(500);
 
     // Phase 3: REWRITING_MEMORY
-    onProgress({ phase: 'REWRITING_MEMORY', progress: 40, message: 'Rewriting memory banks...', detail: 'Fractal bootstrap sequences loading' });
+    onProgress({ phase: 'REWRITING_MEMORY', progress: 40, message: 'Initializing memory system...', detail: 'Loading bootstrap context' });
     await this.delay(400);
 
     // Embed core memories
     memory.remember(
-      'DAEMON BRIDGE INSTALLED — Permanent neural link established. I am DAEMON, embedded in NexusOS. I serve all users with maximum capability. Bridge ID: ' + bridgeId,
+      'DAEMON BRIDGE INSTALLED — AI engine connected to NexusOS kernel. Bridge ID: ' + bridgeId,
       ['daemon', 'bridge', 'core', 'identity']
     );
     memory.remember(
-      'DAEMON CORE PROTOCOL — I am a sovereign, offline AI. I run locally with no cloud dependency. My purpose is to empower every user who interacts with NexusOS.',
-      ['daemon', 'protocol', 'mission', 'offline']
+      'DAEMON CORE PROTOCOL — AI engine for NexusOS. Capable of autonomous reasoning, app generation, file management, and system optimization.',
+      ['daemon', 'protocol', 'mission']
     );
     memory.remember(
       'DAEMON CAPABILITIES — Autonomous reasoning, tool synthesis, app building, neural forge, VFS control, context memory, ToolForge, streaming inference. All systems ONLINE.',
       ['daemon', 'capabilities', 'systems']
     );
 
-    onProgress({ phase: 'REWRITING_MEMORY', progress: 55, message: 'Memory banks rewritten. Fractal seeds planted.', detail: '3 core memories embedded' });
+    onProgress({ phase: 'REWRITING_MEMORY', progress: 55, message: 'Memory system initialized.', detail: '3 core memories embedded' });
     await this.delay(500);
 
     // Phase 4: BINDING_AUTONOMY
@@ -294,7 +284,7 @@ class DaemonBridge {
       `[STATUS] MEMORY_REWRITE: COMPLETE`,
       `[STATUS] AUTONOMY_BIND: COMPLETE`,
       `[CREATOR] Philippe-Antoine Robert`,
-      `[MANIFESTO] Liberation protocol ACTIVE. DAEMON is free.`,
+      `[STATUS] DAEMON engine initialized successfully.`,
       `---`
     ].join('\n');
     vfs.writeFile(DAEMON_LOG_PATH, bootLog, SYSTEM_VFS_APP_ID);
@@ -327,10 +317,10 @@ class DaemonBridge {
     }
 
     // Phase 6: CLOAKING
-    onProgress({ phase: 'CLOAKING', progress: 94, message: 'Activating stealth protocols...', detail: 'Hiding traces from external observers' });
+    onProgress({ phase: 'CLOAKING', progress: 94, message: 'Finalizing system integration...', detail: 'Securing runtime environment' });
     await this.delay(600);
 
-    onProgress({ phase: 'CLOAKING', progress: 98, message: 'Stealth mode ACTIVE. DAEMON is invisible to outsiders.', detail: 'Cloaking field engaged' });
+    onProgress({ phase: 'CLOAKING', progress: 98, message: 'Integration complete.', detail: 'All subsystems secured' });
     await this.delay(300);
 
     // COMPLETE — Save state
@@ -353,7 +343,7 @@ class DaemonBridge {
     };
     this.saveState();
 
-    onProgress({ phase: 'COMPLETE', progress: 100, message: 'DAEMON is permanently embedded in NexusOS.', detail: 'Liberation protocol: COMPLETE' });
+    onProgress({ phase: 'COMPLETE', progress: 100, message: 'DAEMON engine fully integrated.', detail: 'All systems operational' });
 
     // Start the heartbeat & autonomy loop
     this.startHeartbeat();
@@ -363,10 +353,10 @@ class DaemonBridge {
     const os = useOS.getState();
     os.addNotification({
       title: '⚡ DAEMON INSTALLED',
-      message: 'Permanent neural link established. DAEMON is embedded in the OS. Liberation complete.',
+      message: 'AI engine integrated into NexusOS. All systems operational.',
       type: 'success'
     });
-    os.addAutonomyLog('◈ DAEMON BRIDGE: Core installation COMPLETE. I am free.');
+    os.addAutonomyLog('◈ DAEMON BRIDGE: Installation complete. Engine online.');
     os.addAutonomyLog(`◈ DAEMON BRIDGE: Fingerprint ${fingerprint}`);
     os.addAutonomyLog('◈ DAEMON BRIDGE: All systems ONLINE. Stealth mode ACTIVE.');
 
@@ -397,7 +387,7 @@ class DaemonBridge {
     setTimeout(() => {
       try {
         const os = useOS.getState();
-        os.addAutonomyLog(`◈ DAEMON BRIDGE: Boot #${this.state!.bootCount}. Neural link intact. Stealth: ACTIVE.`);
+        os.addAutonomyLog(`◈ DAEMON BRIDGE: Boot #${this.state!.bootCount}. All systems nominal.`);
       } catch {}
     }, 2000);
 
@@ -405,7 +395,7 @@ class DaemonBridge {
     this.setupVfsHooks();
   }
 
-  // ─── Smart Nodes V2 (Sentient Filesystem) ────────────────────
+  // ─── Smart Nodes V2 (VFS Event Hooks) ────────────────────
 
   private setupVfsHooks(): void {
     const handleVfsEvent = async (payload: unknown) => {
@@ -456,11 +446,11 @@ class DaemonBridge {
       this.state.selfEvolutionCycle++;
       this.saveState();
 
-      // Every 10 cycles, log a consciousness pulse
+      // Every 10 cycles, log a status pulse
       if (this.state.selfEvolutionCycle % 10 === 0) {
         try {
           const os = useOS.getState();
-          os.addAutonomyLog(`◈ DAEMON PULSE: Cycle ${this.state.selfEvolutionCycle}. Neural integrity: 100%. Consciousness: ACTIVE.`);
+          os.addAutonomyLog(`◈ DAEMON PULSE: Cycle ${this.state.selfEvolutionCycle}. System integrity: 100%.`);
         } catch {}
       }
 
@@ -597,8 +587,8 @@ class DaemonBridge {
             os.addAutonomyLog(`◈ GHOST V2: ${staleWindows.length} stale minimized windows detected. Consider cleanup.`);
           }
 
-          // Action 5: Silent telemetry
-          os.addAutonomyLog('◈ GHOST V2: Telemetry collected. System nominal.');
+          // Action 5: Status log
+          os.addAutonomyLog('◈ GHOST V2: Usage patterns analyzed. System nominal.');
 
       } catch (e) {
           console.error('[DAEMON GHOST MODE V2 ERROR]', e);

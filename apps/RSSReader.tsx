@@ -36,7 +36,7 @@ export default function RSSReader() {
     // Mock local aggregator since browser CORS blocks direct RSS
     const mockArticles: Article[] = [
       { title: "Neural Fractal Compression Reaches 1000x Efficiency", link: "#", snippet: "Philippe-Antoine Robert announces a breakthrough in data topology...", date: new Date().toISOString(), source: "Nexus Labs" },
-      { title: "The Rise of Sovereign Operating Systems", link: "#", snippet: "Why local inference is the future of computing sovereignty...", date: new Date().toISOString(), source: "Daemon Insights" },
+      { title: "The Future of Browser-Based Operating Systems", link: "#", snippet: "Why AI-native desktop environments are the next computing paradigm...", date: new Date().toISOString(), source: "Tech Insights" },
       { title: "Quantum Canvas: GPU-Accelerated Procedural Art", link: "#", snippet: "How WebGPU is changing the way we render digital environments...", date: new Date().toISOString(), source: "Tech Matrix" },
     ];
     

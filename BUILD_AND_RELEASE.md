@@ -28,7 +28,7 @@ This document summarizes the current build and release behavior of NexusOS as im
 From `package.json`:
 - `name`: `nexusos`
 - `version`: `2.0.0`
-- `description`: `The Sovereign Neural Operating System — Locally Inferenced, Globally Distributed.`
+- `description`: `The AI-Native Operating System`
 - `author`: `Philippe-Antoine Robert`
 
 ## Electron builder configuration

@@ -119,7 +119,7 @@ export default function SystemInfoApp() {
       <div className="mt-10 p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-center">
         <div className="text-[10px] text-emerald-500 font-black uppercase tracking-[0.2em] mb-2">Security Audit</div>
         <p className="text-xs text-zinc-500 leading-relaxed max-w-md mx-auto">
-          All system calls are monitored by the DAEMON Kernel. No external telemetry detected. Sovereignty verified.
+          All system calls are monitored by the DAEMON engine. No external telemetry. Privacy verified.
         </p>
       </div>
     </div>

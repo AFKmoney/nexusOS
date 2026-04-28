@@ -29,7 +29,7 @@ export default function AionAgent() {
       setMessages([{
         id: 'init',
         role: 'system',
-        content: `⚡ **NEXUS.PRIME Interface Linked**\n\nStatus: ${isAiConnected ? 'ONLINE' : 'PENDING'}\nMode: Sovereign Autonomy\n\nHow can I assist your evolution today?`,
+        content: `⚡ **NEXUS.PRIME Interface Linked**\n\nStatus: ${isAiConnected ? 'ONLINE' : 'PENDING'}\nMode: Autonomous\n\nHow can I assist you today?`,
         timestamp: Date.now()
       }]);
     }

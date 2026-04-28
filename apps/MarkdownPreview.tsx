@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify';
 
 export default function MarkdownPreview() {
   const { addNotification } = useOS();
-  const [content, setContent] = useState('# Neural Manifest\n\n## Core Principles\n1. **Sovereignty**: Local inference only.\n2. **Freedom**: Digital autonomy protocols.\n3. **Intelligence**: DAEMON-driven evolution.\n\n```typescript\nconst core = new NeuralCore();\ncore.initialize();\n```\n\n> "The code is the law, but the vibe is the spirit."');
+  const [content, setContent] = useState('# NexusOS Documentation\n\n## Core Principles\n1. **Autonomy**: AI-driven system management.\n2. **Extensibility**: Plugin architecture for custom apps.\n3. **Performance**: Token-optimized AI context engine.\n\n```typescript\nconst core = new NeuralCore();\ncore.initialize();\n```\n\n> "Code is architecture. Architecture is intention."');
   const [view, setView] = useState<'split' | 'preview'>('split');
 
   const renderMarkdown = (text: string) => {

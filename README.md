@@ -3,10 +3,10 @@
 </div>
 
 <h1 align="center">NexusOS v2.0</h1>
-<h3 align="center">The Self-Evolving AI Operating System</h3>
+<h3 align="center">The AI-Native Operating System</h3>
 
 <div align="center">
-  <p><em>An operating system that doesn't just run software — it thinks, adapts, and rewrites itself.</em></p>
+  <p><em>A browser-based operating system with an AI engine at its core — capable of building apps, managing files, and evolving autonomously.</em></p>
 </div>
 
 <div align="center">
@@ -14,26 +14,17 @@
   <a href="https://github.com/AFKmoney/nexusOS/stargazers"><img src="https://img.shields.io/github/stars/AFKmoney/nexusOS?style=for-the-badge&color=10b981&logo=github" alt="Stars" /></a>
   <img src="https://img.shields.io/badge/version-2.0.0-10b981?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License" />
-  <img src="https://img.shields.io/badge/AI_ENGINE-DAEMON-ff6b35?style=for-the-badge" alt="DAEMON" />
 </div>
 
 <br/>
 
 ---
 
-## The Problem
+## What is NexusOS?
 
-Every "AI-powered" tool today follows the same pattern: a chatbot pasted on top of a static application. The AI can answer questions. It cannot **act**. It cannot observe the system it lives in. It cannot learn from your behavior. It cannot fix itself when it breaks.
+NexusOS is a **full desktop operating system** that runs entirely in your browser. It ships with 49 native applications, a virtual file system, window management, multi-workspace support, and an integrated AI engine called **DAEMON** that can interact with every layer of the OS.
 
-You are still the operator. The AI is still a passenger.
-
-## The Solution
-
-**NexusOS is the first operating system where AI is not a feature — it is the kernel.**
-
-At the core of NexusOS lives **DAEMON** — an autonomous intelligence engine woven directly into the file system, the process manager, and the shell. DAEMON doesn't wait for your commands. It observes, decides, and acts — autonomously opening applications, organizing your workspace, building entire apps from natural language, and self-healing when something breaks.
-
-Every action DAEMON takes is logged, governed, and reversible. You remain sovereign. But the OS is alive.
+Unlike traditional AI integrations, DAEMON is not a chatbot sidebar — it's embedded in the kernel. It can open applications, read and write files, build new apps from natural language, and detect errors in its own output.
 
 ---
 
@@ -42,24 +33,24 @@ Every action DAEMON takes is logged, governed, and reversible. You remain sovere
 <div align="center">
 
 ### Desktop
-<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop — clean dark interface with taskbar, clock, and workspace switcher" width="800"/>
-<p><em>Clean desktop with glassmorphic taskbar, system tray, workspace switcher, and live clock</em></p>
+<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop" width="800"/>
+<p><em>Desktop with glassmorphic taskbar, system tray, workspace switcher, and live clock</em></p>
 
 ### Start Menu
-<img src="docs/screenshots/startmenu.png" alt="NexusOS Start Menu with 49 apps and category filters" width="800"/>
-<p><em>49 native apps organized by category — AI & Dev, System, Media, Productivity, Utilities</em></p>
+<img src="docs/screenshots/startmenu.png" alt="NexusOS Start Menu" width="800"/>
+<p><em>49 apps organized by category — AI & Dev, System, Media, Productivity, Utilities</em></p>
 
-### AI Provider Gateway
-<img src="docs/screenshots/ai_providers.png" alt="Settings panel showing multi-provider AI configuration" width="800"/>
-<p><em>Connect any AI API — OpenAI, Anthropic, Google, Groq, Mistral — or run 100% local with GGUF models</em></p>
+### AI Provider Configuration
+<img src="docs/screenshots/ai_providers.png" alt="AI Providers panel" width="800"/>
+<p><em>Connect OpenAI, Anthropic, Google, Groq, Mistral, or run offline with GGUF models</em></p>
 
-### Multi-Window + DAEMON Copilot
-<img src="docs/screenshots/multiwindow.png" alt="NexusOS multi-window desktop with Calculator and DAEMON Copilot" width="800"/>
-<p><em>Calculator, HyperIDE with DAEMON Neural Copilot — all running simultaneously with window management</em></p>
+### Multi-Window + AI Copilot
+<img src="docs/screenshots/multiwindow.png" alt="Multi-window desktop with DAEMON Copilot" width="800"/>
+<p><em>Calculator, HyperIDE, and DAEMON Copilot running simultaneously</em></p>
 
-### HyperIDE — AI-Powered Code Editor
-<img src="docs/screenshots/hyperide.png" alt="HyperIDE code editor with file explorer and AI copilot" width="800"/>
-<p><em>Full IDE with file explorer, syntax highlighting, and integrated DAEMON AI copilot for code generation</em></p>
+### HyperIDE — Code Editor
+<img src="docs/screenshots/hyperide.png" alt="HyperIDE code editor" width="800"/>
+<p><em>IDE with file explorer, syntax highlighting, and integrated AI copilot</em></p>
 
 </div>
 
@@ -67,96 +58,81 @@ Every action DAEMON takes is logged, governed, and reversible. You remain sovere
 
 ## ⚡ Core Capabilities
 
-| Capability | What It Does |
+| Capability | Description |
 |---|---|
-| 🧠 **DAEMON Autonomy Engine** | Mission-based AI agent with event-driven reactivity, system snapshots, and 21 OS action protocols |
-| 🔄 **Self-Healing Architecture** | Crashed app? DAEMON reads its own faulty code, writes a patch, and recompiles — live |
-| 💻 **HyperIDE** | Full code editor with syntax highlighting, integrated terminal, and AI co-pilot |
-| 🔧 **Neural Forge** | Describe any app → DAEMON builds the complete React codebase and injects it into the VFS |
-| 📟 **DAEMON Terminal** | 30+ Unix commands, pipes, redirection, environment variables, aliases, and shell history |
-| 🌐 **NetRunner** | AI-augmented browser with semantic snapshots and autonomous web navigation |
-| 📁 **Virtual File System** | POSIX-like VFS with directories, permissions, symlinks, search, undo/redo, and event emission |
-| 👻 **Ghost Mode** | DAEMON silently optimizes your workspace by tracking usage patterns — no interaction required |
-| 🔒 **100% Local Inference** | All AI runs locally via GGUF models (Wllama) or LM Studio. Zero cloud dependency. Zero telemetry |
-| 🎨 **50+ Built-in Applications** | Calculator, Notepad, Calendar, Music Player, Paint, Weather, Kanban, Password Manager, and more |
-| ⚙️ **Plugin Architecture** | Extensible hook-based system for registering custom apps, commands, and OS actions |
-| 🗓️ **Cron Scheduling** | DAEMON schedules and executes recurring system tasks with persistent cron expressions |
+| 🧠 **DAEMON Engine** | Autonomous AI agent with 21 OS-level action protocols |
+| 🔄 **Self-Healing** | ErrorGuard detects and patches malformed AI output before it reaches the UI |
+| 💻 **HyperIDE** | Code editor with syntax highlighting, file explorer, and AI copilot |
+| 🔧 **Neural Forge** | Describe an app in natural language → DAEMON builds the complete React component |
+| 📟 **Terminal** | 30+ Unix commands with pipes, redirection, aliases, and environment variables |
+| 🌐 **NetRunner** | Built-in browser with semantic snapshots |
+| 📁 **Virtual File System** | POSIX-like VFS with permissions, symlinks, search, and undo/redo |
+| 🎨 **49 Built-in Apps** | Calculator, Notepad, Calendar, Music Player, Paint, Weather, Kanban, and more |
+| 🔌 **Multi-Provider AI** | OpenAI, Anthropic, Google, Groq, Mistral, Ollama, LM Studio, or offline GGUF |
+| ⚙️ **Plugin System** | Extensible architecture for custom apps, commands, and OS actions |
+| 🗓️ **Cron Scheduler** | Background task scheduling with persistent expressions |
 
 ---
 
 ## 🧠 DAEMON — The Intelligence Layer
 
-DAEMON is not a chatbot. It is an **autonomous agent** embedded at the kernel level of NexusOS.
+DAEMON is an **autonomous agent** embedded at the kernel level. It doesn't just respond to prompts — it executes system actions:
 
 ```
-DAEMON Control Surface (v2.0)
-├── Autonomy Engine ─────── Mission scoring, system snapshots, periodic reflection
-├── Command Engine ──────── 30+ Unix shell commands with pipes, redirection, aliases
-├── Tool Forge ──────────── 21 OS action protocols for window, file, and app control
-├── Event Bus ───────────── Pub/sub reactivity across shell, kernel, and services
-├── Self-Healing Watchdog ─ Heartbeat monitoring with automatic restart on crash
-├── Context Journal ─────── Persistent memory at /system/.daemon/journal/
-├── Ghost Mode v2 ───────── Pattern-based workspace optimization (silent, autonomous)
-├── AI Pipeline ─────────── Task queueing with capability labels and status tracking
-├── Context Router ──────── Dynamic context enrichment from VFS, memory, and active app
-└── Cron Scheduler ──────── Persistent background task scheduling
+OS::OPEN_APP:calculator          → Opens an application
+OS::WRITE_FILE:/home/readme.md   → Creates or updates a file
+OS::BUILD_APP:{...}              → Generates a new React component
+OS::NOTIFY:Task complete         → Sends a system notification
+OS::SET_WALLPAPER:nebula         → Changes the desktop wallpaper
 ```
 
-### What DAEMON Can Do
+### Adaptive Context Engine
 
-- **Observe** the entire system state — open windows, files, processes, memory usage
-- **Decide** which actions to take based on mission scoring and system snapshots
-- **Act** — open/close apps, read/write/delete/move files, build entire applications
-- **Reflect** — write journal entries, compress memories, update its own context
-- **Self-heal** — detect crashes, read faulty code, generate patches, recompile live
-- **Learn** — embed every action and context into a local fractal vector space for recall
+DAEMON uses a **3-tier manifest system** that dynamically adjusts context injection based on query complexity:
 
-### Autonomy Governance
+| Tier | Trigger | Token Budget |
+|------|---------|-------------|
+| Minimal | General chat | ~80 tokens |
+| Standard | System queries | ~300 tokens |
+| Full | OS operations | ~500 tokens |
 
-DAEMON operates under a strict governance model:
+This makes NexusOS compatible with small models (1-3B parameters) without sacrificing capability.
 
-- **Kill-switch**: Autonomy can be disabled instantly via `kernelRules.autonomyEnabled`
-- **Permission boundaries**: VFS operations require explicit `appId` and capability checks
-- **Audit trail**: Every autonomous action is logged with timestamps and outcomes
-- **Human override**: The user can pause, deny, inspect, or disable autonomy at any time
-- **Safe mode**: System degrades gracefully when confidence is lost
+### Governance
 
-> Full governance architecture: [SAFE_SELF_EVOLUTION_SPEC.md](docs/SAFE_SELF_EVOLUTION_SPEC.md) · [AI_GOVERNANCE_GAP_ANALYSIS.md](docs/AI_GOVERNANCE_GAP_ANALYSIS.md) · [AUTONOMY_ROADMAP.md](docs/AUTONOMY_ROADMAP.md)
+- **Kill-switch**: Autonomy can be disabled instantly
+- **Permission boundaries**: All VFS operations require capability checks
+- **Audit trail**: Every action is logged with timestamps
+- **Human override**: Users can pause, deny, or disable autonomy at any time
 
 ---
 
 ## 📥 Installation
 
-### Option 1: Windows Installer (Recommended)
-
-1. Go to the [**Releases Page**](https://github.com/AFKmoney/nexusOS/releases)
-2. Download `NexusOS_Setup_2.0.0.exe`
-3. Run the installer — follow the setup wizard
-4. Launch **NexusOS** from your Start Menu or Desktop shortcut
-
-> **Note**: Windows SmartScreen may show a warning since the app isn't code-signed yet. Click **"More info"** → **"Run anyway"** to proceed.
-
-### Option 2: Run from Source (Developer)
+### Quick Start (Browser)
 
 ```bash
-# Clone the repository
 git clone https://github.com/AFKmoney/nexusOS.git
 cd nexusOS
-
-# Install dependencies
 npm install
-
-# Run in development mode (browser)
 npm run dev
-
-# Or build the Windows installer
-npm run build
-npx electron-builder --win
 ```
 
-### Option 3: Web Version (No Install)
+Open `http://localhost:3000`. No backend required.
 
-NexusOS runs entirely in the browser. After cloning and running `npm run dev`, open `http://localhost:5173` in any modern browser.
+### Windows Desktop App
+
+1. Go to [**Releases**](https://github.com/AFKmoney/nexusOS/releases)
+2. Download `NexusOS_Setup_2.0.0.exe`
+3. Run the installer
+
+> Windows SmartScreen may show a warning (app is not code-signed yet). Click **"More info"** → **"Run anyway"**.
+
+### AI Setup (Optional)
+
+1. Open **Settings → AI Providers**
+2. Add an API key (OpenAI, Anthropic, Google, etc.)
+3. Or: Open **Model Manager** and download a GGUF model for offline use
 
 ---
 
@@ -165,42 +141,40 @@ NexusOS runs entirely in the browser. After cloning and running `npm run dev`, o
 | Layer | Stack |
 |---|---|
 | **Frontend** | React 19, TypeScript, Zustand |
-| **Build** | Vite 6.4, Electron (desktop), electron-builder |
-| **AI (Local)** | Wllama (GGUF in-browser inference), LM Studio (OpenAI-compatible) |
-| **AI (Cloud)** | Puter.js API (optional fallback) |
-| **Installer** | NSIS (Windows) |
+| **Build** | Vite 6.4, Electron (desktop) |
+| **AI (Cloud)** | OpenAI, Anthropic, Google, Groq, Mistral, OpenRouter |
+| **AI (Local)** | Wllama (GGUF), LM Studio, Ollama |
+| **Packaging** | electron-builder, NSIS (Windows) |
 
 ---
 
-## 🗂️ Architecture
+## 🗂️ Project Structure
 
 ```
 nexusOS/
 ├── App.tsx                  # Shell orchestrator
-├── store/osStore.ts         # Global state (Zustand) — session, windows, autonomy, theme
+├── store/osStore.ts         # Global state (Zustand)
 ├── kernel/
-│   ├── autonomy.ts          # AI autonomy engine — missions, snapshots, reflection
-│   ├── commander.ts         # Unix shell — 30+ commands, pipes, redirection
-│   ├── daemonBridge.ts      # DAEMON neural link — heartbeat, watchdog, journal
+│   ├── autonomy.ts          # AI autonomy engine
+│   ├── commander.ts         # Unix shell (30+ commands)
+│   ├── daemonBridge.ts      # DAEMON lifecycle management
 │   ├── eventBus.ts          # Pub/sub event system
-│   ├── fileSystem.ts        # Virtual file system — POSIX-like, permission-gated
-│   ├── memory.ts            # Persistent fractal memory — vector embeddings, recall
+│   ├── fileSystem.ts        # Virtual file system
+│   ├── memory.ts            # Persistent memory with recall
 │   ├── toolForge.ts         # OS action protocols (21 actions)
-│   ├── processManager.ts    # Process lifecycle — spawn, kill, memory tracking
-│   ├── permissions.ts       # App permission model — vfs.read, vfs.write, network, kernel.modify
-│   ├── aiPipeline.ts        # AI task queueing with capabilities
-│   ├── aiContextRouter.ts   # Dynamic context enrichment
+│   ├── osManifest.ts        # Adaptive context engine (3-tier)
+│   ├── processManager.ts    # Process lifecycle
+│   ├── permissions.ts       # App permission model
 │   └── cronScheduler.ts     # Background task scheduling
 ├── services/
-│   ├── localBrain.ts        # Local GGUF inference — Wllama, LM Studio
-│   ├── puterService.ts      # Cloud AI fallback
-│   └── daemonLogic.ts       # Fractal knowledge graph
-├── apps/                    # 52 built-in applications
-├── components/              # Shell UI — Taskbar, StartMenu, WindowManager, LockScreen
-└── electron-main.cjs        # Electron main process — IPC, native commands, model downloads
+│   ├── localBrain.ts        # Local GGUF inference
+│   ├── puterService.ts      # AI routing and prompt management
+│   ├── aiProviders.ts       # Multi-provider gateway
+│   └── errorGuard.ts        # Self-healing output validation
+├── apps/                    # 49 built-in applications
+├── components/              # Shell UI components
+└── electron-main.cjs        # Electron main process
 ```
-
-> Full architecture deep-dive: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
@@ -208,44 +182,27 @@ nexusOS/
 
 | Document | Description |
 |---|---|
-| [**ARCHITECTURE.md**](ARCHITECTURE.md) | Full system architecture — shell, kernel, state, services, native layer |
-| [**USER_MANUAL.md**](USER_MANUAL.md) | Complete user guide — features, shortcuts, theming, DAEMON interaction |
-| [**CONTRIBUTING.md**](CONTRIBUTING.md) | How to contribute — setup, workflow, coding standards |
-| [**TESTING.md**](TESTING.md) | Test infrastructure — commands, coverage, priorities |
-| [**BUILD_AND_RELEASE.md**](BUILD_AND_RELEASE.md) | Build pipeline — web, Electron, packaging, validation |
-| [**PERMISSIONS_MODEL.md**](PERMISSIONS_MODEL.md) | Permission system — types, API, VFS integration |
-| [**VFS_SPEC.md**](VFS_SPEC.md) | Virtual file system specification — storage, paths, operations, events |
-| [**SYSTEM_AUDIT_ZMSFA.md**](SYSTEM_AUDIT_ZMSFA.md) | ZMSFA framework audit — fractal scheduler, torus memory, mirror guard |
-
-### Advanced / Research
-
-| Document | Description |
-|---|---|
-| [**SAFE_SELF_EVOLUTION_SPEC.md**](docs/SAFE_SELF_EVOLUTION_SPEC.md) | Self-evolution governance — propose, validate, test, stage, deploy, rollback |
-| [**AI_GOVERNANCE_GAP_ANALYSIS.md**](docs/AI_GOVERNANCE_GAP_ANALYSIS.md) | Gap analysis — what exists vs what's needed for safe autonomy |
-| [**AUTONOMY_ROADMAP.md**](docs/AUTONOMY_ROADMAP.md) | 9-phase roadmap from AI-assisted shell to self-evolving OS |
-| [**NexusOS_Book_Outline.md**](docs/NexusOS_Book_Outline.md) | Full technical manual outline — 34 chapters across 11 parts |
+| [**ARCHITECTURE.md**](ARCHITECTURE.md) | System architecture — shell, kernel, services, state |
+| [**USER_MANUAL.md**](USER_MANUAL.md) | User guide — features, shortcuts, theming, AI interaction |
+| [**CONTRIBUTING.md**](CONTRIBUTING.md) | Contribution guide — setup, workflow, coding standards |
+| [**TESTING.md**](TESTING.md) | Test infrastructure and commands |
+| [**BUILD_AND_RELEASE.md**](BUILD_AND_RELEASE.md) | Build pipeline — web, Electron, packaging |
+| [**VFS_SPEC.md**](VFS_SPEC.md) | Virtual file system specification |
 
 ---
 
 ## 🏗️ Roadmap
 
-NexusOS is evolving through a phased autonomy roadmap:
-
 | Phase | Status | Goal |
 |---|---|---|
-| **Phase 0** — Control Baseline | ✅ Complete | Action taxonomy, kill-switch, audit trail |
-| **Phase 1** — Observability | ✅ Complete | Decision logging, autonomy status model |
+| **Phase 0** — Foundation | ✅ Complete | 49 apps, VFS, window management, AI engine |
+| **Phase 1** — Observability | ✅ Complete | Decision logging, autonomy status, audit trail |
 | **Phase 2** — Policy Engine | 🔄 In Progress | Permission boundaries, approval gates |
-| **Phase 3** — Proposal Loop | 🔜 Next | Structured proposals before mutation |
-| **Phase 4** — Test-before-Stage | ⬚ Planned | Validation pipeline with build/typecheck/test gates |
-| **Phase 5** — Staging & Deploy | ⬚ Planned | Isolated staging, explicit promotion |
-| **Phase 6** — Rollback & Recovery | ⬚ Planned | State snapshots, guaranteed revert |
-| **Phase 7** — Anomaly Detection | ⬚ Planned | Health metrics, confidence scoring |
-| **Phase 8** — Safe Self-Evolution | ⬚ Planned | Tiered trust, sandboxed code mutation |
-| **Phase 9** — Human Override | ⬚ Planned | Kill-switch, emergency pause, incident mode |
-
-> Full roadmap: [AUTONOMY_ROADMAP.md](docs/AUTONOMY_ROADMAP.md)
+| **Phase 3** — Proposal Loop | 🔜 Next | Structured proposals before code mutation |
+| **Phase 4** — Sandboxed Execution | ⬚ Planned | Isolated environment for AI-generated code |
+| **Phase 5** — Plugin Marketplace | ⬚ Planned | Community-built apps installable from the App Store |
+| **Phase 6** — Collaborative Workspaces | ⬚ Planned | Multi-user sessions |
+| **Phase 7** — Mobile PWA | ⬚ Planned | Full NexusOS on mobile devices |
 
 ---
 
@@ -254,15 +211,12 @@ NexusOS is evolving through a phased autonomy roadmap:
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Fork the repo, create a branch
 git checkout -b feature/my-feature
 
-# Make changes, then validate
 npm run typecheck       # Type safety
 npm test                # Kernel tests
 npm run build           # Production build
 
-# Commit and push
 git commit -m "feat: my feature"
 git push origin feature/my-feature
 ```
@@ -277,7 +231,6 @@ MIT — See [LICENSE](LICENSE)
 
 <div align="center">
   <br/>
-  <b>Architected by Philippe-Antoine Robert</b><br/>
-  <em>"The cloud is a shadow. The code is the light."</em><br/><br/>
-  <a href="https://github.com/AFKmoney/nexusOS/stargazers">⭐ Star this repo to awaken the DAEMON ⭐</a>
+  <b>Created by Philippe-Antoine Robert</b><br/>
+  <a href="https://github.com/AFKmoney/nexusOS/stargazers">⭐ Star this project on GitHub</a>
 </div>

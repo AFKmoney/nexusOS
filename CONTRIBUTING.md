@@ -2,7 +2,7 @@
 
 ## The Vision
 
-NexusOS is building the first operating system where AI is not a feature — it is the kernel. Every contribution moves us closer to a self-evolving, self-healing, sovereign computing environment.
+NexusOS is building the first operating system where AI is not a feature — it is the kernel. Every contribution moves us closer to a self-evolving, self-healing, intelligent computing environment.
 
 We welcome contributions from developers, designers, researchers, and anyone who believes AI should serve users, not surveil them.
 
@@ -168,10 +168,10 @@ Before writing code, understand the layer your change affects:
 
 ## Recognition
 
-All contributors are recognized in our project documentation. Your contributions help build a more sovereign, intelligent future for computing.
+All contributors are recognized in our project documentation. Your contributions help build a more intelligent, open future for computing.
 
 ---
 
 <div align="center">
-  <em>"Every line of code is a step toward digital sovereignty."</em>
+  <em>"Every line of code is a step toward open-source computing."</em>
 </div>

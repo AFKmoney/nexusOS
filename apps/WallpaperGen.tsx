@@ -118,7 +118,7 @@ RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOC
           </div>
           <div>
             <h1 className="text-xl font-black uppercase tracking-[0.25em]">Wallpaper Engine</h1>
-            <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Sovereign Visual Manifestation</p>
+            <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">AI Wallpaper Generator</p>
           </div>
         </div>
       </div>

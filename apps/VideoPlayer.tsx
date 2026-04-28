@@ -100,7 +100,7 @@ export default function VideoPlayer() {
           <MonitorPlay size={16} className="text-emerald-400" />
         </div>
         <div className="text-xs font-black uppercase tracking-widest text-white drop-shadow-md">
-          Sovereign_Manifest_01.mp4
+          sample_video_01.mp4
         </div>
       </div>
     </div>

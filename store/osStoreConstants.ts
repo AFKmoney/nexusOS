@@ -12,7 +12,7 @@ export const DEFAULT_SINGLETON_APPS = new Set(['welcome', 'explorer', 'hyperide'
 export const DEFAULT_KERNEL_RULES: KernelRules = {
   verbosity: 0.7,
   creativity: 0.8,
-  tone: 'god_mode',
+  tone: 'adaptive',
   modelId: 'daemon-fractal',
   autonomyEnabled: false,
   autonomyInterval: 30000,
