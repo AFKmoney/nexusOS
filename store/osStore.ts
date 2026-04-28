@@ -127,13 +127,14 @@ export const useOS = create<OSState>()(
 export async function hydrateOSRegistry(): Promise<void> {
   try {
     const { SYSTEM_APPS } = await import('../appRegistry');
-    const { registry = [], installedApps = [] } = useOS.getState() as Partial<OSState>;
-    if (registry.length === 0 && installedApps.length === 0) {
-      useOS.setState({
-        registry: SYSTEM_APPS,
-        installedApps: SYSTEM_APPS.map((app) => app.id)
-      });
-    }
+    const { installedApps = [] } = useOS.getState() as Partial<OSState>;
+    
+    // Registry is NOT persisted, so we must ALWAYS reload it from the manifest
+    useOS.setState({
+      registry: SYSTEM_APPS,
+      // Only set installedApps on first boot (when empty)
+      ...(installedApps.length === 0 ? { installedApps: SYSTEM_APPS.map((app) => app.id) } : {})
+    });
   } catch (error) {
     console.warn('[OS_STORE] Failed to hydrate app registry:', error);
   }

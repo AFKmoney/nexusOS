@@ -41,17 +41,17 @@ Every action DAEMON takes is logged, governed, and reversible. You remain sovere
 
 <div align="center">
 
-### Desktop & IDE
-<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop with HyperIDE and Terminal" width="800"/>
-<p><em>HyperIDE code editor + DAEMON Terminal with 30+ Unix commands</em></p>
+### DAEMON Dashboard
+<img src="docs/screenshots/dashboard.png" alt="DAEMON Dashboard showing system metrics" width="800"/>
+<p><em>DAEMON Dashboard — 49 apps, real-time system metrics, ErrorGuard, and autonomy feed</em></p>
 
-### AI Dashboard
-<img src="docs/screenshots/dashboard.png" alt="DAEMON Dashboard - System Monitoring" width="800"/>
-<p><em>Real-time DAEMON consciousness state, system metrics, and autonomy telemetry</em></p>
+### Desktop & Start Menu
+<img src="docs/screenshots/desktop.png" alt="NexusOS Desktop with Start Menu" width="800"/>
+<p><em>Start Menu with category filters, app grid, theme controls, and DAEMON status</em></p>
 
-### Neural Forge — AI App Builder
-<img src="docs/screenshots/ai_forge.png" alt="NeuralForge AI App Builder" width="800"/>
-<p><em>Describe an app in natural language → DAEMON generates the full React codebase instantly</em></p>
+### Multi-Window Environment
+<img src="docs/screenshots/ai_forge.png" alt="NexusOS multi-window desktop" width="800"/>
+<p><em>Multiple windows, glassmorphic taskbar, workspace switcher, and system tray</em></p>
 
 </div>
 
