@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useOS } from '../../store/osStore';
 import {
-  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle
+  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle, Globe, Plus, Trash2, TestTube2, Loader2
 } from 'lucide-react';
 import { aiPipelineBridge } from '../../kernel/aiPipelineBridge';
 import { localBrain } from '../../services/localBrain';
+import { aiGateway, PROVIDER_PRESETS, type AIProvider } from '../../services/aiProviders';
 import ModelManager from '../ModelManager';
 
 export default function SettingsApp() {
@@ -21,7 +22,7 @@ export default function SettingsApp() {
     setWallpaper
   } = useOS();
 
-  const [tab, setTab] = useState<'profile' | 'system' | 'appearance' | 'daemon' | 'ai' | 'models'>('profile');
+  const [tab, setTab] = useState<'profile' | 'system' | 'appearance' | 'daemon' | 'ai' | 'models' | 'providers'>('profile');
   const [installing, setInstalling] = useState(false);
   const [progress, setProgress] = useState(0);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -41,6 +42,7 @@ export default function SettingsApp() {
   const tabs = [
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'system' as const, label: 'System', icon: Cpu },
+    { id: 'providers' as const, label: 'AI Providers', icon: Globe },
     { id: 'models' as const, label: 'Models', icon: Database },
     { id: 'appearance' as const, label: 'Appearance', icon: Palette },
     { id: 'daemon' as const, label: 'DAEMON Core', icon: Zap },
@@ -480,8 +482,223 @@ export default function SettingsApp() {
                <ModelManager windowId="settings-models" />
             </div>
           )}
+
+          {tab === 'providers' && <AIProvidersTab addNotification={addNotification} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI PROVIDERS TAB — Universal Multi-Provider Configuration
+// ═══════════════════════════════════════════════════════════════
+function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void }) {
+  const [providers, setProviders] = useState<AIProvider[]>([]);
+  const [activeId, setActiveId] = useState('');
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string; latencyMs: number }>>({});
+  const [showAddMenu, setShowAddMenu] = useState(false);
+
+  useEffect(() => {
+    setProviders(aiGateway.getProviders());
+    setActiveId(aiGateway.getActiveProviderId());
+  }, []);
+
+  const handleAddPreset = (presetId: string) => {
+    const preset = PROVIDER_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+    const newProvider: AIProvider = { ...preset, apiKey: '', enabled: false };
+    aiGateway.addProvider(newProvider);
+    setProviders(aiGateway.getProviders());
+    setShowAddMenu(false);
+    addNotification({ title: 'Provider Added', message: `${preset.name} added. Enter your API key to activate.`, type: 'info' });
+  };
+
+  const handleKeyChange = (id: string, key: string) => {
+    aiGateway.updateProviderKey(id, key);
+    setProviders(aiGateway.getProviders());
+  };
+
+  const handleSetActive = (id: string) => {
+    aiGateway.setActiveProvider(id);
+    setActiveId(id);
+    const p = providers.find(p => p.id === id);
+    addNotification({ title: 'Active Provider', message: `${p?.name || id} is now the active AI provider.`, type: 'success' });
+  };
+
+  const handleRemove = (id: string) => {
+    aiGateway.removeProvider(id);
+    setProviders(aiGateway.getProviders());
+    setActiveId(aiGateway.getActiveProviderId());
+  };
+
+  const handleTest = async (id: string) => {
+    setTesting(id);
+    try {
+      const result = await aiGateway.testProvider(id);
+      setTestResults(prev => ({ ...prev, [id]: result }));
+    } catch (e: any) {
+      setTestResults(prev => ({ ...prev, [id]: { success: false, message: e.message, latencyMs: 0 } }));
+    }
+    setTesting(null);
+  };
+
+  const availablePresets = PROVIDER_PRESETS.filter(p => !providers.some(ep => ep.id === p.id));
+
+  return (
+    <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tighter uppercase">AI Providers</h2>
+          <p className="text-xs text-zinc-500 mt-1">Connect any AI API — OpenAI, Anthropic, Google, Groq, Mistral, and more.</p>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black uppercase tracking-widest text-[10px] flex items-center gap-2"
+          >
+            <Plus size={12} /> Add Provider
+          </button>
+          {showAddMenu && (
+            <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+              {availablePresets.length === 0 ? (
+                <div className="p-4 text-xs text-zinc-500 text-center">All providers already added</div>
+              ) : (
+                availablePresets.map(preset => (
+                  <button
+                    key={preset.id}
+                    onClick={() => handleAddPreset(preset.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0"
+                  >
+                    <Globe size={14} className="text-accent shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-white">{preset.name}</div>
+                      <div className="text-[9px] text-zinc-500 truncate">{preset.baseUrl}</div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Active provider indicator */}
+      {activeId && providers.find(p => p.id === activeId && p.enabled) && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
+          <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+          <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+            Active: {providers.find(p => p.id === activeId)?.name}
+          </div>
+          <div className="text-[9px] text-zinc-500 ml-auto">All AI inference routed here</div>
+        </div>
+      )}
+
+      {!activeId || !providers.some(p => p.enabled) ? (
+        <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center gap-3">
+          <AlertCircle size={16} className="text-amber-400 shrink-0" />
+          <div className="text-xs text-amber-400">No cloud provider active — using local GGUF model (Wllama/LM Studio)</div>
+        </div>
+      ) : null}
+
+      {/* Provider list */}
+      <div className="space-y-3">
+        {providers.map(provider => {
+          const result = testResults[provider.id];
+          const isActive = activeId === provider.id;
+          return (
+            <div
+              key={provider.id}
+              className={`p-5 rounded-2xl border transition-all ${
+                isActive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Globe size={16} className={isActive ? 'text-emerald-400' : 'text-zinc-500'} />
+                  <span className="text-sm font-bold text-white">{provider.name}</span>
+                  {provider.enabled && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Configured
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {provider.enabled && !isActive && (
+                    <button
+                      onClick={() => handleSetActive(provider.id)}
+                      className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-black transition-all"
+                    >
+                      Set Active
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleTest(provider.id)}
+                    disabled={!provider.apiKey || testing === provider.id}
+                    className="p-1.5 text-zinc-500 hover:text-cyan-400 transition-colors disabled:opacity-30"
+                    title="Test connection"
+                  >
+                    {testing === provider.id ? <Loader2 size={14} className="animate-spin" /> : <TestTube2 size={14} />}
+                  </button>
+                  <button
+                    onClick={() => handleRemove(provider.id)}
+                    className="p-1.5 text-zinc-500 hover:text-rose-400 transition-colors"
+                    title="Remove provider"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* API Key Input */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-emerald-500/40 font-mono placeholder-zinc-600"
+                  placeholder={`Enter ${provider.name} API Key...`}
+                  value={provider.apiKey}
+                  onChange={e => handleKeyChange(provider.id, e.target.value)}
+                />
+              </div>
+
+              {/* Model selector */}
+              {provider.models && provider.models.length > 0 && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] text-zinc-600 uppercase tracking-widest">Models:</span>
+                  {provider.models.map(m => (
+                    <span key={m} className="px-2 py-0.5 rounded text-[9px] bg-white/5 text-zinc-400 border border-white/5">
+                      {m.split('/').pop()}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Base URL */}
+              <div className="mt-2 text-[9px] text-zinc-600 font-mono truncate">
+                {provider.baseUrl}
+              </div>
+
+              {/* Test result */}
+              {result && (
+                <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${
+                  result.success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                }`}>
+                  {result.success ? '✓' : '✗'} {result.message} {result.latencyMs > 0 && `(${result.latencyMs}ms)`}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {providers.length === 0 && (
+        <div className="text-center py-12 text-zinc-600">
+          <Globe size={48} className="mx-auto mb-4 opacity-20" />
+          <p className="text-sm">No AI providers configured yet.</p>
+          <p className="text-xs mt-1">Click "Add Provider" to connect OpenAI, Anthropic, Google, or others.</p>
+        </div>
+      )}
     </div>
   );
 }
