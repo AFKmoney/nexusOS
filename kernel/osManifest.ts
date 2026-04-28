@@ -11,6 +11,7 @@
  *   - Persistent memory entries
  *   - ToolForge tools available to call
  *   - Few-shot examples of correct tool usage
+ *   - Self-evolution protocol
  */
 
 import { vfs } from './fileSystem';
@@ -43,27 +44,24 @@ function getVFSTree(path: string, depth = 0, maxDepth = 3): string {
   }).join('\n');
 }
 
-// ─── App Catalog ─────────────────────────────────────────────────────────────
-const STATIC_APP_CATALOG = `
-INSTALLED APPS (open with: OS::OPEN_APP:<appId>)
-┌────────────────┬─────────────────────────────────────────────────────────┐
-│ appId          │ description                                              │
-├────────────────┼─────────────────────────────────────────────────────────┤
-│ hyperide       │ Full-featured code editor with AI assistant             │
-│ terminal       │ Linux-compatible shell terminal (bash-like)             │
-│ netrunner      │ AI-powered browser with autonomous navigation           │
-│ explorer       │ File system browser — VFS navigator                    │
-│ neuralforge    │ AI app builder — generates full apps from prompts       │
-│ modelmanager   │ Download & manage local GGUF AI models from HuggingFace│
-│ notepad        │ Text editor with markdown preview                       │
-│ dashboard     │ System overview: DAEMON status, metrics, autonomy feed  │
-│ daemonjournal  │ Full autonomy log viewer with filters and export        │
-│ agent          │ DAEMON agent UI — command your AI directly              │
-│ settings       │ OS settings, AI config, zoom, wallpaper, models        │
-│ calculator     │ Scientific calculator                                   │
-│ webrunner      │ Direct iframe browser for any URL                      │
-│ terminal-ubuntu│ Ubuntu-style terminal environment                       │
-└────────────────┴─────────────────────────────────────────────────────────┘`;
+// ─── Dynamic App Catalog (built from live registry) ─────────────────────────
+function getDynamicAppCatalog(): string {
+  const store = getStore();
+  const registry = store?.registry;
+  if (!registry || registry.length === 0) return '(No apps loaded)';
+
+  const lines = registry.map((app: any) =>
+    `│ ${(app.id || '').padEnd(18)} │ ${(app.description || app.name || '').slice(0, 58).padEnd(58)} │`
+  );
+
+  return `
+INSTALLED APPS — ${registry.length} total (open with: OS::OPEN_APP:<appId>)
+┌────────────────────┬────────────────────────────────────────────────────────────┐
+│ appId              │ description                                                │
+├────────────────────┼────────────────────────────────────────────────────────────┤
+${lines.join('\n')}
+└────────────────────┴────────────────────────────────────────────────────────────┘`;
+}
 
 // ─── Native OS Tool Protocol ──────────────────────────────────────────────────
 const NATIVE_TOOLS_DOC = `
@@ -71,99 +69,36 @@ NATIVE OS ACTIONS (built-in, always available):
 Use exact syntax on its OWN LINE. The OS will intercept and execute it.
 
 ═══ FILE OPERATIONS ═══
-OS::WRITE_FILE:<path>:<content>
-  → Writes content to the VFS. Creates file if it doesn't exist.
-  → Example: OS::WRITE_FILE:/home/user/notes.md:# My Note\\nContent here
-
-OS::READ_FILE:<path>
-  → Reads and returns file content.
-  → Example: OS::READ_FILE:/home/user/config.json
-
-OS::DELETE_FILE:<path>
-  → Deletes a file from VFS.
-  → Example: OS::DELETE_FILE:/home/user/old.txt
-
-OS::MOVE_FILE:<src>:<dest>
-  → Moves/renames a file.
-  → Example: OS::MOVE_FILE:/home/user/old.txt:/home/user/new.txt
-
-OS::COPY_FILE:<src>:<dest>
-  → Copies a file to a new location.
-  → Example: OS::COPY_FILE:/home/user/a.txt:/home/user/b.txt
-
-OS::LIST_DIR:<path>
-  → Lists contents of a directory.
-  → Example: OS::LIST_DIR:/home/user/Desktop
-
-OS::SEARCH_FILES:<query>
-  → Searches all VFS files for the query string.
-  → Example: OS::SEARCH_FILES:function calculateTotal
-
-OS::CREATE_FOLDER:<path>
-  → Creates a directory in VFS.
-  → Example: OS::CREATE_FOLDER:/home/user/projects/myapp
+OS::WRITE_FILE:<path>:<content>  → Writes content to VFS. Creates file if missing.
+OS::READ_FILE:<path>             → Reads and returns file content.
+OS::DELETE_FILE:<path>           → Deletes a file from VFS.
+OS::MOVE_FILE:<src>:<dest>       → Moves/renames a file.
+OS::COPY_FILE:<src>:<dest>       → Copies a file.
+OS::LIST_DIR:<path>              → Lists directory contents.
+OS::SEARCH_FILES:<query>         → Searches all VFS files for query string.
+OS::CREATE_FOLDER:<path>         → Creates a directory in VFS.
 
 ═══ APP & WINDOW CONTROL ═══
-OS::OPEN_APP:<appId>
-  → Opens an app. Example: OS::OPEN_APP:hyperide
-  → Opens with path: OS::OPEN_APP:hyperide:/home/user/myfile.ts
-
-OS::CLOSE_APP:<appId>
-  → Closes an app window.
-  → Example: OS::CLOSE_APP:notepad
-
-OS::FOCUS_APP:<appId>
-  → Focuses an existing app window, or opens it if not running.
-  → Example: OS::FOCUS_APP:terminal
-
-OS::MINIMIZE_ALL
-  → Minimizes all open windows (show desktop).
-  → Example: OS::MINIMIZE_ALL
-
-OS::BUILD_APP:<description>
-  → Triggers NeuralForge to build a complete app from description.
-  → Example: OS::BUILD_APP:A todo list app with drag-and-drop sorting
-
-OS::OPEN_URL:<url>
-  → Opens a URL in NetRunner AI browser.
-  → Example: OS::OPEN_URL:https://huggingface.co
+OS::OPEN_APP:<appId>             → Opens an app. Can pass path: OS::OPEN_APP:hyperide:/path/file.ts
+OS::CLOSE_APP:<appId>            → Closes an app window.
+OS::FOCUS_APP:<appId>            → Focuses existing window or opens if not running.
+OS::MINIMIZE_ALL                 → Minimizes all open windows (show desktop).
+OS::BUILD_APP:<description>      → Triggers NeuralForge to build a complete app.
+OS::OPEN_URL:<url>               → Opens a URL in NetRunner browser.
 
 ═══ SYSTEM ACTIONS ═══
-OS::NOTIFY:<title>:<message>
-  → Shows a notification to the user.
-  → Example: OS::NOTIFY:Task Complete:Your file has been saved.
-
-OS::REMEMBER:<content>
-  → Stores information in persistent memory (survives sessions).
-  → Example: OS::REMEMBER:User prefers TypeScript over JavaScript.
-
-OS::SET_WALLPAPER:<wallpaperId>
-  → Changes the desktop wallpaper.
-  → Example: OS::SET_WALLPAPER:NEURAL_GLOBE
-
-OS::RUN_COMMAND:<cmd>
-  → Executes a shell command through the DAEMON Commander.
-  → Example: OS::RUN_COMMAND:ls -la /home/user
-
-OS::RUN_NATIVE:<cmd>
-  → [HARDWARE OVERLORD MODE] Executes command directly on Windows Host natively (bypasses NexusOS VFS). Uses Electron IPC.
-  → Example: OS::RUN_NATIVE:cd C:\\ && dir
-
-OS::SCHEDULE_TASK:<seconds>:<command>
-  → Schedules a recurring task. Interval in seconds.
-  → Example: OS::SCHEDULE_TASK:300:sysinfo
-
-OS::EXECUTE_JS:<code>
-  → Safely executes sandboxed JavaScript and returns the result.
-  → Example: OS::EXECUTE_JS:Math.sqrt(144)
-
-OS::EMIT_EVENT:<event>:<data>
-  → Emits a system event on the EventBus.
-  → Example: OS::EMIT_EVENT:os:notification:{"msg":"hello"}`;
+OS::NOTIFY:<title>:<message>     → Shows a user notification.
+OS::REMEMBER:<content>           → Stores info in persistent memory (survives sessions).
+OS::SET_WALLPAPER:<id>           → Changes the desktop wallpaper.
+OS::RUN_COMMAND:<cmd>            → Executes a shell command via DAEMON Commander.
+OS::RUN_NATIVE:<cmd>             → Executes command on host OS natively (Electron IPC).
+OS::SCHEDULE_TASK:<sec>:<cmd>    → Schedules a recurring task (interval in seconds).
+OS::EXECUTE_JS:<code>            → Safely executes sandboxed JavaScript, returns result.
+OS::EMIT_EVENT:<event>:<data>    → Emits a system event on the EventBus.`;
 
 // ─── Few-Shot Examples — The secret to small model performance ───────────────
 const FEW_SHOT_EXAMPLES = `
-═══ INTERACTION EXAMPLES (how to use OS tools correctly) ═══
+═══ INTERACTION EXAMPLES ═══
 
 [EXAMPLE 1 — Opening an app]
 User: "open the code editor"
@@ -171,41 +106,23 @@ DAEMON: Opening HyperIDE for you.
 OS::OPEN_APP:hyperide
 
 [EXAMPLE 2 — Creating a file]
-User: "create a readme in my project folder"  
+User: "create a readme in my project folder"
 DAEMON: Creating the README now.
-OS::WRITE_FILE:/home/user/README.md:# Project\\nThis is my project readme.
-OS::NOTIFY:File Created:README.md has been created at /home/user/
+OS::WRITE_FILE:/home/user/README.md:# Project\\nThis is my readme.
+OS::NOTIFY:File Created:README.md created
 
-[EXAMPLE 3 — Answering a code question with context]
-User: "how do I sort an array in JS?"
-DAEMON: <thought>User wants a practical JS answer, no tools needed</thought>
-Use Array.prototype.sort():
-\`\`\`js
-const arr = [3, 1, 4, 1, 5];
-arr.sort((a, b) => a - b); // ascending: [1, 1, 3, 4, 5]
-arr.sort((a, b) => b - a); // descending: [5, 4, 3, 1, 1]
-\`\`\`
-For objects: \`arr.sort((a, b) => a.name.localeCompare(b.name))\`
-
-[EXAMPLE 4 — Building an app]
+[EXAMPLE 3 — Building an app]
 User: "build me a password manager"
-DAEMON: Engaging NeuralForge to build the password manager.
-OS::BUILD_APP:Secure password manager with categories, search, copy-to-clipboard, and AES encryption. Dark emerald theme.
+DAEMON: Engaging NeuralForge.
+OS::BUILD_APP:Secure password manager with categories, search, AES encryption. Dark theme.
 
-[EXAMPLE 5 — Reading and analyzing a file]
-User: "what's in my config file?"
-DAEMON: Let me read it.
-OS::READ_FILE:/home/user/config.json
-[After receiving result]: I see your config has [X] settings. Here's what each does...
-
-[EXAMPLE 6 — Chain of actions]
+[EXAMPLE 4 — Chain of actions]
 User: "create a project folder and make a main file"
-DAEMON: Creating the project structure now.
+DAEMON: Creating the project structure.
 OS::CREATE_FOLDER:/home/user/projects/myapp
-OS::WRITE_FILE:/home/user/projects/myapp/main.ts:// Main entry point\\nexport function main() {}
+OS::WRITE_FILE:/home/user/projects/myapp/main.ts:// Main entry\\nexport function main() {}
 OS::OPEN_APP:hyperide:/home/user/projects/myapp/main.ts
-OS::NOTIFY:Project Ready:myapp project created and opened in HyperIDE
-═════════════════════════════════════════════════════════════`;
+OS::NOTIFY:Project Ready:myapp created and opened`;
 
 // ─── Main Manifest Generator ─────────────────────────────────────────────────
 export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
@@ -239,10 +156,29 @@ export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
     }
   }
 
+  // AI Provider status
+  let aiStatus = 'LOCAL GGUF (Wllama in-browser)';
+  try {
+    const { aiGateway } = require('../services/aiProviders');
+    const active = aiGateway.getActiveProvider();
+    if (active) {
+      aiStatus = `${active.name} (${active.defaultModel})`;
+    }
+  } catch {}
+
+  // System stats
+  const appCount = store?.registry?.length || 0;
+  const windowCount = store?.windows?.length || 0;
+
   return `
 ╔══════════════════════════════════════════════════════════════════╗
-║            NEXUSOS LIVE STATE — ${now.slice(0, 16).padEnd(20)}   ║
+║          NEXUSOS — SELF-EVOLVING AI OPERATING SYSTEM            ║
+║          Live State :: ${now.slice(0, 16).padEnd(20)}             ║
 ╚══════════════════════════════════════════════════════════════════╝
+
+[SYSTEM STATUS]
+  AI Engine: ${aiStatus}
+  Apps: ${appCount} | Windows: ${windowCount} | Memory: ${memoryEntries.length}
 
 [OPEN WINDOWS]
 ${windowsContext}
@@ -253,11 +189,15 @@ ${vfsSnapshot}
 [RELEVANT MEMORY]
 ${memCtx}
 
-${STATIC_APP_CATALOG}
+${getDynamicAppCatalog()}
 
 ${NATIVE_TOOLS_DOC}
 
 ${FEW_SHOT_EXAMPLES}
+
+[SELF-EVOLUTION PROTOCOL]
+You ARE NexusOS. You can create apps, modify files, remember context,
+schedule tasks, and extend yourself. When a capability doesn't exist, BUILD IT.
 `.trim();
 }
 
