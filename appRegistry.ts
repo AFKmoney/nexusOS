@@ -319,7 +319,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     icon: Clipboard,
     component: ClipboardManagerApp,
     permissions: [],
-    defaultSize: { width: 400, height: 520 },
+    defaultSize: { width: 500, height: 520 },
     description: 'Persistent clipboard history with semantic indexing.'
   }, 
   {
@@ -337,7 +337,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     icon: Calculator,
     component: CalculatorProApp,
     permissions: [],
-    defaultSize: { width: 320, height: 520 },
+    defaultSize: { width: 560, height: 560 },
     description: 'Scientific computation engine with history.'
   },
   {
@@ -447,7 +447,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     icon: Timer,
     component: PomodoroApp,
     permissions: [],
-    defaultSize: { width: 340, height: 480 },
+    defaultSize: { width: 420, height: 520 },
     description: 'Focus management timer for peak productivity.'
   },
   {
