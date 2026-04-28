@@ -42,6 +42,7 @@ export default function StartMenu() {
   } = useOS();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [showControls, setShowControls] = useState(false);
 
   const recentFiles = useMemo(() => {
     if (!isStartMenuOpen) return [];
@@ -116,73 +117,61 @@ export default function StartMenu() {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-         <div className="px-6 pt-1 pb-1 flex items-center justify-between gap-4">
-           <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.35em] text-zinc-500">
-             <Sparkles size={10} className="text-accent" />
-             <span>Core Surface Controls</span>
-           </div>
-           <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.25em] text-zinc-600">
-             <span>Theme:</span>
-             <span className="text-zinc-300">{themePreset}</span>
-             <span className="text-zinc-700">·</span>
-             <span>Effect:</span>
-             <span className="text-zinc-300">{wallpaperEffect}</span>
-           </div>
-         </div>
-         {/* Category Navigation Spatial */}
-        <div className="px-6 pt-4 pb-1 flex gap-2 flex-wrap shrink-0">
+        {/* Category Navigation */}
+        <div className="px-6 pt-3 pb-2 flex gap-2 flex-wrap shrink-0">
            {categoriesList.map(cat => (
              <button key={cat} onClick={() => setActiveCategory(cat)}
               className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${activeCategory === cat ? 'bg-accent text-black shadow-accent scale-105' : 'text-zinc-500 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}>
               {cat}
              </button>
           ))}
+          <button
+            onClick={() => setShowControls(!showControls)}
+            className={`ml-auto px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${showControls ? 'bg-accent/20 text-accent border border-accent/30' : 'text-zinc-600 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}
+          >
+            <MonitorCog size={12} />
+          </button>
         </div>
 
-         <div className="px-6 pb-2 mt-2">
-           <div className="grid grid-cols-4 gap-2">
-             <button
-               onClick={() => setWallpaperEffect(wallpaperEffect === 'nebula' ? 'aurora' : 'nebula')}
-               className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left"
-             >
-               <Wallpaper size={14} className="text-accent" />
-               <div>
-                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Effect</div>
-                 <div className="text-[8px] text-zinc-500 truncate">Cycle surface</div>
-               </div>
-             </button>
-             <button
-               onClick={() => setThemePreset(themePreset === 'neo-emerald' ? 'midnight-cyan' : 'neo-emerald')}
-               className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left"
-             >
-               <Palette size={14} className="text-accent" />
-               <div>
-                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Preset</div>
-                 <div className="text-[8px] text-zinc-500 truncate">Swap accent</div>
-               </div>
-             </button>
-             <button
-               onClick={() => handleAccentChange('blue', '#3b82f6')}
-               className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left"
-             >
-               <Layers3 size={14} className="text-accent" />
-               <div>
-                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Accent</div>
-                 <div className="text-[8px] text-zinc-500 truncate">Apply tone</div>
-               </div>
-             </button>
-             <button
-               onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
-               className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left ${aiManagedStoreEnabled ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-             >
-               <LaptopMinimalCheck size={14} className={aiManagedStoreEnabled ? 'text-accent' : 'text-zinc-500'} />
-               <div>
-                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">AI Store</div>
-                 <div className="text-[8px] text-zinc-500">{aiManagedStoreEnabled ? 'Enabled' : 'Disabled'}</div>
-               </div>
-             </button>
-           </div>
-         </div>
+        {/* Collapsible Surface Controls */}
+        {showControls && (
+          <div className="px-6 pb-2">
+            <div className="grid grid-cols-4 gap-2">
+              <button onClick={() => setWallpaperEffect(wallpaperEffect === 'nebula' ? 'aurora' : 'nebula')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
+                <Wallpaper size={14} className="text-accent" />
+                <div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Effect</div>
+                  <div className="text-[8px] text-zinc-500 truncate">Cycle surface</div>
+                </div>
+              </button>
+              <button onClick={() => setThemePreset(themePreset === 'neo-emerald' ? 'midnight-cyan' : 'neo-emerald')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
+                <Palette size={14} className="text-accent" />
+                <div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Preset</div>
+                  <div className="text-[8px] text-zinc-500 truncate">Swap accent</div>
+                </div>
+              </button>
+              <button onClick={() => handleAccentChange('blue', '#3b82f6')}
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
+                <Layers3 size={14} className="text-accent" />
+                <div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Accent</div>
+                  <div className="text-[8px] text-zinc-500 truncate">Apply tone</div>
+                </div>
+              </button>
+              <button onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
+                className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left ${aiManagedStoreEnabled ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                <LaptopMinimalCheck size={14} className={aiManagedStoreEnabled ? 'text-accent' : 'text-zinc-500'} />
+                <div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">AI Store</div>
+                  <div className="text-[8px] text-zinc-500">{aiManagedStoreEnabled ? 'Enabled' : 'Disabled'}</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
          {/* Main Viewport */}
         <div className="flex-1 flex flex-col px-6 pb-4 overflow-y-auto custom-scrollbar relative">
@@ -217,7 +206,7 @@ export default function StartMenu() {
              </span>
           </div>
 
-          <div className="grid grid-cols-6 gap-x-2 gap-y-4 pb-10">
+          <div className="grid grid-cols-6 gap-x-3 gap-y-3 pb-10">
               {displayedApps.map(app => {
                   const Icon = app.icon;
                   return (

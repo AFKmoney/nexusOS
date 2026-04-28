@@ -122,7 +122,17 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden relative bg-transparent">
+        <div
+          className="flex-1 overflow-hidden relative bg-transparent"
+          onContextMenu={(e) => {
+            // Only intercept if no child has handled it
+            if (!(e.target as HTMLElement).closest('textarea, input, [contenteditable], .custom-context')) {
+              e.preventDefault();
+              e.stopPropagation();
+              openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'window', targetId: windowState.id });
+            }
+          }}
+        >
           {AppComponent ? (
             <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
               <AppComponent windowId={windowState.id} />
