@@ -109,7 +109,7 @@ export default function GlobalSearch() {
                         {vfsResults.map(res => (
                             <button 
                               key={res.path} 
-                              onClick={() => { toggleSearch(); openWindow('notepad', { title: res.name, file: res.path }); }}
+                              onClick={() => { toggleSearch(); openWindow('notepad', { title: res.name, path: res.path }); }}
                               className="w-full text-left p-3 hover:bg-white/10 rounded-xl flex items-center gap-3 transition-colors group"
                             >
                                <FileIcon size={18} className="text-white/50 group-hover:text-emerald-400 shrink-0" />

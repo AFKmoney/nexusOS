@@ -16,7 +16,7 @@ import {
 
 // ─── Refined Syntax Highlighting (Daemon Dark Theme) ─────────────
 function escapeHtml(text: string): string {
-  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return text.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"');
 }
 
 function highlight(code: string, ext: string): string {
@@ -25,8 +25,8 @@ function highlight(code: string, ext: string): string {
   
   if (ext === 'json') {
     return h
-      .replace(/(\"(?:[^\"\\]|\\.)*\")\s*:/g,'<span class="text-sky-300 font-medium">$1</span>:')
-      .replace(/:\s*(\"(?:[^\"\\]|\\.)*\")/g,': <span class="text-emerald-300">$1</span>')
+      .replace(/("(?:[^"\\]|\\.)*")\s*:/g,'<span class="text-sky-300 font-medium">$1</span>:')
+      .replace(/:\s*("(?:[^"\\]|\\.)*")/g,': <span class="text-emerald-300">$1</span>')
       .replace(/:\s*(true|false|null)/g,': <span class="text-purple-400 font-bold">$1</span>')
       .replace(/:\s*(\d+\.?\d*)/g,': <span class="text-orange-300">$1</span>');
   }
@@ -42,15 +42,15 @@ function highlight(code: string, ext: string): string {
   kw.forEach(k => { h = h.replace(new RegExp(`\\b(${k})\\b`,'g'),`<span class="text-purple-400 font-semibold">$1</span>`); });
   
   // Strings & Comments
-  h = h.replace(/(\".*?\"|'.*?'|`[\s\S]*?`)/g,'<span class="text-emerald-300">$1</span>');
+  h = h.replace(/(".*?"|'.*?'|`[\s\S]*?`)/g,'<span class="text-emerald-300">$1</span>');
   h = h.replace(/(\/\/[^\n]*)/g,'<span class="text-zinc-500 italic">$1</span>');
   h = h.replace(/(\/\*[\s\S]*?\*\/)/g,'<span class="text-zinc-500 italic">$1</span>');
   h = h.replace(/(#[^\n]*)/g,'<span class="text-zinc-500 italic">$1</span>');
   
   // Tags (React/HTML)
   if (['html','tsx','jsx'].includes(ext)) {
-    h = h.replace(/(&lt;\/?)([\w.-]+)/g,'$1<span class="text-rose-400 font-medium">$2</span>');
-    h = h.replace(/([\w-]+)=(&quot;|&#x27;)/g,'<span class="text-sky-300">$1</span>=$2');
+    h = h.replace(/(<\/?)([\w.-]+)/g,'$1<span class="text-rose-400 font-medium">$2</span>');
+    h = h.replace(/([\w-]+)=("|&#x27;)/g,'<span class="text-sky-300">$1</span>=$2');
   }
   
   // Numbers & Types/Classes
@@ -345,7 +345,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     const lastAI = aiMessages.slice().reverse().find(m => m.role === 'ai');
     if (!lastAI || !activeTab) return;
     const codeMatch = lastAI.content.match(/```(?:\w+)?\n([\s\S]*?)```/);
-    const code = codeMatch ? codeMatch[1] : lastAI.content;
+    const code = codeMatch?.[1] || lastAI.content;
     updateContent(code.trim());
     addNotification({ title: 'Code Injected', message: `Neural synthesis applied to ${activeTab.name}`, type: 'success' });
   };
@@ -364,7 +364,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
       complete: 'Complete or extend this code.',
       optimize: 'Optimize this code for performance.',
     };
-    askAI(prompts[action]);
+    askAI(prompts[action] || prompts.explain);
   };
 
   // ─── Editor Utils ─────────────────────────────────────────
@@ -373,7 +373,8 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     if (!ta || !activeTab) return;
     const before = activeTab.content.slice(0, ta.selectionStart);
     const lines = before.split('\n');
-    setCursorPos({ line: lines.length, col: lines[lines.length - 1].length + 1 });
+    const lastLine = lines[lines.length - 1] ?? '';
+    setCursorPos({ line: lines.length, col: lastLine.length + 1 });
   };
 
   useEffect(() => {
@@ -620,8 +621,8 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
                     onKeyDown={e => {
                       if (e.key === 'Tab') {
                         e.preventDefault();
-                        const s = e.currentTarget.selectionStart;
-                        const end = e.currentTarget.selectionEnd;
+                        const s = e.currentTarget.selectionStart ?? 0;
+                        const end = e.currentTarget.selectionEnd ?? s;
                         const v = activeTab.content.substring(0, s) + '  ' + activeTab.content.substring(end);
                         updateContent(v);
                         setTimeout(() => { if (editorRef.current) { editorRef.current.selectionStart = editorRef.current.selectionEnd = s + 2; } }, 0);

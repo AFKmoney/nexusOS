@@ -1,7 +1,7 @@
 import { MemoryEntry, MemoryCategory } from '../types';
 
 const MEMORY_KEY = 'nexus_memory_v1';
-const MAX_ENTRIES = 500; // Prevent localStorage bloat
+const MAX_ENTRIES = 500;
 
 // Inline uuid — no external dependency needed
 function uuid(): string {
@@ -34,11 +34,10 @@ export class MemorySystem {
       const saved = localStorage.getItem(MEMORY_KEY);
       if (saved) {
         const legacy = JSON.parse(saved);
-        // Upgrade legacy entries to V2 schema
         this.entries = legacy.map((e: any) => ({
-           ...e,
-           category: e.category || 'episodic',
-           importance: e.importance !== undefined ? e.importance : 0.5
+          ...e,
+          category: e.category || 'episodic',
+          importance: e.importance !== undefined ? e.importance : 0.5
         }));
       }
     } catch {
@@ -50,43 +49,37 @@ export class MemorySystem {
     try {
       localStorage.setItem(MEMORY_KEY, JSON.stringify(this.entries));
     } catch {
-      // localStorage full — prune and retry
       this.prune(Math.floor(this.entries.length * 0.7));
       try {
         localStorage.setItem(MEMORY_KEY, JSON.stringify(this.entries));
       } catch {
-        // silently fail if still full
       }
     }
   }
 
-  // Remove oldest entries down to `keepCount`
   private prune(keepCount: number) {
     this.entries = [...this.entries]
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, keepCount);
   }
 
-  // Memory Consolidation: condense old episodic memories
   private consolidate() {
     const episodic = this.entries.filter(e => e.category === 'episodic');
     if (episodic.length > 200) {
-       // Sort by oldest first
-       episodic.sort((a, b) => a.timestamp - b.timestamp);
-       const toRemove = episodic.slice(0, 100);
-       const removeIds = new Set(toRemove.map(e => e.id));
-       
-       this.entries = this.entries.filter(e => !removeIds.has(e.id));
-       
-       // Create a summarized semantic memory
-       this.remember(
-          `Consolidated past episodic events. (${toRemove.length} events archived)`, 
-          ['system', 'archive', 'consolidation'], 
-          'semantic', 
-          0.8
-       );
+      episodic.sort((a, b) => a.timestamp - b.timestamp);
+      const toRemove = episodic.slice(0, 100);
+      const removeIds = new Set(toRemove.map(e => e.id));
+
+      this.entries = this.entries.filter(e => !removeIds.has(e.id));
+
+      this.remember(
+        `Consolidated past episodic events. (${toRemove.length} events archived)`,
+        ['system', 'archive', 'consolidation'],
+        'semantic',
+        0.8
+      );
     } else {
-       this.prune(MAX_ENTRIES - 50); // Fallback to normal prune
+      this.prune(MAX_ENTRIES - 50);
     }
   }
 
@@ -102,7 +95,6 @@ export class MemorySystem {
     };
     this.entries.push(entry);
 
-    // Auto-prune/consolidate when too large
     if (this.entries.length > MAX_ENTRIES) {
       this.consolidate();
     }
@@ -112,25 +104,33 @@ export class MemorySystem {
 
   public recall(query: string, limit: number = 3): MemoryEntry[] {
     const now = Date.now();
+    const queryTokens = getTokens(query);
     const ONE_DAY_MS = 86_400_000;
 
     return this.entries
       .map(entry => {
-        const semantic = jaccardSimilarity(query, entry.content)
-          + jaccardSimilarity(query, entry.tags.join(' ')) * 0.5;
-        // Recency boost: entries from last 24h get up to +0.2
-        const ageDays = (now - entry.timestamp) / ONE_DAY_MS;
-        const recency = ageDays < 1 ? 0.2 * (1 - ageDays) : 0;
+        // 🔷 TORUS RECALL: Explore overlapping manifolds
+        const entryTokens = getTokens(entry.content);
+        const tagTokens = getTokens(entry.tags.join(' '));
         
-        let multiplier = 1.0;
-        if (entry.category === 'system') multiplier = 1.5;
-        if (entry.category === 'semantic') multiplier = 1.2;
-        
-        const importance = entry.importance || 0.5;
+        // Semantic density: intersection of query and entry
+        let semanticScore = 0;
+        queryTokens.forEach(token => {
+            if (entryTokens.has(token)) semanticScore += 1.0;
+            if (tagTokens.has(token)) semanticScore += 1.5; // Tags carry more weight
+        });
 
-        return { ...entry, score: (semantic + recency) * multiplier * (0.8 + importance * 0.4) };
+        // Temporal folding: recency vs importance
+        const ageDays = (now - entry.timestamp) / ONE_DAY_MS;
+        const recency = Math.max(0, 1 - (ageDays / 7)); // High weight for the last 7 days
+        
+        // Final triad score: (Relevance + Recency) * Structural Importance
+        const importance = entry.importance || 0.5;
+        const score = (semanticScore * 0.7 + recency * 0.3) * (1.0 + importance);
+
+        return { ...entry, score };
       })
-      .filter(e => e.score && e.score > 0)
+      .filter(e => e.score && e.score > 0.1)
       .sort((a, b) => (b.score || 0) - (a.score || 0))
       .slice(0, limit);
   }

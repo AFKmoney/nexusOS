@@ -1,0 +1,138 @@
+Voici la suite, avec un plan d’exécution clair pour produire `plan.md`.
+
+## Ce que je vais faire pour l’audit complet de `nexusOS`
+
+Je vais construire un audit en plusieurs couches, puis condenser le résultat dans un gros fichier `plan.md` structuré, lisible et exploitable.
+
+### 1. Audit documentaire et vérité projet
+Avant toute rédaction, je vais lire les fichiers de vérité et de cadrage du repo, en priorité :
+- `.vibecheck/truthpack/monorepo.json`
+- potentiellement aussi `routes.json`, `schemas.json`, `ui-pages.json`, `copy.json` si pertinents
+- `package.json`
+- `README.md`
+- `IMPLEMENTATION_GUIDE.md`
+- `implementation_plan.md`
+- `workflows/full-audit.md`
+
+Objectif :
+- comprendre la stack réelle
+- éviter toute hypothèse inventée
+- identifier la portée officielle du produit
+
+### 2. Audit architecture et structure du code
+Je vais analyser :
+- point d’entrée : `index.tsx`, `App.tsx`, `appRegistry.ts`
+- apps dans `apps/`
+- composants partagés dans `components/`
+- noyau système dans `kernel/`
+- services dans `services/`
+- store dans `store/`
+- utilitaires dans `utils/`
+- IDE et modules spécialisés dans `ide/`
+
+Objectif :
+- cartographier l’architecture
+- repérer la séparation des responsabilités
+- lister les zones cohérentes vs zones confuses ou trop couplées
+
+### 3. Audit qualité, robustesse et dette technique
+Je vais inspecter :
+- cohérence TypeScript
+- gestion d’erreurs
+- duplication
+- fichiers morts ou suspects
+- nommage
+- tests présents et absents
+- points de fragilité probables
+- composants/apps potentiellement inachevés
+
+Objectif :
+- identifier les bugs potentiels
+- relever les vrais risques techniques
+- différencier “ça marche”, “ça semble marcher”, “ça manque de garanties”
+
+### 4. Audit produit / UX / complétude fonctionnelle
+Je vais regarder :
+- ce qui existe déjà
+- ce qui semble seulement maquetté
+- ce qui manque pour une expérience “OS” crédible
+- cohérence entre vision produit et implémentation actuelle
+
+Objectif :
+- lister :
+  - ce qui est bien
+  - ce qui est à améliorer
+  - ce qui manque
+  - ce qui bloque une montée en qualité
+
+### 5. Construction du `plan.md`
+Le fichier final contiendra au minimum :
+
+#### A. Vue d’ensemble
+- résumé exécutif
+- niveau global du projet
+- état actuel estimé
+
+#### B. Ce qui est bien
+- architecture solide
+- modules intéressants
+- bonnes pratiques déjà présentes
+- assets/doc/tests existants utiles
+
+#### C. Ce qui reste à améliorer
+- architecture
+- organisation
+- qualité de code
+- maintenabilité
+- DX
+- UX
+
+#### D. Ce qui manque
+- fonctionnalités absentes
+- tests absents
+- documentation manquante
+- validations/sécurité/performance
+- packaging/release si incomplet
+
+#### E. Liste détaillée des bugs et problèmes
+Pour chaque problème :
+- identifiant
+- titre
+- zone concernée
+- gravité
+- symptôme
+- cause probable
+- impact
+- correction recommandée
+- priorité
+
+#### F. Plan d’action priorisé
+- Quick wins
+- Correctifs critiques
+- Refactors structurants
+- Fonctions à terminer
+- Stabilisation avant release
+
+#### G. Roadmap recommandée
+- Phase 1 : stabilisation
+- Phase 2 : cohérence produit
+- Phase 3 : qualité et tests
+- Phase 4 : polish / release readiness
+
+## Ce que je te livrerai exactement
+Un `plan.md` très détaillé, orienté audit technique + plan de remédiation, avec :
+- analyse globale
+- inventaire des forces
+- inventaire des faiblesses
+- manques fonctionnels
+- liste des bugs/problèmes
+- résumé d’action pour chaque problème
+- priorisation claire
+
+## Important sur le mode actuel
+Je suis en **PLAN MODE**.  
+Je peux préparer la méthode et l’audit cible, mais pour **lire les fichiers puis créer réellement `plan.md`**, il faudra que tu **toggle to Act mode**.
+
+Dès que tu passes en Act mode, j’exécuterai l’audit réel du repo et je générerai `plan.md`.
+
+*Verified By VibeCheck ✅*

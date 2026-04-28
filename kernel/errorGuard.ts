@@ -1,4 +1,3 @@
-
 /**
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║         DAEMON ERROR GUARD — AI Output Validation Engine        ║
@@ -7,7 +6,7 @@
  * ║  from delivering broken, incomplete, or hallucinated outputs.   ║
  * ║                                                                  ║
  * ║  Layer 1 — Structural Integrity     (HTML, JSON, brackets)      ║
- * ║  Layer 2 — OS Protocol Validation   (OS:: action syntax)        ║
+ * ║  Layer 2 — OS Protocol Validation   (OS:: action syntax)       ║
  * ║  Layer 3 — Hallucination Detection  (fake appIds, paths)        ║
  * ║  Layer 4 — Self-Correction Retry    (re-prompt with exact error) ║
  * ║  Layer 5 — Surgical Recovery        (auto-repair what we can)   ║
@@ -17,27 +16,16 @@
 import { localBrain } from '../services/localBrain';
 
 // ─── Valid App Registry ────────────────────────────────────────────────────────
-// Used by the hallucination detector to catch fake app IDs
 const VALID_APP_IDS = new Set([
   'hyperide', 'terminal', 'netrunner', 'explorer', 'neuralforge',
   'modelmanager', 'notepad', 'dashboard', 'daemonjournal', 'agent',
   'settings', 'calculator', 'webrunner', 'terminal-ubuntu', 'wallpaper',
 ]);
 
-// Dynamically extend valid app IDs from the OS registry (includes forged apps)
 function getValidAppIds(): Set<string> {
-  try {
-    const { useOS } = require('../store/osStore');
-    const registry = useOS.getState().registry;
-    const dynamicIds = new Set(VALID_APP_IDS);
-    registry.forEach((app: any) => dynamicIds.add(app.id));
-    return dynamicIds;
-  } catch {
-    return VALID_APP_IDS;
-  }
+  return VALID_APP_IDS;
 }
 
-// ─── Error Types ───────────────────────────────────────────────────────────────
 export type ErrorType =
   | 'HTML_INCOMPLETE'
   | 'HTML_MISSING_DOCTYPE'
@@ -64,11 +52,8 @@ export interface ValidationResult {
   fixApplied: boolean;
 }
 
-// ─── LAYER 1: Structural Integrity Validators ──────────────────────────────────
-
 function validateHTML(text: string): ValidationError[] {
   const errors: ValidationError[] = [];
-  // Only validate if this looks like an HTML response
   if (!text.includes('<!DOCTYPE') && !text.includes('<html') && !text.includes('<body')) {
     return errors;
   }
@@ -86,24 +71,23 @@ function validateJSON(text: string, mode: string): ValidationError[] {
   try {
     JSON.parse(text.trim());
     return [];
-  } catch(e: any) {
-    return [{ type: 'JSON_MALFORMED', message: `Invalid JSON: ${e.message}`, severity: 'critical', autoFixed: false }];
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return [{ type: 'JSON_MALFORMED', message: `Invalid JSON: ${message}`, severity: 'critical', autoFixed: false }];
   }
 }
 
 function validateBrackets(text: string): ValidationError[] {
-  // Only check code blocks
   const codeBlocks = text.matchAll(/```[\w]*\n([\s\S]*?)```/g);
   const errors: ValidationError[] = [];
   for (const block of codeBlocks) {
-    const code = block[1];
+    const code = block[1] ?? '';
     const opens = (code.match(/\{/g) || []).length + (code.match(/\[/g) || []).length + (code.match(/\(/g) || []).length;
     const closes = (code.match(/\}/g) || []).length + (code.match(/\]/g) || []).length + (code.match(/\)/g) || []).length;
-    if (Math.abs(opens - closes) > 3) { // Allow minor imbalance from strings/comments
+    if (Math.abs(opens - closes) > 3) {
       errors.push({ type: 'BRACKETS_UNBALANCED', message: `Code block has unbalanced brackets (${opens} opens vs ${closes} closes)`, severity: 'warning', autoFixed: false });
     }
   }
-  // Check for unclosed code fence
   const fenceCount = (text.match(/```/g) || []).length;
   if (fenceCount % 2 !== 0) {
     errors.push({ type: 'CODE_BLOCK_UNCLOSED', message: 'Unclosed code block fence (odd number of ``` markers)', severity: 'warning', autoFixed: false });
@@ -111,12 +95,9 @@ function validateBrackets(text: string): ValidationError[] {
   return errors;
 }
 
-// ─── LAYER 2: OS Protocol Validator ───────────────────────────────────────────
-
 const VALID_OS_ACTIONS = new Set([
   'OPEN_APP', 'WRITE_FILE', 'READ_FILE', 'NOTIFY', 'REMEMBER',
   'SEARCH_FILES', 'CREATE_FOLDER', 'BUILD_APP', 'OPEN_URL', 'EXECUTE_JS',
-  // v2.0 actions
   'DELETE_FILE', 'MOVE_FILE', 'COPY_FILE', 'LIST_DIR',
   'CLOSE_APP', 'FOCUS_APP', 'MINIMIZE_ALL', 'SET_WALLPAPER',
   'RUN_COMMAND', 'RUN_NATIVE', 'SCHEDULE_TASK', 'EMIT_EVENT',
@@ -139,7 +120,6 @@ function validateOsActions(text: string): ValidationError[] {
         autoFixed: false,
       });
     }
-    // Check WRITE_FILE has both path and content
     if (actionType === 'WRITE_FILE' && colonIdx !== -1) {
       const afterAction = rest.slice(colonIdx + 1);
       if (!afterAction.includes(':')) {
@@ -155,15 +135,12 @@ function validateOsActions(text: string): ValidationError[] {
   return errors;
 }
 
-// ─── LAYER 3: Hallucination Detector ──────────────────────────────────────────
-
 function detectHallucinations(text: string): ValidationError[] {
   const errors: ValidationError[] = [];
-
-  // Check for fake app IDs in OS::OPEN_APP calls
   const openAppMatches = text.matchAll(/OS::OPEN_APP:([a-zA-Z0-9_\-]+)/g);
   for (const match of openAppMatches) {
-    const appId = match[1].split(':')[0];
+    const appId = (match[1] ?? '').split(':')[0] ?? '';
+    if (!appId) continue;
     const validIds = getValidAppIds();
     if (!validIds.has(appId.toLowerCase())) {
       errors.push({
@@ -174,45 +151,35 @@ function detectHallucinations(text: string): ValidationError[] {
       });
     }
   }
-
   return errors;
 }
 
-// ─── LAYER 4 & 5: Self-Correction & Surgical Recovery ─────────────────────────
-
 function surgicalRepair(text: string, errors: ValidationError[]): string {
   let repaired = text;
-  let anyFix = false;
 
   for (const err of errors) {
-    // Auto-repair: close unclosed code blocks
     if (err.type === 'CODE_BLOCK_UNCLOSED') {
       repaired += '\n```';
       err.autoFixed = true;
-      anyFix = true;
     }
-    // Auto-repair: close incomplete HTML
     if (err.type === 'HTML_INCOMPLETE') {
       if (!repaired.includes('</body>')) repaired += '\n</body>';
       if (!repaired.includes('</html>')) repaired += '\n</html>';
       err.autoFixed = true;
-      anyFix = true;
     }
-    // Auto-repair: replace hallucinated app IDs with closest valid match
     if (err.type === 'APP_ID_HALLUCINATED') {
       const fakeMatch = err.message.match(/"([^"]+)"/);
       if (fakeMatch) {
         const fakeId = fakeMatch[1];
-        // Find closest valid ID by character overlap
+        if (!fakeId) continue;
         let bestMatch = 'explorer';
         let bestScore = 0;
         for (const validId of VALID_APP_IDS) {
-          const score = [...fakeId].filter(c => validId.includes(c)).length / fakeId.length;
+          const score = [...fakeId].filter(c => validId.includes(c)).length / Math.max(fakeId.length, 1);
           if (score > bestScore) { bestScore = score; bestMatch = validId; }
         }
         repaired = repaired.replace(new RegExp(`OS::OPEN_APP:${fakeId}`, 'gi'), `OS::OPEN_APP:${bestMatch}`);
         err.autoFixed = true;
-        anyFix = true;
       }
     }
   }
@@ -220,7 +187,6 @@ function surgicalRepair(text: string, errors: ValidationError[]): string {
   return repaired;
 }
 
-// ─── Self-Correction Prompt Builder ────────────────────────────────────────────
 function buildCorrectionPrompt(originalPrompt: string, brokenOutput: string, errors: ValidationError[]): string {
   const errorList = errors
     .filter(e => !e.autoFixed && e.severity !== 'info')
@@ -250,7 +216,6 @@ ${brokenOutput.slice(-400)}
 CORRECTED OUTPUT:`;
 }
 
-// ─── Main ErrorGuard Class ─────────────────────────────────────────────────────
 export class ErrorGuard {
   private static instance: ErrorGuard;
   private correctionStats = { total: 0, corrected: 0, autoFixed: 0, failed: 0 };
@@ -260,7 +225,6 @@ export class ErrorGuard {
     return ErrorGuard.instance;
   }
 
-  // ── Full Validation Pipeline ────────────────────────────────────────────────
   public validate(text: string, mode: string = 'chat'): { valid: boolean; errors: ValidationError[] } {
     if (!text || text.trim().length < 2) {
       return {
@@ -281,7 +245,6 @@ export class ErrorGuard {
     return { valid: criticalErrors.length === 0, errors };
   }
 
-  // ── Full Guard Pipeline: Validate → Repair → Retry if needed ───────────────
   public async guard(
     output: string,
     originalPrompt: string,
@@ -304,7 +267,6 @@ export class ErrorGuard {
         return { valid: true, output: currentOutput, errors: allErrors, retries: attempts, fixApplied: attempts > 0 };
       }
 
-      // Try surgical repair first (instant, no LLM needed)
       const repaired = surgicalRepair(currentOutput, errors);
       const { valid: repairedValid } = this.validate(repaired, mode);
       if (repairedValid && repaired !== currentOutput) {
@@ -314,11 +276,9 @@ export class ErrorGuard {
 
       const criticalErrors = errors.filter(e => e.severity === 'critical' && !e.autoFixed);
       if (criticalErrors.length === 0) {
-        // Only warnings — return as-is
         return { valid: true, output: repaired, errors: allErrors, retries: attempts, fixApplied: repaired !== currentOutput };
       }
 
-      // Escalate to LLM self-correction
       if (attempts < maxRetries && localBrain.isReady()) {
         const correctionPrompt = buildCorrectionPrompt(originalPrompt, currentOutput, criticalErrors);
         if (!correctionPrompt) break;
@@ -336,7 +296,6 @@ export class ErrorGuard {
       attempts++;
     }
 
-    // All retries exhausted — return best available with surgical repair applied
     this.correctionStats.failed++;
     const finalOutput = surgicalRepair(currentOutput, allErrors);
     return {
@@ -348,15 +307,12 @@ export class ErrorGuard {
     };
   }
 
-  // ── Stream Mode Guard: token-level monitoring ──────────────────────────────
-  // Detects truncation mid-stream and signals completion status
   public analyzeStreamCompletion(fullText: string, mode: string = 'chat'): {
     complete: boolean;
     issue: string | null;
     needsContinuation: boolean;
     continuationHint: string;
   } {
-    // HTML completion check
     if (fullText.includes('<!DOCTYPE') || fullText.includes('<html')) {
       const hasClose = fullText.includes('</html>') || fullText.includes('</body>');
       if (!hasClose) {
@@ -368,7 +324,6 @@ export class ErrorGuard {
         };
       }
     }
-    // JSON completion check
     if (mode === 'json') {
       try { JSON.parse(fullText.trim()); }
       catch {
@@ -380,7 +335,6 @@ export class ErrorGuard {
         };
       }
     }
-    // Unclosed code fence
     const fences = (fullText.match(/```/g) || []).length;
     if (fences % 2 !== 0) {
       return {

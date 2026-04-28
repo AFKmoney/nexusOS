@@ -8,25 +8,96 @@ export interface ModelConfig {
   nThreads?: number;
   nBatch?: number;
   nGpuLayers?: number;
+  size?: string;
+  repoId?: string;
+  filename?: string;
+  source?: 'local' | 'huggingface' | 'daemon';
+  downloaded?: boolean;
+  installedAt?: number;
+  tags?: string[];
+  author?: string;
 }
 
 const LFM_DAEMON_MODEL: ModelConfig = {
   id: 'lfm-daemon',
-  name: 'DAEMON LFM (LM Studio / Port 1234)',
+  name: 'LM Studio Bridge (Port 1234)',
   path: 'http://127.0.0.1:1234/v1',
+  source: 'daemon',
+  downloaded: true,
+  installedAt: Date.now(),
 };
 
 const DEFAULT_MODEL: ModelConfig = {
-  id: 'lfm2.5-1.2b',
-  name: 'LFM 2.5 1.2B (Local)',
-  path: '/models/Llama-3.2-1B-Instruct-Q8_0.gguf', // Local VFS or relative path
+  id: 'llama-3.2-1b-instruct',
+  name: 'DAEMON Native Core (Llama 3.2 1B)',
+  path: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf',
   nCtx: 4096,
   nBatch: 256,
-  nGpuLayers: 100,
+  nGpuLayers: 50,
+  size: '1.2 GB',
+  repoId: 'bartowski/Llama-3.2-1B-Instruct-GGUF',
+  filename: 'Llama-3.2-1B-Instruct-Q8_0.gguf',
+  source: 'huggingface',
+  downloaded: false,
 };
 
 const STORED_MODELS_KEY = 'nexus_models_v1';
 const ACTIVE_MODEL_KEY  = 'nexus_active_model_v1';
+const MAX_MODEL_ID_LENGTH = 128;
+const MAX_MODEL_NAME_LENGTH = 128;
+const MAX_MODEL_PATH_LENGTH = 512;
+
+function isSafeModelId(value: string): boolean {
+  return /^[a-zA-Z0-9._-]+$/.test(value) && value.length > 0 && value.length <= MAX_MODEL_ID_LENGTH;
+}
+
+function isSafeModelPath(value: string): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_MODEL_PATH_LENGTH && !value.includes('\0');
+}
+
+function isBrowserSafe(): boolean {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function safeLocalStorageGet(key: string): string | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  } catch {}
+}
+
+function sanitizeModel(config: ModelConfig): ModelConfig | null {
+  if (!config || !isSafeModelId(config.id) || !isSafeModelPath(config.path)) return null;
+
+  const sanitized: ModelConfig = {
+    id: config.id,
+    name: typeof config.name === 'string' ? config.name.slice(0, MAX_MODEL_NAME_LENGTH) : config.id,
+    path: config.path,
+  };
+
+  if (typeof config.size === 'string') sanitized.size = config.size.slice(0, 48);
+  if (typeof config.repoId === 'string') sanitized.repoId = config.repoId.slice(0, 128);
+  if (typeof config.filename === 'string') sanitized.filename = config.filename.slice(0, 128);
+  if (config.source === 'local' || config.source === 'huggingface' || config.source === 'daemon') sanitized.source = config.source;
+  if (config.downloaded === true) sanitized.downloaded = true;
+  if (typeof config.installedAt === 'number') sanitized.installedAt = config.installedAt;
+  if (Array.isArray(config.tags)) sanitized.tags = config.tags.filter((t): t is string => typeof t === 'string').slice(0, 12);
+  if (typeof config.author === 'string') sanitized.author = config.author.slice(0, 48);
+
+  if (typeof config.nCtx === 'number' && config.nCtx > 0) sanitized.nCtx = config.nCtx;
+  if (typeof config.nThreads === 'number' && config.nThreads > 0) sanitized.nThreads = config.nThreads;
+  if (typeof config.nBatch === 'number' && config.nBatch > 0) sanitized.nBatch = config.nBatch;
+  if (typeof config.nGpuLayers === 'number' && config.nGpuLayers >= 0) sanitized.nGpuLayers = config.nGpuLayers;
+
+  return sanitized;
+}
 
 export class LocalBrain {
   private static instance: LocalBrain;
@@ -36,18 +107,15 @@ export class LocalBrain {
   private activeModelId = DEFAULT_MODEL.id;
   private storedModels: ModelConfig[] = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
 
-  // Concurrency queue
-  private queue: Array<{ task: () => Promise<void>; resolve: () => void; reject: (e: any) => void }> = [];
+  private queue: Array<{ task: () => Promise<void>; resolve: () => void; reject: (e: unknown) => void }> = [];
   private isProcessing = false;
 
   private onLoadProgress: ((pct: number, msg: string) => void) | null = null;
 
   private constructor() {
     this.loadStoredModels();
-    if (typeof localStorage !== 'undefined') {
-      const savedActive = localStorage.getItem(ACTIVE_MODEL_KEY);
-      if (savedActive) this.activeModelId = savedActive;
-    }
+    const savedActive = safeLocalStorageGet(ACTIVE_MODEL_KEY);
+    if (savedActive && isSafeModelId(savedActive)) this.activeModelId = savedActive;
   }
 
   public static getInstance(): LocalBrain {
@@ -65,11 +133,15 @@ export class LocalBrain {
       }
       const raw = localStorage.getItem(STORED_MODELS_KEY);
       if (raw) {
-        const parsed: ModelConfig[] = JSON.parse(raw);
-        // Ensure core definitions are always present
-        const filtered = parsed.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
-        filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
-        this.storedModels = filtered;
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed
+            .map(item => sanitizeModel(item as ModelConfig))
+            .filter((m): m is ModelConfig => Boolean(m));
+          const filtered = sanitized.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
+          filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
+          this.storedModels = filtered;
+        }
       }
     } catch {
       this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
@@ -77,15 +149,15 @@ export class LocalBrain {
   }
 
   private saveStoredModels() {
-    localStorage.setItem(STORED_MODELS_KEY, JSON.stringify(this.storedModels));
+    safeLocalStorageSet(STORED_MODELS_KEY, JSON.stringify(this.storedModels));
   }
 
   public getStoredModels(): ModelConfig[] {
-    return this.storedModels;
+    return [...this.storedModels];
   }
 
   public async getLoadedModels(): Promise<string[]> {
-    return this.storedModels.map(m => m.name);
+    return this.storedModels.filter(m => m.downloaded === true).map(m => m.id);
   }
 
   public getActiveModelId(): string {
@@ -96,44 +168,71 @@ export class LocalBrain {
     return this.storedModels.find(m => m.id === this.activeModelId) || DEFAULT_MODEL;
   }
 
+  public async checkAndDownloadDaemonModel(onProgress: (pct: number, msg: string) => void): Promise<void> {
+    const model = this.storedModels.find(m => m.id === DEFAULT_MODEL.id) || DEFAULT_MODEL;
+    if (model.downloaded) {
+        onProgress(100, 'DAEMON weights verified in local vault.');
+        return;
+    }
+
+    onProgress(0, 'DAEMON weights missing. Initiating automatic retrieval...');
+    try {
+        await this.downloadFromHuggingFace(
+            DEFAULT_MODEL.repoId!, 
+            DEFAULT_MODEL.filename!, 
+            onProgress
+        );
+        this.activeModelId = DEFAULT_MODEL.id;
+        safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
+    } catch (e: any) {
+        console.error('[DAEMON_DL_ERR]', e);
+        throw new Error(`Failed to download DAEMON weights: ${e.message}`);
+    }
+  }
+
   public registerModel(config: ModelConfig) {
-    const existing = this.storedModels.findIndex(m => m.id === config.id);
+    const sanitized = sanitizeModel(config);
+    if (!sanitized) return;
+    const existing = this.storedModels.findIndex(m => m.id === sanitized.id);
+    const merged: ModelConfig = existing >= 0 ? { ...this.storedModels[existing], ...sanitized } : sanitized;
     if (existing >= 0) {
-      this.storedModels[existing] = config;
+      this.storedModels[existing] = merged;
     } else {
-      this.storedModels.push(config);
+      this.storedModels.push(merged);
     }
     this.saveStoredModels();
   }
 
   public removeModel(id: string) {
-    if (id === LFM_DAEMON_MODEL.id || id === DEFAULT_MODEL.id) return;
+    if (!isSafeModelId(id) || id === LFM_DAEMON_MODEL.id || id === DEFAULT_MODEL.id) return;
     this.storedModels = this.storedModels.filter(m => m.id !== id);
     this.saveStoredModels();
     if (this.activeModelId === id) {
       this.activeModelId = DEFAULT_MODEL.id;
-      localStorage.setItem(ACTIVE_MODEL_KEY, this.activeModelId);
+      safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
     }
   }
 
   public async installModel(config: ModelConfig): Promise<void> {
-    this.registerModel(config);
-    await this.switchModel(config.id);
+    const sanitized = sanitizeModel(config);
+    if (!sanitized) throw new Error('Invalid model config');
+    this.registerModel({ ...sanitized, downloaded: true, installedAt: Date.now() });
+    await this.switchModel(sanitized.id);
   }
 
   public setActiveModel(id: string) {
     const model = this.storedModels.find(m => m.id === id);
     if (!model) return;
     this.activeModelId = id;
-    localStorage.setItem(ACTIVE_MODEL_KEY, id);
+    safeLocalStorageSet(ACTIVE_MODEL_KEY, id);
     
-    // Switch async
     this.modelReady = false;
     this.initPromise = null;
     this.initialize().catch(console.error);
   }
 
   public async switchModel(id: string, onProgress?: (pct: number, msg: string) => void): Promise<void> {
+    if (!isSafeModelId(id)) throw new Error(`Model ${id} not found`);
     const model = this.storedModels.find(m => m.id === id);
     if (!model) throw new Error(`Model ${id} not found`);
 
@@ -144,7 +243,7 @@ export class LocalBrain {
     this.modelReady = false;
     this.initPromise = null;
     this.activeModelId = id;
-    localStorage.setItem(ACTIVE_MODEL_KEY, id);
+    safeLocalStorageSet(ACTIVE_MODEL_KEY, id);
     this.onLoadProgress = onProgress || null;
 
     await this.initialize();
@@ -156,16 +255,19 @@ export class LocalBrain {
 
   public async initialize(): Promise<void> {
     if (this.modelReady) return;
+    if (!isBrowserSafe()) {
+      this.modelReady = true;
+      return;
+    }
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
       const model = this.getActiveModel();
 
-      // Branch: Rest API Proxy to LM Studio on Port 1234
       if (model.id === LFM_DAEMON_MODEL.id) {
         try {
           this.onLoadProgress?.(getProgressAmount(), 'Connecting to Port 1234 LM Studio...');
-          const res = await fetch('http://127.0.0.1:1234/v1/models');
+          const res = await fetch('http://127.0.0.1:1234/v1/models', { cache: 'no-store' });
           if (res.ok) {
             this.modelReady = true;
             this.onLoadProgress?.(100, 'LM Studio Port 1234 Socket Linked.');
@@ -179,7 +281,13 @@ export class LocalBrain {
         return;
       }
 
-      // Branch: Wllama Native Local GGUF Inference
+      if (!model.downloaded && model.source === 'huggingface') {
+          this.onLoadProgress?.(0, `DAEMON ERROR: Weights for ${model.name} are missing.`);
+          this.modelReady = false;
+          this.initPromise = null;
+          return;
+      }
+
       try {
         console.log('[NEURAL_CORE] Initializing Wllama Node...');
         this.onLoadProgress?.(5, 'Initializing Wllama engine...');
@@ -225,13 +333,11 @@ export class LocalBrain {
     return this.modelReady;
   }
 
-  // ─── Inference Logic ─────────────────────────────────────────
-
   private async enqueue<T>(task: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       this.queue.push({
         task: async () => {
-          try { resolve(await task()); } catch(e) { reject(e); }
+          try { resolve(await task()); } catch (e: unknown) { reject(e); }
         },
         resolve: () => {},
         reject
@@ -253,23 +359,32 @@ export class LocalBrain {
   public async generate(prompt: string, systemPrompt?: string): Promise<string> {
     return this.enqueue(async () => {
       if (!this.modelReady) await this.initialize();
-      const model = this.getActiveModel();
+      let model = this.getActiveModel();
 
       if (model.id === LFM_DAEMON_MODEL.id) {
-         const messages = [];
-         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-         messages.push({ role: 'user', content: prompt });
-         const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ model: 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: false })
-         });
-         if (!res.ok) throw new Error('Port 1234 Local REST Failure');
-         const d = await res.json();
-         return d.choices[0].message.content;
+         try {
+             const messages: Array<{ role: string; content: string }> = [];
+             if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+             messages.push({ role: 'user', content: prompt });
+             const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ model: 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: false })
+             });
+             if (!res.ok) throw new Error('Port 1234 Local REST Failure');
+             const d = await res.json();
+             return d.choices[0].message.content;
+         } catch (e) {
+             console.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
+             // Silently switch to default local model for this request
+             model = DEFAULT_MODEL;
+             if (!this.wllama) {
+                 this.activeModelId = DEFAULT_MODEL.id;
+                 await this.initialize();
+             }
+         }
       }
 
-      // Wllama Flow
       if (!this.wllama) throw new Error('Brain Native Wasm not ready.');
       const formatted = this.formatPrompt(prompt, systemPrompt);
       return await this.wllama.createCompletion(formatted, {
@@ -286,10 +401,10 @@ export class LocalBrain {
   ): Promise<void> {
     return this.enqueue(async () => {
       if (!this.modelReady) await this.initialize();
-      const model = this.getActiveModel();
+      let model = this.getActiveModel();
 
       if (model.id === LFM_DAEMON_MODEL.id) {
-         const messages = [];
+         const messages: Array<{ role: string; content: string }> = [];
          if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
          messages.push({ role: 'user', content: prompt });
          
@@ -319,13 +434,17 @@ export class LocalBrain {
                }
              }
            }
+           return;
          } catch {
-           onToken(`\n\n[DAEMON CRITICAL ERROR]: Connection to Port 1234 refused. Start your LM Studio instance.`);
+           console.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable during stream, switching.');
+           model = DEFAULT_MODEL;
+           if (!this.wllama) {
+               this.activeModelId = DEFAULT_MODEL.id;
+               await this.initialize();
+           }
          }
-         return;
       }
 
-      // Wllama Native Flow
       if (!this.wllama) throw new Error('Native Wasm not ready.');
       const formatted = this.formatPrompt(prompt, systemPrompt);
       const decoder = new TextDecoder();
@@ -341,16 +460,66 @@ export class LocalBrain {
         }
       } catch (e) {
         console.error('[NEURAL_STREAM]:', e);
-        onToken(`\n[SYSTEM ERROR NATIVE LFM: ${e}]`);
+        const message = e instanceof Error ? e.message : String(e);
+        onToken(`\n[SYSTEM ERROR NATIVE LFM: ${message}]`);
       }
     });
   }
 
   private formatPrompt(userPrompt: string, systemPrompt?: string): string {
+    const model = this.getActiveModel();
+    const modelId = model.id.toLowerCase();
+    
+    // Llama 3 / 3.1 / 3.2 Template
+    if (modelId.includes('llama-3')) {
+        let out = `<|begin_of_text|>`;
+        if (systemPrompt) out += `<|start_header_id|>system<|end_header_id|>\n\n${systemPrompt}<|eot_id|>`;
+        out += `<|start_header_id|>user<|end_header_id|>\n\n${userPrompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
+        return out;
+    }
+
+    // Default ChatML for Qwen, Phi, SmolLM, etc.
     let out = '';
     if (systemPrompt) out += `<|im_start|>system\n${systemPrompt}<|im_end|>\n`;
     out += `<|im_start|>user\n${userPrompt}<|im_end|>\n<|im_start|>assistant\n`;
     return out;
+  }
+
+  public async searchHuggingFace(query: string): Promise<ModelConfig[]> {
+    const url = `https://huggingface.co/api/models?search=${encodeURIComponent(query)}&filter=gguf&sort=downloads&direction=-1&limit=20`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HF Hub unreachable');
+      const data = await res.json();
+      
+      return data.map((item: any) => {
+        // Try to find a good GGUF filename from tags or siblings
+        let bestFile = '';
+        if (item.siblings) {
+            const ggufs = item.siblings.filter((s: any) => s.rfilename.toLowerCase().endsWith('.gguf'));
+            // Prefer Q4_K_M or Q8_0 or just the first one
+            const preferred = ggufs.find((s: any) => s.rfilename.includes('Q4_K_M')) 
+                           || ggufs.find((s: any) => s.rfilename.includes('Q8_0'))
+                           || ggufs[0];
+            if (preferred) bestFile = preferred.rfilename;
+        }
+
+        return {
+          id: `hf_${item.id.replace(/\//g, '_')}`,
+          name: item.id.split('/').pop() || item.id,
+          path: `https://huggingface.co/${item.id}`,
+          repoId: item.id,
+          author: item.id.split('/')[0],
+          filename: bestFile || 'Click to select file...',
+          tags: item.tags || [],
+          source: 'huggingface' as const,
+          downloaded: false
+        };
+      });
+    } catch (e) {
+      console.error('[HF_SEARCH_ERR]', e);
+      return [];
+    }
   }
 
   public async downloadFromHuggingFace(
@@ -358,29 +527,90 @@ export class LocalBrain {
     filename: string,
     onProgress: (pct: number, msg: string) => void
   ): Promise<ModelConfig> {
-    const url = `https://huggingface.co/${repoId}/resolve/main/${filename}`;
-    onProgress(0, `Fetching GGUF Neural Map -> ${filename}...`);
+    const safeRepoId = repoId.trim();
+    const safeFilename = filename.trim();
+    
+    if (!safeFilename.toLowerCase().endsWith('.gguf')) {
+        throw new Error('OS neural core only accepts GGUF matrices. Direct tensor files are incompatible.');
+    }
 
-    const id = `hf_${repoId.replace('/', '_')}_${filename.replace('.gguf', '')}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-    const name = `${filename} (HuggingFace Native)`;
+    if (safeRepoId.includes('..') || safeFilename.includes('..')) {
+      throw new Error('Invalid HuggingFace model reference');
+    }
+
+    const url = `https://huggingface.co/${safeRepoId}/resolve/main/${safeFilename}`;
+    onProgress(0, `Fetching GGUF Neural Map -> ${safeFilename}...`);
+
+    const id = `hf_${safeRepoId.replace('/', '_')}_${safeFilename.replace('.gguf', '')}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const sizeFromFilename = safeFilename.match(/q(\d+)[-_]?k[_-]?m/i)?.[1];
+    const estimatedSize = sizeFromFilename ? `${Math.max(1, Math.round(Number(sizeFromFilename) / 2))} GB` : 'Unknown';
+    const name = `${safeFilename} (HuggingFace Native)`;
 
     const config: ModelConfig = {
-      id, name, path: url, nCtx: 4096, nBatch: 256, nGpuLayers: 50,
+      id,
+      name,
+      path: url,
+      nCtx: 4096,
+      nBatch: 256,
+      nGpuLayers: 50,
+      repoId: safeRepoId,
+      filename: safeFilename,
+      size: estimatedSize,
+      source: 'huggingface',
+      downloaded: true,
+      installedAt: Date.now(),
+      tags: ['huggingface', 'gguf', 'local-inference'],
+      author: safeRepoId.split('/')[0] || 'HuggingFace',
     };
 
     try {
       onProgress(10, 'Establishing neural uplink with HuggingFace Hub...');
-      const res = await fetch(url, { method: 'HEAD' });
-      if (!res.ok) throw new Error(`Model isolated: ${res.status}`);
       
-      const size = res.headers.get('content-length');
-      const sizeMB = size ? Math.round(parseInt(size) / 1024 / 1024) : 'UNKNOWN';
-      onProgress(20, `Model weight verified (${sizeMB} MB). Preparing integration...`);
-    } catch (e: any) {
-      throw new Error(`HuggingFace Uplink denied: ${e.message}`);
+      // If running in Electron, use native downloader for real persistent files
+      const electron = (window as any).electron;
+      if (electron && electron.invoke) {
+        onProgress(15, 'Electron detected. Starting native persistent download...');
+        
+        const progressId = `dl_${Date.now()}`;
+        const removeListener = electron.receive('download-progress', (data: any) => {
+          if (data.id === progressId) {
+            onProgress(data.pct, `Downloading: ${data.pct}% (${Math.round(data.downloaded / 1024 / 1024)} MB)`);
+          }
+        });
+
+        const result = await electron.invoke('native-download', { 
+            url, 
+            repoId: safeRepoId,
+            filename: safeFilename,
+            onProgressId: progressId 
+        });
+        
+        if (result.success) {
+            config.path = `nexus://${encodeURIComponent(safeRepoId)}/${encodeURIComponent(safeFilename)}`; // Use repo in protocol!
+            config.downloaded = true;
+            onProgress(100, 'Native Download Complete. Model stored in local vault.');
+        } else {
+            throw new Error(result.error || 'Native download failed');
+        }
+      } else {
+        // Fallback to URL-based approach for web
+        const res = await fetch(url, { method: 'HEAD' });
+        if (!res.ok) throw new Error(`Model isolated: ${res.status}`);
+
+        const size = res.headers.get('content-length');
+        const sizeMB = size ? Math.round(parseInt(size) / 1024 / 1024) : 'UNKNOWN';
+        onProgress(20, `Model weight verified (${sizeMB} MB). Preparing integration...`);
+        if (sizeMB !== 'UNKNOWN') {
+          config.size = `${sizeMB} MB`;
+        }
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(`HuggingFace Uplink denied: ${message}`);
     }
 
     this.registerModel(config);
+    await this.switchModel(config.id, onProgress).catch(() => void 0);
     onProgress(100, 'HuggingFace Matrix Download Complete. Native Model ready to run.');
     return config;
   }

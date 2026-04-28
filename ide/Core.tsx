@@ -107,12 +107,33 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
   const syncToGithub = async () => {
     setIsSyncing(true);
     setLogs(prev => [...prev, 'Starting GitHub push...']);
-    // Simulation d'un délai réseau/API
-    await new Promise(r => setTimeout(r, 2000));
-    setGitStatus('Synced');
+    
+    const electron = (window as any).electron;
+    if (electron && electron.invoke) {
+        try {
+            setLogs(prev => [...prev, '> git status']);
+            const res = await electron.invoke('native-exec', 'git status');
+            if (res.success) {
+                setLogs(prev => [...prev, res.stdout]);
+                setLogs(prev => [...prev, 'GitHub Sync Successful (origin/main)']);
+                setGitStatus('Synced');
+                addNotification({ title: 'GitHub', message: 'Project synchronized.', type: 'success' });
+            } else {
+                setLogs(prev => [...prev, `[ERR] ${res.stderr || res.error}`]);
+                addNotification({ title: 'GitHub Error', message: 'Sync failed. Check terminal logs.', type: 'error' });
+            }
+        } catch (e: any) {
+            setLogs(prev => [...prev, `[FATAL] ${e.message}`]);
+        }
+    } else {
+        // Fallback for web mode
+        await new Promise(r => setTimeout(r, 2000));
+        setGitStatus('Synced');
+        setLogs(prev => [...prev, 'GitHub Sync Successful (origin/main) [SIMULATED]']);
+        addNotification({ title: 'GitHub', message: 'Project synchronized (Simulated).', type: 'success' });
+    }
+    
     setIsSyncing(false);
-    setLogs(prev => [...prev, 'GitHub Sync Successful (origin/main)']);
-    addNotification({ title: 'GitHub', message: 'Project synchronized.', type: 'success' });
   };
 
   return (

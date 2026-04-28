@@ -40,9 +40,20 @@ export default function NativeZipApp() {
     }
   };
 
-  const autofillDesktop = () => {
-      // Just a helper - since we can't easily fetch their username in pure React, 
-      // we'll use a placeholder or let them type it. But they can use C:\...
+  const autofillDesktop = async () => {
+      const electron = (window as any).electron;
+      if (electron && electron.invoke) {
+          try {
+              const info = await electron.invoke('get-os-info');
+              if (info && info.userInfo && info.userInfo.homedir) {
+                  const desktop = info.platform === 'win32' 
+                    ? `${info.userInfo.homedir}\\Desktop\\NexusExtracted`
+                    : `${info.userInfo.homedir}/Desktop/NexusExtracted`;
+                  setDestPath(desktop);
+                  return;
+              }
+          } catch {}
+      }
       setDestPath('C:\\Archive\\Extracted'); 
   };
 

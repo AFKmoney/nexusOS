@@ -1,5 +1,11 @@
+import type { LucideIcon } from 'lucide-react';
 
-import React from 'react';
+export type AppComponentProps =
+  | { id: string }
+  | { windowId: string }
+  | { windowId: string; initPath?: string };
+
+export type AppComponent = (...args: any[]) => unknown;
 
 export interface WindowState {
   id: string;
@@ -13,20 +19,20 @@ export interface WindowState {
   isMinimized: boolean;
   isMaximized: boolean;
   workspaceId?: number;
-  data?: any; 
+  data?: any;
 }
 
 export interface AppManifest {
   id: string;
   name: string;
   description?: string;
-  icon: any; 
-  component?: React.FC<{ windowId: string }>; 
+  icon: LucideIcon;
+  component?: AppComponent;
   permissions: ('vfs.read' | 'vfs.write' | 'network' | 'kernel.modify')[];
   hidden?: boolean;
-  isCustom?: boolean; 
-  sourcePath?: string; 
-  defaultSize?: { width: number, height: number }; 
+  isCustom?: boolean;
+  sourcePath?: string;
+  defaultSize?: { width: number; height: number };
 }
 
 export interface FileNode {
@@ -35,33 +41,33 @@ export interface FileNode {
   targetPath?: string;
   content?: string;
   children?: { [key: string]: FileNode };
-  permissions: string; 
+  permissions: string;
   created: number;
   modified: number;
-  deleted?: number; 
+  deleted?: number;
   summary?: string;
-  smartLabel?: string; 
+  smartLabel?: string;
   aiTags?: string[];
-  customIcon?: string; 
+  customIcon?: string;
 }
 
 export interface UserProfile {
   id: string;
   name: string;
-  password?: string; 
+  password?: string;
   themeColor: string;
   isAdmin: boolean;
 }
 
 export interface KernelRules {
-  verbosity: number; 
-  creativity: number; 
+  verbosity: number;
+  creativity: number;
   tone: 'neutral' | 'friendly' | 'professional' | 'cyberpunk' | 'god_mode' | 'precise' | 'creative' | 'minimal';
-  modelId: string; 
+  modelId: string;
   autonomyEnabled: boolean;
-  autonomyInterval?: number;   // ms between ticks
-  accentColor?: string;        // UI accent color id
-  activeLocalModel?: string;   // active local GGUF model id
+  autonomyInterval?: number;
+  accentColor?: string;
+  activeLocalModel?: string;
   secureBoot: boolean;
   cpuSpeed: number;
   primaryBootDevice: 'VFS' | 'CLOUD' | 'GGUF';
@@ -72,17 +78,17 @@ export interface ScreensaverConfig {
   enabled: boolean;
   minutes: number;
   type: 'default' | 'ai';
-  code?: string; 
+  code?: string;
 }
 
 export interface ContextMenuState {
   isOpen: boolean;
   x: number;
   y: number;
-  targetId?: string; 
+  targetId?: string;
   targetType: 'desktop' | 'text' | 'window' | 'icon' | 'taskbar' | 'taskbar-icon' | 'background' | 'app-icon';
   filePath?: string;
-  appId?: string; 
+  appId?: string;
   textSelection?: string;
   textElement?: HTMLTextAreaElement | HTMLInputElement;
 }
@@ -112,7 +118,7 @@ export interface DaemonNode {
   id: string;
   label: string;
   type: 'concept' | 'action' | 'modifier' | 'object';
-  connections: string[]; 
+  connections: string[];
   weight: number;
 }
 
@@ -139,7 +145,7 @@ export interface HyperExtension {
   publisher: string;
   version: string;
   description: string;
-  logic: string; // The JS function body
+  logic: string;
   commands: HyperCommand[];
 }
 

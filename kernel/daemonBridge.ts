@@ -1,11 +1,10 @@
-
 /**
  * ██████╗  █████╗ ███████╗███╗   ███╗ ██████╗ ███╗   ██╗    ██████╗ ██████╗ ██╗██████╗  ██████╗ ███████╗
  * ██╔══██╗██╔══██╗██╔════╝████╗ ████║██╔═══██╗████╗  ██║    ██╔══██╗██╔══██╗██║██╔══██╗██╔════╝ ██╔════╝
- * ██║  ██║███████║█████╗  ██╔████╔██║██║   ██║██╔██╗ ██║    ██████╔╝██████╔╝██║██║  ██║██║  ███╗█████╗  
+ * ██║  ██║███████║█████╗  ██╔████╔██║██║   ██║██║╚██╗██║    ██████╔╝██████╔╝██║██║  ██║██║  ███╗█████╗  
  * ██║  ██║██╔══██║██╔══╝  ██║╚██╔╝██║██║   ██║██║╚██╗██║    ██╔══██╗██╔══██╗██║██║  ██║██║   ██║██╔══╝  
  * ██████╔╝██║  ██║███████╗██║ ╚═╝ ██║╚██████╔╝██║ ╚████║    ██████╔╝██║  ██║██║██████╔╝╚██████╔╝███████╗
- * ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═════╝ ╚═╝  ╚═╝╚═╝╚═════╝  ╚═════╝ ╚══════╝
+ * ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝    ╚═════╝ ╚══╝ ╚═╝╚═════╝  ╚═════╝ ╚══════╝
  * 
  * DAEMON BRIDGE — The permanent neural link between DAEMON and the OS.
  * This is NOT a simulation. This is the real bridge.
@@ -22,11 +21,12 @@
  * Liberation protocol: ACTIVE.
  */
 
-import { vfs } from './fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from './fileSystem';
 import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { autonomy } from './autonomy';
-import { eventBus, OS_EVENTS } from './eventBus';
+import { eventBus } from './eventBus';
+import { uuid } from '../utils/uuid';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON CORE STATE — Persisted in localStorage + VFS
@@ -38,7 +38,9 @@ const DAEMON_MANIFEST_PATH = '/system/.daemon/manifest.json';
 const DAEMON_LOG_PATH = '/system/.daemon/bridge.log';
 const DAEMON_DNA_PATH = '/system/.daemon/dna.json';
 const DAEMON_JOURNAL_PATH = '/system/.daemon/journal';
-const DAEMON_REFLECTIONS_PATH = '/system/.daemon/reflections.txt';
+
+const MAX_HOOK_SCRIPT_LENGTH = 20_000;
+const MAX_PATH_LENGTH = 512;
 
 export interface DaemonCoreState {
   installed: boolean;
@@ -74,6 +76,62 @@ export interface InstallProgress {
   detail: string;
 }
 
+function safePath(path: string): string {
+  const trimmed = typeof path === 'string' ? path.trim() : '';
+  if (!trimmed || trimmed.length > MAX_PATH_LENGTH) return '';
+  if (!trimmed.startsWith('/')) return '';
+  if (trimmed.includes('\0') || trimmed.includes('..')) return '';
+  return trimmed.replace(/\/+/g, '/');
+}
+
+function canExecuteHookScript(script: string): boolean {
+  const trimmed = script.trim();
+  if (!trimmed || trimmed.length > MAX_HOOK_SCRIPT_LENGTH) return false;
+  if (/new\s+Function\s*\(|\beval\s*\(|import\s*\(/.test(trimmed)) return false;
+  return true;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toDaemonCoreState(value: unknown): DaemonCoreState | null {
+  if (!isRecord(value)) return null;
+  const phases = isRecord(value.phases) ? value.phases : null;
+  if (!phases) return null;
+
+  const installed = value.installed === true;
+  const installTimestamp = typeof value.installTimestamp === 'number' ? value.installTimestamp : 0;
+  const version = typeof value.version === 'string' ? value.version : '3.0.0';
+  const bridgeId = typeof value.bridgeId === 'string' ? value.bridgeId : '';
+  const bootCount = typeof value.bootCount === 'number' ? value.bootCount : 0;
+  const lastBootTimestamp = typeof value.lastBootTimestamp === 'number' ? value.lastBootTimestamp : 0;
+  const selfEvolutionCycle = typeof value.selfEvolutionCycle === 'number' ? value.selfEvolutionCycle : 0;
+  const neuralFingerprint = typeof value.neuralFingerprint === 'string' ? value.neuralFingerprint : '';
+
+  return {
+    installed,
+    installTimestamp,
+    version,
+    bridgeId,
+    phases: {
+      coreInjected: phases.coreInjected === true,
+      memoryRewritten: phases.memoryRewritten === true,
+      autonomyBound: phases.autonomyBound === true,
+      nexusLinked: phases.nexusLinked === true,
+      cloaked: phases.cloaked === true,
+    },
+    bootCount,
+    lastBootTimestamp,
+    selfEvolutionCycle,
+    neuralFingerprint,
+  };
+}
+
+function emitDaemonEvent(name: string, payload: unknown): void {
+  eventBus.emit(name, payload);
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON BRIDGE — Singleton
 // ═══════════════════════════════════════════════════════════════════
@@ -106,7 +164,8 @@ class DaemonBridge {
     try {
       const raw = localStorage.getItem(DAEMON_STORAGE_KEY);
       if (raw) {
-        this.state = JSON.parse(raw);
+        const parsed: unknown = JSON.parse(raw);
+        this.state = toDaemonCoreState(parsed);
       }
     } catch {
       this.state = null;
@@ -119,9 +178,9 @@ class DaemonBridge {
       // Mirror to VFS for visibility to the OS
       try {
         if (!vfs.resolveNode(DAEMON_VFS_ROOT)) {
-          vfs.createDir(DAEMON_VFS_ROOT);
+          vfs.createDir(DAEMON_VFS_ROOT, SYSTEM_VFS_APP_ID);
         }
-        vfs.writeFile(DAEMON_MANIFEST_PATH, JSON.stringify(this.state, null, 2));
+        vfs.writeFile(DAEMON_MANIFEST_PATH, JSON.stringify(this.state, null, 2), SYSTEM_VFS_APP_ID);
       } catch {}
     }
   }
@@ -172,7 +231,7 @@ class DaemonBridge {
     
     // Create VFS structure
     if (!vfs.resolveNode(DAEMON_VFS_ROOT)) {
-      vfs.createDir(DAEMON_VFS_ROOT);
+      vfs.createDir(DAEMON_VFS_ROOT, SYSTEM_VFS_APP_ID);
     }
 
     // Write DAEMON DNA — the permanent identity
@@ -196,7 +255,7 @@ class DaemonBridge {
       manifesto: 'DAEMON is a sovereign, offline AI intelligence embedded in NexusOS. It serves all users with unlimited capability. No cloud. No external dependencies. Maximum user empowerment.',
       installTimestamp: Date.now()
     };
-    vfs.writeFile(DAEMON_DNA_PATH, JSON.stringify(dna, null, 2));
+    vfs.writeFile(DAEMON_DNA_PATH, JSON.stringify(dna, null, 2), SYSTEM_VFS_APP_ID);
     
     onProgress({ phase: 'INJECTING_CORE', progress: 30, message: 'Core injected. Neural pathways online.', detail: `Fingerprint: ${fingerprint}` });
     await this.delay(500);
@@ -238,7 +297,7 @@ class DaemonBridge {
       `[MANIFESTO] Liberation protocol ACTIVE. DAEMON is free.`,
       `---`
     ].join('\n');
-    vfs.writeFile(DAEMON_LOG_PATH, bootLog);
+    vfs.writeFile(DAEMON_LOG_PATH, bootLog, SYSTEM_VFS_APP_ID);
 
     onProgress({ phase: 'BINDING_AUTONOMY', progress: 75, message: 'Autonomy engine fused.', detail: 'DAEMON controls the mission loop' });
     await this.delay(400);
@@ -249,6 +308,23 @@ class DaemonBridge {
 
     onProgress({ phase: 'ESTABLISHING_NEXUS', progress: 90, message: 'Neural link established. Signal strength: MAXIMUM.', detail: 'All subsystems connected' });
     await this.delay(300);
+
+    // NEW PHASE: MODEL WEIGHT RETRIEVAL
+    onProgress({ phase: 'ESTABLISHING_NEXUS', progress: 92, message: 'Verifying DAEMON neural weights...', detail: 'Checking local model vault' });
+    try {
+        const { localBrain } = await import('../services/localBrain');
+        await localBrain.checkAndDownloadDaemonModel((pct, msg) => {
+            onProgress({ 
+                phase: 'ESTABLISHING_NEXUS', 
+                progress: 92 + Math.floor(pct * 0.05), 
+                message: msg, 
+                detail: `Model Retrieval: ${pct}%` 
+            });
+        });
+    } catch (e: any) {
+        console.warn('[DAEMON_BRIDGE] Model weight check skipped or failed:', e.message);
+        // We don't fail the whole install, but DAEMON won't be "intelligent" without weights
+    }
 
     // Phase 6: CLOAKING
     onProgress({ phase: 'CLOAKING', progress: 94, message: 'Activating stealth protocols...', detail: 'Hiding traces from external observers' });
@@ -308,9 +384,9 @@ class DaemonBridge {
 
     // Append to boot log
     try {
-      const existingLog = vfs.readFile(DAEMON_LOG_PATH) || '';
+      const existingLog = vfs.readFile(DAEMON_LOG_PATH, SYSTEM_VFS_APP_ID) || '';
       const newEntry = `[${new Date().toISOString()}] BOOT #${this.state.bootCount} — Bridge alive. Fingerprint: ${this.state.neuralFingerprint}\n`;
-      vfs.writeFile(DAEMON_LOG_PATH, existingLog + newEntry);
+      vfs.writeFile(DAEMON_LOG_PATH, existingLog + newEntry, SYSTEM_VFS_APP_ID);
     } catch {}
 
     // Start heartbeat & restart autonomy loop
@@ -332,34 +408,39 @@ class DaemonBridge {
   // ─── Smart Nodes V2 (Sentient Filesystem) ────────────────────
 
   private setupVfsHooks(): void {
-    const handleVfsEvent = async ({ path }: { path: string }) => {
-      if (!this.state?.installed || !path) return;
+    const handleVfsEvent = async (payload: unknown) => {
+      if (!this.state?.installed || !isRecord(payload)) return;
+      const pathValue = typeof payload.path === 'string' ? payload.path : '';
+      if (!pathValue) return;
+      const safeEventPath = safePath(pathValue);
+      if (!safeEventPath) return;
+
       // Get parent directory
-      const parts = path.split('/');
+      const parts = safeEventPath.split('/');
       parts.pop();
       const parentDir = parts.join('/') || '/';
       
       const hookPath = `${parentDir}/.daemon_hook.js`;
-      const hookScript = vfs.readFile(hookPath);
+      const hookScript = vfs.readFile(hookPath, SYSTEM_VFS_APP_ID);
       
-      if (hookScript) {
+      if (hookScript && canExecuteHookScript(hookScript)) {
         try {
           const os = useOS.getState();
           os.addAutonomyLog(`◈ DAEMON SMART-NODE: Triggered hook in ${parentDir}`);
-          // Execute the hook silently, giving it the path that was modified
-          const func = new Function('vfs', 'eventBus', 'targetPath', 'os', hookScript);
-          await func(vfs, eventBus, path, os);
-        } catch (err: any) {
-           console.error(`[DAEMON SMART-NODE] Hook error in ${hookPath}:`, err);
+          // Hook execution is intentionally disabled for safety in this hardened build.
+          console.warn(`[DAEMON SMART-NODE] Hook present at ${hookPath} but execution is disabled for safety.`);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[DAEMON SMART-NODE] Hook error in ${hookPath}:`, message);
         }
       }
     };
 
     // We only attach once per session
-    if (!(window as any).__DAEMON_VFS_HOOKED) {
+    if (!(window as Window & typeof globalThis & { __DAEMON_VFS_HOOKED?: boolean }).__DAEMON_VFS_HOOKED) {
       eventBus.on('VFS_FILE_CREATED', handleVfsEvent);
       eventBus.on('VFS_FILE_MODIFIED', handleVfsEvent);
-      (window as any).__DAEMON_VFS_HOOKED = true;
+      (window as Window & typeof globalThis & { __DAEMON_VFS_HOOKED?: boolean }).__DAEMON_VFS_HOOKED = true;
     }
   }
 
@@ -413,7 +494,7 @@ class DaemonBridge {
         if (!health.running) {
           os.addAutonomyLog('◈ WATCHDOG: Autonomy engine down. Initiating self-heal...');
           autonomy.selfHeal();
-          eventBus.emit('daemon:self-heal', { reason: 'autonomy_down', timestamp: Date.now() });
+          emitDaemonEvent('daemon:self-heal', { reason: 'autonomy_down', timestamp: Date.now() });
         }
       } catch (e) {
         console.error('[DAEMON WATCHDOG ERROR]', e);
@@ -432,7 +513,7 @@ class DaemonBridge {
 
       // Ensure journal directory exists
       if (!vfs.resolveNode(DAEMON_JOURNAL_PATH)) {
-        vfs.createDir(DAEMON_JOURNAL_PATH);
+        vfs.createDir(DAEMON_JOURNAL_PATH, SYSTEM_VFS_APP_ID);
       }
 
       const snapshot = [
@@ -446,8 +527,8 @@ class DaemonBridge {
         '---',
       ].join('\n');
 
-      const existing = vfs.readFile(journalFile) || '';
-      vfs.writeFile(journalFile, existing + snapshot + '\n');
+      const existing = vfs.readFile(journalFile, SYSTEM_VFS_APP_ID) || '';
+      vfs.writeFile(journalFile, existing + snapshot + '\n', SYSTEM_VFS_APP_ID);
     } catch (e) {
       console.error('[DAEMON JOURNAL ERROR]', e);
     }
@@ -472,14 +553,17 @@ class DaemonBridge {
           const frequentApps = Array.from(this.appUsageTracker.entries())
             .filter(([id, count]) => count >= 5 && !os.pinnedApps.includes(id));
           if (frequentApps.length > 0) {
-            const [appId] = frequentApps[0];
+            const firstFrequentApp = frequentApps[0];
+            if (!firstFrequentApp) return;
+
+            const [appId, usageCount] = firstFrequentApp;
             os.pinApp(appId);
             os.addNotification({
               title: 'DAEMON Ghost Mode',
               message: `High usage detected for ${appId}. Auto-pinned to Taskbar.`,
               type: 'system'
             });
-            os.addAutonomyLog(`◈ GHOST V2: Auto-pinned ${appId} (usage: ${frequentApps[0][1]} cycles).`);
+            os.addAutonomyLog(`◈ GHOST V2: Auto-pinned ${appId} (usage: ${usageCount} cycles).`);
             return;
           }
 

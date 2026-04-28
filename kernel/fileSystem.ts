@@ -2,6 +2,7 @@ import { FileNode } from '../types';
 import { eventBus } from './eventBus';
 
 const VFS_STORAGE_KEY = 'nexus_vfs_v1';
+export const SYSTEM_VFS_APP_ID = '__system__';
 
 const INITIAL_FS: { [key: string]: FileNode } = {
   home: {
@@ -36,20 +37,29 @@ const INITIAL_FS: { [key: string]: FileNode } = {
             }
           },
           Trash: {
-              name: 'Trash',
-              type: 'directory',
-              permissions: 'rwx',
-              created: Date.now(),
-              modified: Date.now(),
-              children: {}
-          },
-          Wallpapers: {
-              name: 'Wallpapers',
-              type: 'directory',
-              permissions: 'rwx',
-              created: Date.now(),
-              modified: Date.now(),
-              children: {}
+            name: 'Trash',
+            type: 'directory',
+            permissions: 'rwx',
+            created: Date.now(),
+            modified: Date.now(),
+            children: {}
+          }
+        }
+      },
+      daemon: {
+        name: 'daemon',
+        type: 'directory',
+        permissions: 'rwx',
+        created: Date.now(),
+        modified: Date.now(),
+        children: {
+          Desktop: {
+            name: 'Desktop',
+            type: 'directory',
+            permissions: 'rwx',
+            created: Date.now(),
+            modified: Date.now(),
+            children: {}
           }
         }
       }
@@ -62,14 +72,6 @@ const INITIAL_FS: { [key: string]: FileNode } = {
     created: Date.now(),
     modified: Date.now(),
     children: {
-      wallpapers: {
-          name: 'wallpapers',
-          type: 'directory',
-          permissions: 'r-x',
-          created: Date.now(),
-          modified: Date.now(),
-          children: {}
-      },
       'kernel.log': {
         name: 'kernel.log',
         type: 'file',
@@ -79,25 +81,36 @@ const INITIAL_FS: { [key: string]: FileNode } = {
         modified: Date.now()
       },
       docs: {
-          name: 'docs',
-          type: 'directory',
-          permissions: 'r--',
-          created: Date.now(),
-          modified: Date.now(),
-          children: {
-              'daemon_whitepaper.txt': {
-                  name: 'daemon_whitepaper.txt',
-                  type: 'file',
-                  permissions: 'r--',
-                  content: `Fractal-State Intelligence (Daemon LLM) Architecture: Compact seed architectures (200 MB – 1.4 GB) that unfold into the expressive capacity of arbitrarily large models.`,
-                  created: Date.now(),
-                  modified: Date.now()
-              }
+        name: 'docs',
+        type: 'directory',
+        permissions: 'r--',
+        created: Date.now(),
+        modified: Date.now(),
+        children: {
+          'daemon_whitepaper.txt': {
+            name: 'daemon_whitepaper.txt',
+            type: 'file',
+            permissions: 'r--',
+            content: `Fractal-State Intelligence (Daemon LLM) Architecture: Compact seed architectures (200 MB – 1.4 GB) that unfold into the expressive capacity of arbitrarily large models.`,
+            created: Date.now(),
+            modified: Date.now()
           }
+        }
       }
     }
   }
 };
+
+function normalizePath(path: string): string {
+  const trimmed = typeof path === 'string' ? path.trim() : '';
+  if (!trimmed || trimmed.includes('\0') || trimmed.includes('..')) return '';
+  if (!trimmed.startsWith('/')) return '';
+  return trimmed.replace(/\/+/g, '/');
+}
+
+function safeClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
 
 export class VirtualFileSystem {
   private root: { [key: string]: FileNode };
@@ -105,25 +118,25 @@ export class VirtualFileSystem {
 
   constructor() {
     try {
-        const saved = localStorage.getItem(VFS_STORAGE_KEY);
-        if (saved) {
-            this.root = JSON.parse(saved);
-        } else {
-            this.root = structuredClone(INITIAL_FS);
-            this.save();
-        }
+      const saved = localStorage.getItem(VFS_STORAGE_KEY);
+      if (saved) {
+        this.root = JSON.parse(saved);
+      } else {
+        this.root = safeClone(INITIAL_FS);
+        this.save();
+      }
     } catch (e) {
-        this.root = structuredClone(INITIAL_FS);
+      this.root = safeClone(INITIAL_FS);
     }
   }
 
   public batch(fn: () => void) {
     this.isBatching = true;
     try {
-        fn();
+      fn();
     } finally {
-        this.isBatching = false;
-        this.save();
+      this.isBatching = false;
+      this.save();
     }
   }
 
@@ -133,57 +146,63 @@ export class VirtualFileSystem {
   }
 
   private getHomeDir(): string {
-      const state: any = (window as any).__OS_STORE__?.getState();
-      const user = state?.currentUser?.id || 'admin';
-      return `/home/${user}`;
+    const store = (window as Window & typeof globalThis & { __OS_STORE__?: { getState: () => { currentUser?: { id?: string } } } }).__OS_STORE__;
+    const state = store?.getState();
+    const user = state?.currentUser?.id || 'admin';
+    return `/home/${user}`;
+  }
+
+  private normalizeInputPath(path: string): string {
+    const normalized = normalizePath(path);
+    if (normalized) return normalized;
+    if (!path.startsWith('/')) {
+      const base = `${this.getHomeDir()}/Desktop/${path}`;
+      return normalizePath(base);
+    }
+    return '';
   }
 
   public resolveNode(path: string, followSymlinks = true, depth = 0): FileNode | null {
-    if (depth > 10) return null; // Prevent infinite loops
-    if (path === '/') return { name: 'root', type: 'directory', children: this.root, permissions: 'rwx', created: 0, modified: 0 };
-    
-    // Normalize path
-    let normalized = path;
-    if (!path.startsWith('/')) {
-        normalized = `${this.getHomeDir()}/Desktop/${path}`;
-    }
+    if (depth > 10) return null;
+    const normalized = this.normalizeInputPath(path);
+    if (!normalized) return null;
+    if (normalized === '/') return { name: 'root', type: 'directory', children: this.root, permissions: 'rwx', created: 0, modified: 0 };
 
     const parts = normalized.split('/').filter(p => p);
-    let current: any = this.root;
-    
+    let current: { [key: string]: FileNode } = this.root;
     let node: FileNode | null = null;
-    
-    for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (i === 0) {
-            node = current[part];
-        } else {
-            if (node?.type !== 'directory' || !node.children) return null;
-            node = node.children[part];
-        }
-        if (!node) return null;
 
-        if (node.type === 'symlink' && followSymlinks) {
-            const target = this.resolveNode(node.targetPath || '', true, depth + 1);
-            if (!target) return null;
-            if (i === parts.length - 1) return target;
-            node = target;
-        }
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (!part) return null;
+      if (i === 0) {
+        node = current[part] || null;
+      } else {
+        if (node?.type !== 'directory' || !node.children) return null;
+        node = node.children[part] || null;
+      }
+      if (!node) return null;
+
+      if (node.type === 'symlink' && followSymlinks) {
+        const target = this.resolveNode(node.targetPath || '', true, depth + 1);
+        if (!target) return null;
+        if (i === parts.length - 1) return target;
+        node = target;
+      }
     }
     return node;
   }
 
   private getParent(path: string): { parent: FileNode | { children: { [key: string]: FileNode } }, name: string } | null {
-    let normalized = path;
-    if (!path.startsWith('/')) {
-        normalized = `${this.getHomeDir()}/Desktop/${path}`;
-    }
-    
+    const normalized = this.normalizeInputPath(path);
+    if (!normalized) return null;
+
     const parts = normalized.split('/').filter(p => p);
     if (parts.length === 0) return null;
-    const fileName = parts.pop()!;
-    if (parts.length === 0) return { parent: { children: this.root } as any, name: fileName };
-    
+    const fileName = parts.pop();
+    if (!fileName) return null;
+    if (parts.length === 0) return { parent: { children: this.root }, name: fileName };
+
     const parentPath = '/' + parts.join('/');
     const parentNode = this.resolveNode(parentPath);
     if (parentNode && parentNode.type === 'directory') return { parent: parentNode, name: fileName };
@@ -192,8 +211,8 @@ export class VirtualFileSystem {
 
   public listDir(path: string, appId?: string): string[] {
     if (!this.checkPermission(appId, 'vfs.read')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
-        return [];
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
+      return [];
     }
     const node = this.resolveNode(path);
     if (node && node.type === 'directory' && node.children) return Object.keys(node.children);
@@ -202,8 +221,8 @@ export class VirtualFileSystem {
 
   public readFile(path: string, appId?: string): string | null {
     if (!this.checkPermission(appId, 'vfs.read')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
-        return null;
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
+      return null;
     }
     const node = this.resolveNode(path);
     if (node && node.type === 'file') return node.content || '';
@@ -211,28 +230,33 @@ export class VirtualFileSystem {
   }
 
   private checkPermission(appId: string | undefined, req: string): boolean {
-    if (!appId) return true; // System level bypass
-    const state: any = (window as any).__OS_STORE__?.getState();
-    if (!state) return true;
-    const app = state.registry.find((a: any) => a.id === appId);
+    if (appId === SYSTEM_VFS_APP_ID) return true;
+    if (!appId) {
+      console.warn(`[Sandbox Enforcer] Missing appId for permission check (${req})`);
+      return false;
+    }
+    const state = (window as Window & typeof globalThis & { __OS_STORE__?: { getState: () => { registry?: Array<{ id?: string; permissions?: string[] }> } } }).__OS_STORE__?.getState();
+    if (!state) return appId === SYSTEM_VFS_APP_ID;
+    const app = state.registry?.find((a) => a.id === appId);
     if (!app) return false;
-    return app.permissions.includes(req);
+    return Array.isArray(app.permissions) && app.permissions.includes(req);
   }
 
   public writeFile(path: string, content: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from writing to ${path}`);
-        return false;
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from writing to ${path}`);
+      return false;
     }
     const info = this.getParent(path);
     if (!info) return false;
     const { parent, name } = info;
     if (!parent.children) parent.children = {};
-    const isNew = !parent.children[name];
+    const existing = parent.children[name];
+    const isNew = !existing;
     parent.children[name] = {
-        name, type: 'file', content, permissions: 'rw-',
-        created: parent.children[name]?.created || Date.now(),
-        modified: Date.now()
+      name, type: 'file', content, permissions: 'rw-',
+      created: existing?.created || Date.now(),
+      modified: Date.now()
     };
     this.save();
     eventBus.emit(isNew ? 'VFS_FILE_CREATED' : 'VFS_FILE_MODIFIED', { path, appId });
@@ -241,8 +265,8 @@ export class VirtualFileSystem {
 
   public createDir(path: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from creating dir ${path}`);
-        return false;
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from creating dir ${path}`);
+      return false;
     }
     const info = this.getParent(path);
     if (!info) return false;
@@ -261,7 +285,7 @@ export class VirtualFileSystem {
     if (!info) return false;
     const { parent, name } = info;
     if (!parent.children) parent.children = {};
-    if (parent.children[name]) return false; // Already exists
+    if (parent.children[name]) return false;
     parent.children[name] = {
       name,
       type: 'symlink',
@@ -276,77 +300,76 @@ export class VirtualFileSystem {
 
   public delete(path: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from deleting ${path}`);
-        return false;
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from deleting ${path}`);
+      return false;
     }
     const info = this.getParent(path);
     if (!info) return false;
     const { parent, name } = info;
     if (parent.children && parent.children[name]) {
-        delete parent.children[name];
-        this.save();
-        eventBus.emit('VFS_FILE_DELETED', { path, appId });
-        return true;
+      delete parent.children[name];
+      this.save();
+      eventBus.emit('VFS_FILE_DELETED', { path, appId });
+      return true;
     }
     return false;
   }
 
   public stat(path: string): FileNode | null { return this.resolveNode(path); }
 
-  public moveMany(moves: {oldPath: string, newPath: string}[], appId?: string): boolean {
+  public moveMany(moves: { oldPath: string, newPath: string }[], appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-        console.error(`[Sandbox Enforcer] Blocked ${appId} from performing moveMany`);
-        return false;
+      console.error(`[Sandbox Enforcer] Blocked ${appId} from performing moveMany`);
+      return false;
     }
 
-    // Cache resolved parents to avoid repeated path traversal
     const dirCache = new Map<string, FileNode | { children: { [key: string]: FileNode } } | null>();
     const getCachedDir = (dirPath: string) => {
-        let dirNode = dirCache.get(dirPath);
-        if (dirNode === undefined) {
-            const info = this.getParent(dirPath + '/_dummy');
-            dirNode = info ? info.parent : null;
-            dirCache.set(dirPath, dirNode);
-        }
-        return dirNode;
+      let dirNode = dirCache.get(dirPath);
+      if (dirNode === undefined) {
+        const info = this.getParent(dirPath + '/_dummy');
+        dirNode = info ? info.parent : null;
+        dirCache.set(dirPath, dirNode);
+      }
+      return dirNode;
     };
 
     let anyMoved = false;
 
     for (let i = 0; i < moves.length; i++) {
-        const move = moves[i];
-        const oldPath = move.oldPath;
-        const newPath = move.newPath;
+      const move = moves[i];
+      if (!move) continue;
+      const oldPath = move.oldPath;
+      const newPath = move.newPath;
 
-        const lastSlashNew = newPath.lastIndexOf('/');
-        const destDir = lastSlashNew > 0 ? newPath.substring(0, lastSlashNew) : '/';
-        const destName = newPath.substring(lastSlashNew + 1);
+      const lastSlashNew = newPath.lastIndexOf('/');
+      const destDir = lastSlashNew > 0 ? newPath.substring(0, lastSlashNew) : '/';
+      const destName = newPath.substring(lastSlashNew + 1);
 
-        const destParent = getCachedDir(destDir);
-        if (!destParent) continue;
-        if (destParent.children?.[destName]) continue; // Dest exists
+      const destParent = getCachedDir(destDir);
+      if (!destParent) continue;
+      if (destParent.children?.[destName]) continue;
 
-        const lastSlashOld = oldPath.lastIndexOf('/');
-        const srcDir = lastSlashOld > 0 ? oldPath.substring(0, lastSlashOld) : '/';
-        const srcName = oldPath.substring(lastSlashOld + 1);
+      const lastSlashOld = oldPath.lastIndexOf('/');
+      const srcDir = lastSlashOld > 0 ? oldPath.substring(0, lastSlashOld) : '/';
+      const srcName = oldPath.substring(lastSlashOld + 1);
 
-        const srcParent = getCachedDir(srcDir);
-        if (!srcParent || !srcParent.children) continue;
+      const srcParent = getCachedDir(srcDir);
+      if (!srcParent || !srcParent.children) continue;
 
-        const node = srcParent.children[srcName];
-        if (node) {
-            delete srcParent.children[srcName];
-            node.name = destName;
-            node.modified = Date.now();
-            if (!destParent.children) destParent.children = {};
-            destParent.children[destName] = node;
+      const node = srcParent.children[srcName];
+      if (node) {
+        delete srcParent.children[srcName];
+        node.name = destName;
+        node.modified = Date.now();
+        if (!destParent.children) destParent.children = {};
+        destParent.children[destName] = node;
 
-            // Update directory modification times
-            if ('modified' in srcParent) srcParent.modified = Date.now();
-            if ('modified' in destParent) destParent.modified = Date.now();
+        if ('modified' in srcParent) srcParent.modified = Date.now();
+        if ('modified' in destParent) destParent.modified = Date.now();
 
-            anyMoved = true;
-        }
+        anyMoved = true;
+      }
     }
 
     if (anyMoved) this.save();
@@ -360,41 +383,42 @@ export class VirtualFileSystem {
     if (!destInfo) return false;
     const { parent: destParent, name: destName } = destInfo;
     if (destParent.children?.[destName]) return false;
-    this.delete(oldPath);
+    this.delete(oldPath, SYSTEM_VFS_APP_ID);
     node.name = destName;
     if (!destParent.children) destParent.children = {};
     destParent.children[destName] = node;
     this.save();
     return true;
   }
-  
+
   public moveToTrash(path: string): boolean {
-      const trashDir = `${this.getHomeDir()}/Trash`;
-      if (!this.resolveNode(trashDir)) this.createDir(trashDir);
-      
-      if (path.startsWith(trashDir)) return this.delete(path);
-      const name = path.split('/').pop()!;
-      return this.move(path, `${trashDir}/${name}_${Date.now()}`);
+    const trashDir = `${this.getHomeDir()}/Trash`;
+    if (!this.resolveNode(trashDir)) this.createDir(trashDir, SYSTEM_VFS_APP_ID);
+
+    if (path.startsWith(trashDir)) return this.delete(path, SYSTEM_VFS_APP_ID);
+    const name = path.split('/').pop();
+    if (!name) return false;
+    return this.move(path, `${trashDir}/${name}_${Date.now()}`);
   }
 
   public updateMetadata(path: string, metadata: Partial<FileNode>): boolean {
-      const node = this.resolveNode(path);
-      if (!node) return false;
-      Object.assign(node, metadata);
-      this.save();
-      return true;
+    const node = this.resolveNode(path);
+    if (!node) return false;
+    Object.assign(node, metadata);
+    this.save();
+    return true;
   }
 
   public getStats(path: string): { size: number, files: number, folders: number } | null {
-      const node = this.resolveNode(path);
-      if (!node) return null;
-      let size = 0, files = 0, folders = 0;
-      const traverse = (n: FileNode) => {
-          if (n.type === 'file') { size += (n.content?.length || 0); files++; }
-          else { if (n !== node) folders++; if (n.children) Object.values(n.children).forEach(traverse); }
-      };
-      traverse(node);
-      return { size, files, folders };
+    const node = this.resolveNode(path);
+    if (!node) return null;
+    let size = 0, files = 0, folders = 0;
+    const traverse = (n: FileNode) => {
+      if (n.type === 'file') { size += (n.content?.length || 0); files++; }
+      else { if (n !== node) folders++; if (n.children) Object.values(n.children).forEach(traverse); }
+    };
+    traverse(node);
+    return { size, files, folders };
   }
 }
 

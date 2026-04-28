@@ -45,11 +45,12 @@ class PerformanceMonitor {
   }
 
   private takeSnapshot() {
+    const memory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
     const snap: PerfSnapshot = {
       fps: this.currentFps,
       eventLoopLatency: this.measureEventLoopLatency(),
       windowCount: document.querySelectorAll('[class*="window-title-bar"]').length,
-      memoryMB: (performance as any).memory ? Math.round((performance as any).memory.usedJSHeapSize / 1048576) : 0,
+      memoryMB: memory ? Math.round(memory.usedJSHeapSize / 1048576) : 0,
       timestamp: Date.now(),
     };
     this.snapshots.push(snap);
@@ -63,7 +64,8 @@ class PerformanceMonitor {
   }
 
   getLatest(): PerfSnapshot | null {
-    return this.snapshots.length > 0 ? this.snapshots[this.snapshots.length - 1] : null;
+    const latest = this.snapshots[this.snapshots.length - 1];
+    return latest ?? null;
   }
 
   getHistory(): PerfSnapshot[] {

@@ -80,8 +80,8 @@ export default function FilePropertiesApp({ windowId }: { windowId: string }) {
 
   const handleResetIcon = () => {
       if (path) {
-          vfs.updateMetadata(path, { customIcon: undefined });
-          setNode({ ...node, customIcon: undefined });
+          vfs.updateMetadata(path, {});
+          setNode((prev: any) => prev ? { ...prev, customIcon: undefined } : prev);
           addNotification({ title: 'Icon Reset', message: 'Custom icon removed.', type: 'info' });
       }
   };

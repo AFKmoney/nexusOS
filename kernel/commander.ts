@@ -1,15 +1,9 @@
-
 import { vfs } from './fileSystem';
 import { memory } from './memory';
 import { aiService } from '../services/puterService';
 import { useOS } from '../store/osStore';
 import { KernelRules } from '../types';
 import { processManager } from './processManager';
-
-// ═══════════════════════════════════════════════════════════════════
-// DAEMON COMMANDER v2.0 — Full Unix-Compatible Shell Layer
-// 30+ built-in commands, pipes, redirection, env vars, aliases
-// ═══════════════════════════════════════════════════════════════════
 
 interface ShellState {
   cwd: string;
@@ -20,6 +14,23 @@ interface ShellState {
 }
 
 const SHELL_STORAGE_KEY = 'daemon_shell_state_v1';
+const MAX_COMMAND_LENGTH = 4_096;
+const MAX_PATH_LENGTH = 512;
+const MAX_ARG_LENGTH = 1_024;
+const MAX_GREP_PATTERN_LENGTH = 256;
+const MAX_HISTORY_LENGTH = 500;
+
+function isSafePath(path: string): boolean {
+  return typeof path === 'string' && path.length > 0 && path.length <= MAX_PATH_LENGTH && !path.includes('\0') && !path.includes('..');
+}
+
+function isSafeCommandName(value: string): boolean {
+  return /^[a-z][a-z0-9_-]*$/i.test(value);
+}
+
+function clampText(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max) : value;
+}
 
 export class Commander {
     private shell: ShellState;
@@ -63,16 +74,17 @@ export class Commander {
       } catch {}
     }
 
+    private sanitizeCommandInput(input: string): string {
+      const trimmed = clampText((input || '').trim(), MAX_COMMAND_LENGTH);
+      return trimmed;
+    }
+
     // ─── Path Resolution ────────────────────────────────────────────
     private resolvePath(input: string): string {
       if (!input) return this.shell.cwd;
-      // Expand env vars
       let p = input.replace(/\$([A-Z_]+)/g, (_, key) => this.shell.env[key] || '');
-      // Expand ~
       p = p.replace(/^~/, this.shell.env.HOME || '/home/user');
-      // Absolute path
       if (p.startsWith('/')) return this.normalizePath(p);
-      // Relative path
       return this.normalizePath(`${this.shell.cwd}/${p}`);
     }
 
@@ -85,6 +97,11 @@ export class Commander {
         resolved.push(part);
       }
       return '/' + resolved.join('/');
+    }
+
+    private safeResolvePath(input: string): string {
+      const normalized = this.resolvePath(input);
+      return isSafePath(normalized) ? normalized : '';
     }
 
     // ─── Argument Parser ────────────────────────────────────────────
@@ -113,43 +130,44 @@ export class Commander {
       return args;
     }
 
+    private getFlagArgs(args: string[], commandName: string): string[] {
+      return args.filter(a => a !== commandName && a.startsWith('-'));
+    }
+
     // ─── Pipe & Redirection Engine ─────────────────────────────────
     public async execute(
         cmd: string,
         log: (text: string, type: 'in' | 'out' | 'ai') => void,
         kernelRules: KernelRules,
         onStream?: (text: string) => void
-    ) {
-        const raw = cmd.trim();
+    ): Promise<void> {
+        const raw = this.sanitizeCommandInput(cmd);
         if (!raw) return;
 
-        // Record history
         this.shell.history.push(raw);
-        if (this.shell.history.length > 500) this.shell.history = this.shell.history.slice(-500);
+        if (this.shell.history.length > MAX_HISTORY_LENGTH) this.shell.history = this.shell.history.slice(-MAX_HISTORY_LENGTH);
         this.persistShellState();
 
         log(`exec: ${raw}`, 'in');
 
-        // Check for alias expansion
-        const firstWord = raw.split(' ')[0];
-        if (this.shell.aliases[firstWord]) {
-          const expanded = raw.replace(firstWord, this.shell.aliases[firstWord]);
+        const firstWord = raw.split(' ')[0] ?? '';
+        const aliasValue = firstWord ? this.shell.aliases[firstWord] : undefined;
+        if (aliasValue) {
+          const expanded = raw.replace(firstWord, aliasValue);
           return this.execute(expanded, log, kernelRules, onStream);
         }
 
-        // Check for pipes
         if (raw.includes(' | ') && !raw.includes('"') ) {
           return this.executePipeline(raw, log, kernelRules);
         }
 
-        // Check for redirection
         const redirectMatch = raw.match(/^(.+?)\s*(\>{1,2})\s*(.+)$/);
         if (redirectMatch) {
-          const command = redirectMatch[1].trim();
-          const mode = redirectMatch[2]; // > or >>
-          const filePath = this.resolvePath(redirectMatch[3].trim());
+          const command = redirectMatch[1]?.trim() ?? '';
+          const mode = redirectMatch[2] ?? '>';
+          const filePath = this.safeResolvePath(redirectMatch[3]?.trim() ?? '');
           const output = await this.executeCommand(command, kernelRules);
-          if (output !== null) {
+          if (output !== null && filePath) {
             if (mode === '>>') {
               const existing = vfs.readFile(filePath) || '';
               vfs.writeFile(filePath, existing + output);
@@ -161,7 +179,6 @@ export class Commander {
           return;
         }
 
-        // Single command execution
         const result = await this.executeCommand(raw, kernelRules, log, onStream);
         if (result !== null && result !== undefined && result !== '') {
           log(result, 'out');
@@ -173,12 +190,13 @@ export class Commander {
       log: (text: string, type: 'in' | 'out' | 'ai') => void,
       kernelRules: KernelRules
     ) {
-      const commands = raw.split(' | ').map(c => c.trim());
+        const commands = raw.split(' | ').map(c => c.trim()).filter(Boolean);
       let pipeInput = '';
 
       for (let i = 0; i < commands.length; i++) {
-        const cmdWithInput = pipeInput ? `${commands[i]} <<PIPE>>${pipeInput}<<PIPE>>` : commands[i];
-        const result = await this.executeCommand(commands[i], kernelRules, undefined, undefined, pipeInput);
+        const pipelineCommand = commands[i];
+        if (!pipelineCommand) continue;
+        const result = await this.executeCommand(pipelineCommand, kernelRules, undefined, undefined, pipeInput);
         pipeInput = result || '';
       }
 
@@ -193,17 +211,18 @@ export class Commander {
         onStream?: (text: string) => void,
         pipeInput?: string
     ): Promise<string | null> {
-        const args = this.parseArgs(raw);
+        const args = this.parseArgs(this.sanitizeCommandInput(raw));
         const command = args[0]?.toLowerCase();
         const os = useOS.getState();
         if (!command) return null;
 
-        // ═══ FILESYSTEM COMMANDS ═══
+        if (!isSafeCommandName(command)) return `Command rejected: ${command}`;
 
         if (command === 'ls') {
-          const flags = args.filter(a => a.startsWith('-')).join('');
+          const flags = this.getFlagArgs(args, 'ls').join('');
           const targetArg = args.find(a => !a.startsWith('-') && a !== 'ls') || this.shell.cwd;
-          const path = this.resolvePath(targetArg);
+          const path = this.safeResolvePath(targetArg);
+          if (!path) return 'ls: invalid path';
           const files = vfs.listDir(path);
           if (!files || files.length === 0) return `(empty directory)`;
           
@@ -229,9 +248,9 @@ export class Commander {
         }
 
         if (command === 'cd') {
-          const target = args[1] || this.shell.env.HOME;
-          const resolved = this.resolvePath(target);
-          const stat = vfs.stat(resolved);
+          const target = args[1] || this.shell.env.HOME || '/home/user';
+          const resolved = this.safeResolvePath(target);
+          const stat = resolved ? vfs.stat(resolved) : null;
           if (!stat || stat.type !== 'directory') {
             return `cd: ${target}: No such directory`;
           }
@@ -246,12 +265,11 @@ export class Commander {
         }
 
         if (command === 'mkdir') {
-          const flag = args.includes('-p');
           const paths = args.filter(a => a !== 'mkdir' && a !== '-p');
           if (paths.length === 0) return 'mkdir: missing operand';
           for (const p of paths) {
-            const resolved = this.resolvePath(p);
-            vfs.createDir(resolved);
+            const resolved = this.safeResolvePath(p);
+            if (resolved) vfs.createDir(resolved);
           }
           return null;
         }
@@ -260,7 +278,8 @@ export class Commander {
           const paths = args.slice(1);
           if (paths.length === 0) return 'touch: missing operand';
           for (const p of paths) {
-            const resolved = this.resolvePath(p);
+            const resolved = this.safeResolvePath(p);
+            if (!resolved) continue;
             const existing = vfs.readFile(resolved);
             if (existing === null) vfs.writeFile(resolved, '');
           }
@@ -273,7 +292,11 @@ export class Commander {
           if (paths.length === 0) return 'cat: missing operand';
           const results: string[] = [];
           for (const p of paths) {
-            const resolved = this.resolvePath(p);
+            const resolved = this.safeResolvePath(p);
+            if (!resolved) {
+              results.push(`cat: ${p}: invalid path`);
+              continue;
+            }
             const content = vfs.readFile(resolved);
             if (content === null) results.push(`cat: ${p}: No such file`);
             else results.push(content);
@@ -291,8 +314,12 @@ export class Commander {
 
         if (command === 'cp') {
           if (args.length < 3) return 'cp: missing operand';
-          const src = this.resolvePath(args[1]);
-          const dest = this.resolvePath(args[2]);
+          const srcArg = args[1];
+          const destArg = args[2];
+          if (!srcArg || !destArg) return 'cp: missing operand';
+          const src = this.safeResolvePath(srcArg);
+          const dest = this.safeResolvePath(destArg);
+          if (!src || !dest) return 'cp: invalid path';
           const content = vfs.readFile(src);
           if (content === null) return `cp: ${args[1]}: No such file`;
           vfs.writeFile(dest, content);
@@ -301,8 +328,12 @@ export class Commander {
 
         if (command === 'mv') {
           if (args.length < 3) return 'mv: missing operand';
-          const src = this.resolvePath(args[1]);
-          const dest = this.resolvePath(args[2]);
+          const srcArg = args[1];
+          const destArg = args[2];
+          if (!srcArg || !destArg) return 'mv: missing operand';
+          const src = this.safeResolvePath(srcArg);
+          const dest = this.safeResolvePath(destArg);
+          if (!src || !dest) return 'mv: invalid path';
           const content = vfs.readFile(src);
           if (content === null) return `mv: ${args[1]}: No such file`;
           vfs.writeFile(dest, content);
@@ -311,11 +342,11 @@ export class Commander {
         }
 
         if (command === 'rm') {
-          const recursive = args.includes('-r') || args.includes('-rf');
           const paths = args.filter(a => a !== 'rm' && !a.startsWith('-'));
           if (paths.length === 0) return 'rm: missing operand';
           for (const p of paths) {
-            const resolved = this.resolvePath(p);
+            const resolved = this.safeResolvePath(p);
+            if (!resolved) continue;
             const success = vfs.delete(resolved);
             if (!success) return `rm: ${p}: No such file or directory`;
           }
@@ -324,25 +355,27 @@ export class Commander {
 
         if (command === 'head') {
           const nFlag = args.indexOf('-n');
-          const lines = nFlag >= 0 ? parseInt(args[nFlag + 1]) || 10 : 10;
+          const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
+          const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'head' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.resolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'head: no input';
           return content.split('\n').slice(0, lines).join('\n');
         }
 
         if (command === 'tail') {
           const nFlag = args.indexOf('-n');
-          const lines = nFlag >= 0 ? parseInt(args[nFlag + 1]) || 10 : 10;
+          const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
+          const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'tail' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.resolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'tail: no input';
           return content.split('\n').slice(-lines).join('\n');
         }
 
         if (command === 'wc') {
           const filePath = args.find(a => a !== 'wc' && !a.startsWith('-'));
-          const content = filePath ? vfs.readFile(this.resolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'wc: no input';
           const lineCount = content.split('\n').length;
           const wordCount = content.split(/\s+/).filter(Boolean).length;
@@ -359,22 +392,24 @@ export class Commander {
           const filePath = filteredArgs[1];
           if (!pattern) return 'grep: missing pattern';
           
-          const content = filePath ? vfs.readFile(this.resolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'grep: no input';
           
           const lines = content.split('\n');
           const results: string[] = [];
-          const regex = new RegExp(pattern, caseInsensitive ? 'i' : '');
+          const safePattern = clampText(pattern, MAX_GREP_PATTERN_LENGTH);
+          const regex = new RegExp(safePattern, caseInsensitive ? 'i' : '');
           lines.forEach((line, i) => {
             if (regex.test(line)) {
               results.push(showLineNum ? `${i + 1}:${line}` : line);
             }
           });
-          return results.length > 0 ? results.join('\n') : `(no matches for "${pattern}")`;
+          return results.length > 0 ? results.join('\n') : `(no matches for "${safePattern}")`;
         }
 
         if (command === 'find') {
-          const startPath = this.resolvePath(args[1] || '.');
+          const startPath = this.safeResolvePath(args[1] || '.');
+          if (!startPath) return 'find: invalid path';
           const nameIdx = args.indexOf('-name');
           const pattern = nameIdx >= 0 ? args[nameIdx + 1]?.replace(/\*/g, '.*') : null;
           const results: string[] = [];
@@ -395,7 +430,8 @@ export class Commander {
         }
 
         if (command === 'tree') {
-          const targetPath = this.resolvePath(args[1] || '.');
+          const targetPath = this.safeResolvePath(args[1] || '.');
+          if (!targetPath) return 'tree: invalid path';
           const buildTree = (dir: string, prefix: string = ''): string => {
             const items = vfs.listDir(dir) || [];
             return items.map((item, i) => {
@@ -421,8 +457,11 @@ export class Commander {
 
         if (command === 'diff') {
           if (args.length < 3) return 'diff: missing operands';
-          const contentA = vfs.readFile(this.resolvePath(args[1])) || '';
-          const contentB = vfs.readFile(this.resolvePath(args[2])) || '';
+          const leftArg = args[1];
+          const rightArg = args[2];
+          if (!leftArg || !rightArg) return 'diff: missing operands';
+          const contentA = vfs.readFile(this.safeResolvePath(leftArg)) || '';
+          const contentB = vfs.readFile(this.safeResolvePath(rightArg)) || '';
           if (contentA === contentB) return 'Files are identical.';
           const linesA = contentA.split('\n');
           const linesB = contentB.split('\n');
@@ -436,8 +475,6 @@ export class Commander {
           }
           return result.join('\n');
         }
-
-        // ═══ SYSTEM COMMANDS ═══
 
         if (command === 'sysinfo') {
           const apps = os.registry.length;
@@ -460,7 +497,7 @@ export class Commander {
         }
 
         if (command === 'whoami') {
-          return this.shell.env.USER;
+          return this.shell.env.USER || 'daemon';
         }
 
         if (command === 'hostname') {
@@ -515,14 +552,14 @@ export class Commander {
             }
           } catch {}
           const usedKB = Math.round(used / 1024);
-          const totalKB = 5120; // 5MB localStorage limit
+          const totalKB = 5120;
           return `Filesystem     Size   Used   Avail  Use%  Mounted on
 VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(usedKB / totalKB * 100)}%   /`;
         }
 
         if (command === 'du') {
-          const targetPath = this.resolvePath(args[1] || '.');
-          let totalSize = 0;
+          const targetPath = this.safeResolvePath(args[1] || '.');
+          if (!targetPath) return 'du: invalid path';
           const measure = (dir: string): number => {
             const items = vfs.listDir(dir) || [];
             let size = 0;
@@ -538,11 +575,9 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
             }
             return size;
           };
-          totalSize = measure(targetPath);
+          const totalSize = measure(targetPath);
           return `${Math.round(totalSize / 1024)}K\t${targetPath}`;
         }
-
-        // ═══ ENVIRONMENT & CONFIG ═══
 
         if (command === 'env') {
           return Object.entries(this.shell.env)
@@ -578,19 +613,17 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
         }
 
         if (command === 'history') {
-          const count = parseInt(args[1]) || 20;
+          const count = args[1] ? parseInt(args[1]) || 20 : 20;
           const recent = this.shell.history.slice(-count);
           return recent.map((cmd, i) => `  ${this.shell.history.length - recent.length + i + 1}  ${cmd}`).join('\n');
         }
 
-        // ═══ OS INSPECTION COMMANDS ═══
-
         if (command === 'inspect') {
             const file = args[1];
             if (!file) return 'Usage: inspect <filename>';
-            const path = this.resolvePath(file);
-            const content = vfs.readFile(path);
-            if (content !== null) {
+            const path = this.safeResolvePath(file);
+            const content = path ? vfs.readFile(path) : null;
+            if (content !== null && path) {
                 if (log) log(`[ROUTING] Opening ${path} in Notepad for analysis.`, 'out');
                 os.openWindow('notepad', { path, content });
                 return null;
@@ -600,13 +633,13 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
 
         if (command === 'write') {
             if (args.length < 3) return 'Usage: write <path> "content"';
-            const path = this.resolvePath(args[1]);
+            const inspectTarget = args[1];
+            const path = inspectTarget ? this.safeResolvePath(inspectTarget) : '';
             const content = args.slice(2).join(' ').replace(/^"|"$/g, '').replace(/\\n/g, '\n');
+            if (!path) return 'VFS: invalid path';
             const success = vfs.writeFile(path, content);
             return success ? `VFS: Sync successful at ${path}` : `VFS: Sync failure`;
         }
-
-        // ═══ FORGE / BUILD ═══
 
         if (['forge', 'build', 'create', 'make'].includes(command) && args.length > 1) {
             const firstSpace = raw.indexOf(' ');
@@ -615,8 +648,6 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
             os.openWindow('forge', { autoPrompt: promptText, autoRun: true, mode: 'coder' });
             return null;
         }
-
-        // ═══ WINDOW MANAGEMENT ═══
 
         if (command === 'close') {
             const targetId = args[1] || os.activeWindowId;
@@ -630,8 +661,6 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
           os.openWindow(appId);
           return null;
         }
-
-        // ═══ HELP / MAN ═══
 
         if (command === 'help' || command === 'man') {
           return `╔══════════════════════════════════════════╗
@@ -689,8 +718,6 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
  Type any natural language for DAEMON AI.`;
         }
 
-        // ═══ FALLBACK — AI INFERENCE ═══
-
         try {
             let fullBuffer = "";
             let toolTriggered = false;
@@ -700,18 +727,22 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
                     const match = fullBuffer.match(/\[\[BUILD:\s*([\s\S]+?)\]\]/i);
                     if (match && !toolTriggered) {
                         toolTriggered = true;
-                        os.openWindow('forge', { autoPrompt: match[1].trim(), autoRun: true, mode: 'coder' });
+                        const buildPrompt = match[1]?.trim();
+                        if (buildPrompt) {
+                            os.openWindow('forge', { autoPrompt: buildPrompt, autoRun: true, mode: 'coder' });
+                        }
                     } else if (!toolTriggered) onStream(token);
                 });
             } else {
                 const res = await aiService.generateOnce(raw, kernelRules);
                 return res;
             }
-        } catch (e) { return "Core link broken."; }
+        } catch {
+          return "Core link broken.";
+        }
         return null;
     }
 
-    // ─── Public API ─────────────────────────────────────────────────
     public getCwd(): string { return this.shell.cwd; }
     public getHistory(): string[] { return [...this.shell.history]; }
     public getEnv(): Record<string, string> { return { ...this.shell.env }; }

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useOS } from '../store/osStore';
 import { 
@@ -263,7 +262,7 @@ export default function ContextMenu() {
 
   const handleClearCustomIcon = () => {
       if (filePath) {
-          vfs.updateMetadata(filePath, { customIcon: undefined });
+          vfs.updateMetadata(filePath, {});
           addNotification({ title: 'Icon Reset', message: 'Custom icon removed.', type: 'info' });
       }
       closeContextMenu();
@@ -593,9 +592,7 @@ export default function ContextMenu() {
                 <Separator />
                 
                 <MenuItem icon={ImageIcon} label="Upload Icon..." onClick={handleSetCustomIcon} />
-                {vfs.stat(filePath)?.customIcon && (
-                    <MenuItem icon={X} label="Reset Icon" onClick={handleClearCustomIcon} danger />
-                )}
+                <MenuItem icon={X} label="Reset Icon" onClick={handleClearCustomIcon} />
                 
                 <MenuItem icon={Info} label="Properties" onClick={() => { openWindow('properties', { path: filePath }); closeContextMenu(); }} />
                 <MenuItem icon={Trash2} label="Delete" onClick={handleDelete} danger shortcut="Del" />
@@ -609,7 +606,7 @@ export default function ContextMenu() {
                 <MenuItem 
                     icon={isPinned ? PinOff : Pin} 
                     label={isPinned ? "Unpin from Taskbar" : "Pin to Taskbar"} 
-                    onClick={() => { isPinned ? unpinApp(targetAppId!) : pinApp(targetAppId!); closeContextMenu(); }} 
+                    onClick={() => { isPinned ? unpinApp(targetAppId ?? '') : pinApp(targetAppId ?? ''); closeContextMenu(); }} 
                 />
                 <Separator />
                 <NeuralItem icon={Info} label="About Application" onClick={() => handleAskAI()} />

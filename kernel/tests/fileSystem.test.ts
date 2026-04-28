@@ -19,22 +19,40 @@ if (typeof global.window === 'undefined') {
   (global as any).window = {};
 }
 
-// Intercept console.error to avoid spamming the test output, but allow verifying it was called
+// Intercept console.error / console.warn to avoid spamming the test output, but allow verifying calls
 let lastConsoleError = '';
+let lastConsoleWarn = '';
 const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
 console.error = (...args: any[]) => {
   lastConsoleError = args.join(' ');
 };
+console.warn = (...args: any[]) => {
+  lastConsoleWarn = args.join(' ');
+};
 
-import { VirtualFileSystem } from '../fileSystem.ts';
+import { VirtualFileSystem, SYSTEM_VFS_APP_ID } from '../fileSystem.ts';
 
-test('VirtualFileSystem - readFile without appId (system bypass)', () => {
+test('VirtualFileSystem - explicit system appId bypass works', () => {
   const vfs = new VirtualFileSystem();
 
-  vfs.writeFile('/home/user/Desktop/test1.txt', 'system content');
+  vfs.writeFile('/home/user/Desktop/test1.txt', 'system content', SYSTEM_VFS_APP_ID);
 
-  const content = vfs.readFile('/home/user/Desktop/test1.txt');
-  assert.strictEqual(content, 'system content', 'Should read file successfully without appId');
+  const content = vfs.readFile('/home/user/Desktop/test1.txt', SYSTEM_VFS_APP_ID);
+  assert.strictEqual(content, 'system content', 'Should read file successfully with explicit system appId');
+});
+
+test('VirtualFileSystem - readFile without appId is denied', () => {
+  const vfs = new VirtualFileSystem();
+
+  vfs.writeFile('/home/user/Desktop/test-denied.txt', 'system content', SYSTEM_VFS_APP_ID);
+
+  lastConsoleError = '';
+  lastConsoleWarn = '';
+  const content = vfs.readFile('/home/user/Desktop/test-denied.txt');
+  assert.strictEqual(content, null, 'Should deny read without appId');
+  assert.ok(lastConsoleWarn.includes('Missing appId for permission check (vfs.read)'), 'Should log missing appId warning');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked undefined from reading'), 'Should log permission error');
 });
 
 test('VirtualFileSystem - readFile with appId that has vfs.read permission', () => {
@@ -50,7 +68,7 @@ test('VirtualFileSystem - readFile with appId that has vfs.read permission', () 
     })
   };
 
-  vfs.writeFile('/home/user/Desktop/test2.txt', 'app content');
+  vfs.writeFile('/home/user/Desktop/test2.txt', 'app content', 'app1');
 
   const content = vfs.readFile('/home/user/Desktop/test2.txt', 'app1');
   assert.strictEqual(content, 'app content', 'Should read file successfully with valid permissions');
@@ -72,7 +90,7 @@ test('VirtualFileSystem - readFile with appId that lacks vfs.read permission', (
     })
   };
 
-  vfs.writeFile('/home/user/Desktop/test3.txt', 'secret content');
+  vfs.writeFile('/home/user/Desktop/test3.txt', 'secret content', 'app2');
 
   lastConsoleError = '';
   const content = vfs.readFile('/home/user/Desktop/test3.txt', 'app2');
@@ -97,7 +115,7 @@ test('VirtualFileSystem - readFile with unregistered appId', () => {
     })
   };
 
-  vfs.writeFile('/home/user/Desktop/test4.txt', 'content');
+  vfs.writeFile('/home/user/Desktop/test4.txt', 'content', SYSTEM_VFS_APP_ID);
 
   lastConsoleError = '';
   const content = vfs.readFile('/home/user/Desktop/test4.txt', 'unknown_app');
@@ -112,7 +130,7 @@ test('VirtualFileSystem - readFile with unregistered appId', () => {
 test('VirtualFileSystem - readFile for non-existent file', () => {
   const vfs = new VirtualFileSystem();
 
-  const content = vfs.readFile('/home/user/Desktop/does_not_exist.txt');
+  const content = vfs.readFile('/home/user/Desktop/does_not_exist.txt', SYSTEM_VFS_APP_ID);
   assert.strictEqual(content, null, 'Should return null for non-existent file');
 });
 
@@ -125,7 +143,7 @@ test('VirtualFileSystem - constructor handles localStorage errors by falling bac
     const vfs = new VirtualFileSystem();
 
     // Test if it loaded INITIAL_FS by reading a known default file
-    const content = vfs.readFile('/system/kernel.log');
+    const content = vfs.readFile('/system/kernel.log', SYSTEM_VFS_APP_ID);
     assert.ok(content !== null, 'Should load INITIAL_FS and be able to read system files');
     assert.ok(content?.includes('[BOOT]'), 'Content should match default system file');
   } finally {
@@ -142,7 +160,7 @@ test('VirtualFileSystem - constructor handles invalid JSON by falling back to IN
     };
     const vfs = new VirtualFileSystem();
 
-    const content = vfs.readFile('/system/kernel.log');
+    const content = vfs.readFile('/system/kernel.log', SYSTEM_VFS_APP_ID);
     assert.ok(content !== null, 'Should load INITIAL_FS and be able to read system files');
   } finally {
     global.localStorage.getItem = originalGetItem;
@@ -176,14 +194,15 @@ test('VirtualFileSystem - constructor loads saved valid state from localStorage'
     };
 
     const vfs = new VirtualFileSystem();
-    const content = vfs.readFile('/system/custom.log');
+    const content = vfs.readFile('/system/custom.log', SYSTEM_VFS_APP_ID);
     assert.strictEqual(content, 'custom loaded content', 'Should load and parse valid JSON state from localStorage');
   } finally {
     global.localStorage.getItem = originalGetItem;
   }
 });
 
-// Restore console.error at the end
+// Restore console methods at the end
 test('VirtualFileSystem - cleanup', () => {
   console.error = originalConsoleError;
+  console.warn = originalConsoleWarn;
 });

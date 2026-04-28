@@ -1,38 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Monitor, Cpu, HardDrive, Wifi, Clock, Zap, Shield, Layers, Activity, Thermometer, Database } from 'lucide-react';
 import { useOS } from '../store/osStore';
+import { daemonBridge } from '../kernel/daemonBridge';
 
 export default function SystemInfoApp() {
   const { kernelRules } = useOS();
-  const [uptime, setUptime] = useState(0);
-  const [load, setLoad] = useState(Math.random() * 15 + 5);
+  const [uptime, setUptime] = useState(daemonBridge.getUptime());
+  const [load, setLoad] = useState(0);
+  const [osInfo, setOsInfo] = useState<any>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setUptime(prev => prev + 1);
-      setLoad(prev => Math.max(2, Math.min(100, prev + (Math.random() - 0.5) * 10)));
-    }, 1000);
+      setUptime(daemonBridge.getUptime());
+      setLoad(prev => Math.max(2, Math.min(100, prev + (Math.random() - 0.5) * 5)));
+    }, 5000);
+
+    const fetchOsInfo = async () => {
+        const electron = (window as any).electron;
+        if (electron && electron.invoke) {
+            try {
+                const info = await electron.invoke('get-os-info');
+                setOsInfo(info);
+            } catch {}
+        }
+    };
+    fetchOsInfo();
+
     return () => clearInterval(timer);
   }, []);
 
-  const formatUptime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h}h ${m}m ${s}s`;
+  const formatUptime = (val: any) => {
+    return val; // uptime is already a string from daemonBridge.getUptime()
   };
 
   const info = {
-    os: { name: 'NexusOS', version: '1.0.1', kernel: 'Neural Core v4', build: '2026.03.29.PRO' },
+    os: { 
+        name: osInfo?.platform === 'win32' ? 'NexusOS (Windows Kernel)' : 'NexusOS (Unix Kernel)', 
+        version: osInfo?.release || '1.0.1', 
+        kernel: 'Neural Core v4', 
+        arch: osInfo?.arch || 'x64' 
+    },
     hardware: {
-      processor: `${navigator.hardwareConcurrency || 8} Logical Cores`,
-      memory: `${((navigator as any).deviceMemory || 16)} GB Physical`,
-      graphics: 'Vulkan/WebGPU Backend',
+      processor: osInfo?.cpus?.[0]?.model || `${navigator.hardwareConcurrency || 8} Logical Cores`,
+      memory: osInfo?.totalMem ? `${Math.round(osInfo.totalMem / 1024 / 1024 / 1024)} GB Physical` : `${((navigator as any).deviceMemory || 16)} GB Physical`,
+      graphics: 'WebGPU / Vulkan Backend',
       display: `${window.screen.width}x${window.screen.height} @${window.devicePixelRatio}x`,
     },
     network: { 
       uplink: navigator.onLine ? 'Connected' : 'Isolated', 
-      latency: '14ms',
+      hostname: osInfo?.hostname || 'DAEMON_NODE',
       nodeId: 'DAEMON_SVR_01'
     }
   };
@@ -66,7 +82,7 @@ export default function SystemInfoApp() {
       <div className="grid grid-cols-2 gap-4 mb-8">
         <Metric label="Core Load" value={`${load.toFixed(1)}%`} icon={Activity} color="emerald" />
         <Metric label="Uptime" value={formatUptime(uptime)} icon={Clock} color="blue" />
-        <Metric label="Neural Latency" value={info.network.latency} icon={Zap} color="amber" />
+        <Metric label="Neural Latency" value="N/A" icon={Zap} color="amber" />
         <Metric label="Storage" value="Secure (Encrypted)" icon={Database} color="purple" />
       </div>
 

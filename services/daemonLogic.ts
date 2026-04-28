@@ -98,7 +98,7 @@ export class DaemonLogic {
          // Determine label based on depth to simulate "Resolution"
          let label = lbl;
          if (d < 3 && Math.random() > 0.5) {
-             label = verbs[salt % verbs.length];
+             label = verbs[salt % verbs.length] ?? lbl;
          }
 
          const node: FractalNode = {
@@ -113,7 +113,7 @@ export class DaemonLogic {
              const branchCount = (salt % 3) + 1; 
              for (let i = 0; i < branchCount; i++) {
                  const nextSalt = (salt * (i + 137)) % 255;
-                 const subLabel = i % 2 === 0 ? `${lbl}.${i}` : concepts[nextSalt % concepts.length];
+                 const subLabel = i % 2 === 0 ? `${lbl}.${i}` : (concepts[nextSalt % concepts.length] ?? lbl);
                  node.children.push(createNode(subLabel, d - 1, nextSalt));
              }
          }

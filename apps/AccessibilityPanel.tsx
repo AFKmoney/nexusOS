@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Accessibility, Sun, Moon, Type, ZoomIn, ZoomOut, Eye, ShieldCheck, Zap } from 'lucide-react';
+import { Accessibility, Sun, Type, ZoomIn, ZoomOut, Eye, ShieldCheck, Zap } from 'lucide-react';
 import { useOS } from '../store/osStore';
 
 export default function AccessibilityPanel() {
@@ -21,7 +21,7 @@ export default function AccessibilityPanel() {
     addNotification({ title: 'Visual Mode', message: `High Contrast ${!highContrast ? 'Enabled' : 'Disabled'}`, type: 'info' });
   };
 
-  const Toggle = ({ label, value, onToggle, icon: Icon, desc }: any) => (
+  const Toggle = ({ label, value, onToggle, icon: Icon, desc }: { label: string; value: boolean; onToggle: () => void; icon: React.ComponentType<{ size?: number }>; desc: string; }) => (
     <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] transition-all">
       <div className="flex items-center gap-4">
         <div className={`p-2 rounded-lg ${value ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
@@ -32,7 +32,7 @@ export default function AccessibilityPanel() {
           <div className="text-[10px] text-zinc-500 uppercase tracking-tighter">{desc}</div>
         </div>
       </div>
-      <button 
+      <button
         onClick={onToggle}
         className={`w-12 h-6 rounded-full transition-all relative ${value ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-zinc-800'}`}
       >
@@ -93,7 +93,7 @@ export default function AccessibilityPanel() {
             <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-8 text-center">
               <div className="text-4xl font-black mb-2 text-white font-mono">{Math.round(uiScale * 100)}%</div>
               <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-8">Current Resolution Multiplier</div>
-              
+
               <div className="flex items-center gap-6">
                 <button onClick={() => setUiScale(Math.max(0.5, uiScale - 0.1))} className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"><ZoomOut size={24}/></button>
                 <input 
@@ -116,9 +116,9 @@ export default function AccessibilityPanel() {
 
           <div className="p-6 rounded-2xl bg-blue-500/5 border border-blue-500/20 flex items-start gap-4">
             <ShieldCheck className="text-blue-400 shrink-0" size={20} />
-            <p className="text-xs text-zinc-500 leading-relaxed italic">
-              "Accessibility is not a feature, it's a protocol. DAEMON ensures that every node in the nexus is usable by any entity, regardless of sensory input constraints."
-            </p>
+              <p className="text-xs text-zinc-500 leading-relaxed italic">
+                "Accessibility is not a feature, it's a protocol. DAEMON ensures that every node in the nexus is usable by any entity, regardless of sensory input constraints."
+              </p>
           </div>
 
         </div>

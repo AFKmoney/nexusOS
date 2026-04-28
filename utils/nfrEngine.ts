@@ -1,12 +1,10 @@
-
-
 // --- NFR KERNEL v2.0 (REAL IMPLEMENTATION) ---
 // Based on "Neural Fractal Reconstruction" Whitepaper (Jan 3, 2026)
 // Implements Adaptive Arithmetic Coding with Contextual Probability Modeling.
 
 export interface TrainingMetrics {
   epoch: number; // In this real stream version, epoch is bytes processed
-  loss: number;  // Current bit cost
+  loss: number; // Current bit cost
   accuracy: number; // Prediction confidence
 }
 
@@ -37,7 +35,7 @@ class BitOutputStream {
   // Flush remaining bits (padding with 0)
   close(): Uint8Array {
     if (this.numBits > 0) {
-      this.currentByte <<= (8 - this.numBits);
+      this.currentByte <<= 8 - this.numBits;
       this.buffer.push(this.currentByte);
     }
     return new Uint8Array(this.buffer);
@@ -57,7 +55,9 @@ class BitInputStream {
   readBit(): number {
     if (this.bitsRemaining === 0) {
       if (this.ptr >= this.data.length) return -1; // EOF
-      this.currentByte = this.data[this.ptr++];
+      const nextByte = this.data[this.ptr++];
+      if (nextByte === undefined) return -1;
+      this.currentByte = nextByte;
       this.bitsRemaining = 8;
     }
     const bit = (this.currentByte >> (this.bitsRemaining - 1)) & 1;
@@ -71,46 +71,58 @@ class BitInputStream {
 // It learns P(char | prev_char) dynamically.
 class ContextModel {
   // 256 contexts (one for each previous byte), each having a frequency table for the next byte (257 symbols, +EOF)
-  public tables: Uint32Array[] = []; 
+  public tables: Uint32Array[] = [];
   public totalFreqs: number[] = [];
   private readonly ESCAPE = 256;
 
   constructor() {
     // Initialize with Order-0 uniform counts
-    for(let i=0; i<257; i++) {
-        // Flat initialization
-        this.tables[i] = new Uint32Array(257).fill(1);
-        this.totalFreqs[i] = 257; 
+    for (let i = 0; i < 257; i++) {
+      // Flat initialization
+      this.tables[i] = new Uint32Array(257).fill(1);
+      this.totalFreqs[i] = 257;
     }
   }
 
   // Update weights based on observation (Online Learning)
   update(ctx: number, symbol: number) {
-    this.tables[ctx][symbol]++;
-    this.totalFreqs[ctx]++;
-    
+    const table = this.tables[ctx];
+    const total = this.totalFreqs[ctx];
+    if (!table || total === undefined) {
+      throw new Error(`Invalid context index: ${ctx}`);
+    }
+
+    table[symbol] = (table[symbol] ?? 0) + 1;
+    this.totalFreqs[ctx] = total + 1;
+
     // Rescale if frequency too high (Fractal renormalization)
-    if (this.totalFreqs[ctx] >= Number(MAX_FREQ)) {
-        let sum = 0;
-        for(let i=0; i<257; i++) {
-            this.tables[ctx][i] = (this.tables[ctx][i] >> 1) + 1;
-            sum += this.tables[ctx][i];
-        }
-        this.totalFreqs[ctx] = sum;
+    if (this.totalFreqs[ctx] !== undefined && this.totalFreqs[ctx] >= Number(MAX_FREQ)) {
+      let sum = 0;
+      for (let i = 0; i < 257; i++) {
+        const current = table[i] ?? 0;
+        table[i] = (current >> 1) + 1;
+        sum += table[i] ?? 0;
+      }
+      this.totalFreqs[ctx] = sum;
     }
   }
 
-  getProbability(ctx: number, symbol: number): { low: bigint, high: bigint, total: bigint } {
+  getProbability(ctx: number, symbol: number): { low: bigint; high: bigint; total: bigint } {
     const table = this.tables[ctx];
+    const total = this.totalFreqs[ctx];
+    if (!table || total === undefined) {
+      throw new Error(`Invalid context index: ${ctx}`);
+    }
+
     let low = 0;
     for (let i = 0; i < symbol; i++) {
-      low += table[i];
+      low += table[i] ?? 0;
     }
-    const freq = table[symbol];
+    const freq = table[symbol] ?? 0;
     return {
       low: BigInt(low),
       high: BigInt(low + freq),
-      total: BigInt(this.totalFreqs[ctx])
+      total: BigInt(total),
     };
   }
 }
@@ -123,8 +135,11 @@ export const nfrEngine = {
     const enc = new TextEncoder();
     const data = enc.encode(text);
     const frequencies = new Array(256).fill(0);
-    for (let i = 0; i < data.length; i++) frequencies[data[i]]++;
-    
+    for (let i = 0; i < data.length; i++) {
+      const value = data[i];
+      if (value !== undefined) frequencies[value]++;
+    }
+
     return frequencies.reduce((sum, count) => {
       if (count === 0) return sum;
       const p = count / data.length;
@@ -137,7 +152,7 @@ export const nfrEngine = {
    * Implements the Section 2.2 Neural-Arithmetic Bridge.
    */
   async compress(
-    input: string, 
+    input: string,
     epochs: number = 1, // Epochs unused in single-pass adaptive coding, kept for interface compatibility
     onProgress?: (metrics: TrainingMetrics) => void
   ): Promise<{ archive: string; model: string }> {
@@ -157,9 +172,10 @@ export const nfrEngine = {
     // --- ENCODING LOOP ---
     for (let i = 0; i < data.length; i++) {
       const symbol = data[i];
+      if (symbol === undefined) continue;
       const prob = model.getProbability(context, symbol);
       const range = high - low + BigInt(1);
-      
+
       high = low + (range * prob.high) / prob.total - BigInt(1);
       low = low + (range * prob.low) / prob.total;
 
@@ -192,19 +208,19 @@ export const nfrEngine = {
       // We check the time only every 512 bytes (using bitwise AND for performance)
       // to minimize Date.now() overhead, yielding if >16ms have passed.
       if ((i & 511) === 0) {
-          const now = performance.now();
-          if (now - lastYieldTime > 16) {
-              if (onProgress) {
-                  // Calculate "Instantaneous Entropy" (Loss)
-                  // Loss = -log2(probability assigned to actual symbol)
-                  const p = Number(prob.high - prob.low) / Number(prob.total);
-                  const loss = -Math.log2(p);
-                  onProgress({ epoch: i, loss: loss, accuracy: (1 - loss/8) * 100 });
-              }
-              // Yield to UI thread
-              await new Promise(r => setTimeout(r, 0));
-              lastYieldTime = performance.now();
+        const now = performance.now();
+        if (now - lastYieldTime > 16) {
+          if (onProgress) {
+            // Calculate "Instantaneous Entropy" (Loss)
+            // Loss = -log2(probability assigned to actual symbol)
+            const p = Number(prob.high - prob.low) / Number(prob.total);
+            const loss = -Math.log2(p);
+            onProgress({ epoch: i, loss: loss, accuracy: (1 - loss / 8) * 100 });
           }
+          // Yield to UI thread
+          await new Promise((r) => setTimeout(r, 0));
+          lastYieldTime = performance.now();
+        }
       }
     }
 
@@ -213,7 +229,7 @@ export const nfrEngine = {
     const range = high - low + BigInt(1);
     high = low + (range * eofProb.high) / eofProb.total - BigInt(1);
     low = low + (range * eofProb.low) / eofProb.total;
-    
+
     // Final bits flush
     pending_bits++;
     if (low < ONE_QUARTER) this.outputBitPlusPending(bitStream, 0, pending_bits);
@@ -229,8 +245,12 @@ export const nfrEngine = {
     metaView.setUint32(0, 0xDAE00200); // Magic: DÆ02 (Real NFR)
     metaView.setUint32(4, data.length); // Original Size
 
-    const finalBlob = new Blob([metaBuffer, compressedBytes]);
-    
+    const compressedBuffer = compressedBytes.buffer.slice(
+      compressedBytes.byteOffset,
+      compressedBytes.byteOffset + compressedBytes.byteLength
+    ) as ArrayBuffer;
+    const finalBlob = new Blob([metaBuffer, compressedBuffer]);
+
     // Model "Seed" representation (Logic Description)
     const modelContent = `DAEMON_NFR_ENGINE_V2::ADAPTIVE_ARITHMETIC
     [TYPE]: ORDER-1 CONTEXT MARKOV
@@ -258,18 +278,18 @@ export const nfrEngine = {
    * ACTUAL ARITHMETIC DECOMPRESSION
    * Reverses the encoding process bit-by-bit using the same adaptive model.
    */
-  async decompress(dmnDataUrl: string): Promise<{ content: string, meta: any }> {
+  async decompress(dmnDataUrl: string): Promise<{ content: string; meta: { version: string; originalSize: number; metrics: { neuralEntropy: number } } }> {
     const res = await fetch(dmnDataUrl);
     const buffer = await res.arrayBuffer();
     const view = new DataView(buffer);
 
     const magic = view.getUint32(0);
     if (magic !== 0xDAE00200) {
-        throw new Error("Invalid NFR v2 Signature. File may be legacy or corrupted.");
+      throw new Error("Invalid NFR v2 Signature. File may be legacy or corrupted.");
     }
     const originalLen = view.getUint32(4);
     const rawData = new Uint8Array(buffer.slice(8));
-    
+
     const bitStream = new BitInputStream(rawData);
     const model = new ContextModel();
     const outputBuffer: number[] = [];
@@ -282,91 +302,99 @@ export const nfrEngine = {
 
     // Fill pipeline (read first 32 bits)
     for (let i = 0; i < CODE_VALUE_BITS; i++) {
-        value = (value << BigInt(1)) | BigInt(Math.max(0, bitStream.readBit()));
+      value = (value << BigInt(1)) | BigInt(Math.max(0, bitStream.readBit()));
     }
 
     while (true) {
-        const range = high - low + BigInt(1);
-        const total = BigInt(model.totalFreqs[context]);
-        const scaledValue = ((value - low + BigInt(1)) * total - BigInt(1)) / range;
-        
-        // Find symbol that fits the scaled value
-        // Linear search for simplicity (Binary search would be faster for order-0)
-        let symbol = 0;
-        let acc = 0;
-        const table = model.tables[context];
-        
-        // Finding the symbol where low <= scaledValue < high
-        let symLow = 0;
-        for(let s=0; s<257; s++) {
-            const freq = table[s];
-            if (BigInt(symLow + freq) > scaledValue) {
-                symbol = s;
-                acc = symLow;
-                break;
-            }
-            symLow += freq;
+      const range = high - low + BigInt(1);
+      const totalFreq = model.totalFreqs[context];
+      if (totalFreq === undefined) {
+        throw new Error(`Invalid context frequency: ${context}`);
+      }
+      const total = BigInt(totalFreq);
+      const scaledValue = ((value - low + BigInt(1)) * total - BigInt(1)) / range;
+
+      // Find symbol that fits the scaled value
+      // Linear search for simplicity (Binary search would be faster for order-0)
+      let symbol = 0;
+      let acc = 0;
+      const table = model.tables[context];
+      if (!table) {
+        throw new Error(`Invalid context table: ${context}`);
+      }
+
+      // Finding the symbol where low <= scaledValue < high
+      let symLow = 0;
+      for (let s = 0; s < 257; s++) {
+        const freq = table[s] ?? 0;
+        if (BigInt(symLow + freq) > scaledValue) {
+          symbol = s;
+          acc = symLow;
+          break;
         }
+        symLow += freq;
+      }
 
-        if (symbol === 256) break; // EOF
+      if (symbol === 256) break; // EOF
 
-        outputBuffer.push(symbol);
-        
-        // Arithmetic Decode Step
-        const prob = { 
-            low: BigInt(acc), 
-            high: BigInt(acc + table[symbol]), 
-            total: total 
-        };
+      outputBuffer.push(symbol);
 
-        high = low + (range * prob.high) / prob.total - BigInt(1);
-        low = low + (range * prob.low) / prob.total;
+      // Arithmetic Decode Step
+      const symbolFreq = table[symbol] ?? 0;
+      const prob = {
+        low: BigInt(acc),
+        high: BigInt(acc + symbolFreq),
+        total: total,
+      };
 
-        // Renormalization
-        while (true) {
-            if (high < ONE_HALF) {
-                // do nothing
-            } else if (low >= ONE_HALF) {
-                value -= ONE_HALF;
-                low -= ONE_HALF;
-                high -= ONE_HALF;
-            } else if (low >= ONE_QUARTER && high < THREE_QUARTERS) {
-                value -= ONE_QUARTER;
-                low -= ONE_QUARTER;
-                high -= ONE_QUARTER;
-            } else {
-                break;
-            }
-            low = low << BigInt(1);
-            high = (high << BigInt(1)) | BigInt(1);
-            value = (value << BigInt(1)) | BigInt(Math.max(0, bitStream.readBit()));
+      high = low + (range * prob.high) / prob.total - BigInt(1);
+      low = low + (range * prob.low) / prob.total;
+
+      // Renormalization
+      while (true) {
+        if (high < ONE_HALF) {
+          // do nothing
+        } else if (low >= ONE_HALF) {
+          value -= ONE_HALF;
+          low -= ONE_HALF;
+          high -= ONE_HALF;
+        } else if (low >= ONE_QUARTER && high < THREE_QUARTERS) {
+          value -= ONE_QUARTER;
+          low -= ONE_QUARTER;
+          high -= ONE_QUARTER;
+        } else {
+          break;
         }
+        low = low << BigInt(1);
+        high = (high << BigInt(1)) | BigInt(1);
+        value = (value << BigInt(1)) | BigInt(Math.max(0, bitStream.readBit()));
+      }
 
-        model.update(context, symbol);
-        context = symbol;
-        
-        // Safety Break for bad streams
-        if (outputBuffer.length > originalLen * 2) throw new Error("Decompression Overflow: Model divergence.");
-        
-        // Yield for UI responsiveness on large files based on elapsed time.
-        // Check every 512 bytes to avoid excessive performance.now() calls.
-        if ((outputBuffer.length & 511) === 0) {
-            const now = performance.now();
-            if (now - lastYieldTime > 16) {
-                await new Promise(r => setTimeout(r, 0));
-                lastYieldTime = performance.now();
-            }
+      model.update(context, symbol);
+      context = symbol;
+
+      // Safety Break for bad streams
+      if (outputBuffer.length > originalLen * 2) throw new Error("Decompression Overflow: Model divergence.");
+
+      // Yield for UI responsiveness on large files based on elapsed time.
+      // Check every 512 bytes to avoid excessive performance.now() calls.
+      if ((outputBuffer.length & 511) === 0) {
+        const now = performance.now();
+        if (now - lastYieldTime > 16) {
+          await new Promise((r) => setTimeout(r, 0));
+          lastYieldTime = performance.now();
         }
+      }
     }
 
     const dec = new TextDecoder();
     return {
-        content: dec.decode(new Uint8Array(outputBuffer)),
-        meta: {
-            version: "NFRv2.0 (Real)",
-            originalSize: originalLen,
-            metrics: { neuralEntropy: 0 } // Calc on compress only
-        }
+      content: dec.decode(new Uint8Array(outputBuffer)),
+      meta: {
+        version: "NFRv2.0 (Real)",
+        originalSize: originalLen,
+        metrics: { neuralEntropy: 0 }, // Calc on compress only
+      }
     };
   }
 };

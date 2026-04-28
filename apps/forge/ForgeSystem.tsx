@@ -89,7 +89,6 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     registerCustomApp({
       ...manifest,
       icon: Box,
-      component: undefined,
       permissions: ['vfs.read', 'vfs.write', 'network']
     });
 
@@ -351,4 +350,3 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     </div>
   );
 }
-

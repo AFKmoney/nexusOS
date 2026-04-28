@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Paintbrush, Circle, Square, Eraser, Download, Undo, Redo, Type, MousePointer2 } from 'lucide-react';
 import { useOS } from '../store/osStore';
 
+type Tool = 'brush' | 'eraser' | 'rect' | 'circle';
+
 export default function PaintApp() {
   const { addNotification } = useOS();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const [tool, setTool] = useState<'brush'|'eraser'|'rect'|'circle'>('brush');
+  const [tool, setTool] = useState<Tool>('brush');
   const [color, setColor] = useState('#10b981');
   const [brushSize, setBrushSize] = useState(4);
   const [drawing, setDrawing] = useState(false);
@@ -52,8 +54,8 @@ export default function PaintApp() {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY ?? 0 : e.clientY;
     return {
       x: clientX - rect.left,
       y: clientY - rect.top
@@ -88,7 +90,10 @@ export default function PaintApp() {
     } else {
       // Shape preview requires restoring the last saved state, then drawing the shape
       if (historyIdx >= 0) {
-        ctx.putImageData(history[historyIdx], 0, 0);
+        const savedState = history[historyIdx];
+        if (savedState) {
+          ctx.putImageData(savedState, 0, 0);
+        }
       }
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
@@ -113,8 +118,9 @@ export default function PaintApp() {
   const handleUndo = () => {
     if (historyIdx <= 0) return;
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.putImageData(history[historyIdx - 1], 0, 0);
+    const previousState = history[historyIdx - 1];
+    if (ctx && previousState) {
+      ctx.putImageData(previousState, 0, 0);
       setHistoryIdx(prev => prev - 1);
     }
   };
@@ -122,8 +128,9 @@ export default function PaintApp() {
   const handleRedo = () => {
     if (historyIdx >= history.length - 1) return;
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.putImageData(history[historyIdx + 1], 0, 0);
+    const nextState = history[historyIdx + 1];
+    if (ctx && nextState) {
+      ctx.putImageData(nextState, 0, 0);
       setHistoryIdx(prev => prev + 1);
     }
   };
@@ -153,7 +160,7 @@ export default function PaintApp() {
           ].map(t => (
             <button
               key={t.id}
-              onClick={() => setTool(t.id as any)}
+              onClick={() => setTool(t.id as Tool)}
               className={`p-2 rounded-lg transition-all ${tool === t.id ? 'bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
               title={t.id}
             >
@@ -212,4 +219,3 @@ export default function PaintApp() {
     </div>
   );
 }
-

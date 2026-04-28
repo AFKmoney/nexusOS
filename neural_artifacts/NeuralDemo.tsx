@@ -1,9 +1,11 @@
+import React from 'react';
+
 // NeuralDemo.tsx
 // Part of the NEXUSos Disruptive Suite
 // Demonstrates Fractal-State Logic bypassing standard iterative loops.
 
 export const NeuralCore = () => {
-  const processFractal = (depth: number) => {
+  const processFractal = (depth: number): number => {
     if (depth > 50) return Math.PI;
     return Math.sqrt(depth * processFractal(depth + 1));
   };

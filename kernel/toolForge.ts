@@ -1,9 +1,10 @@
-
 import { localBrain } from '../services/localBrain';
 import { parseOsActions, ParsedOsAction } from './osManifest';
+import { useOS } from '../store/osStore';
+import { commander } from './commander';
+import { eventBus } from './eventBus';
 import { vfs } from './fileSystem';
 import { memory } from './memory';
-import { useOS } from '../store/osStore';
 
 interface DaemonTool {
   name: string;
@@ -13,32 +14,102 @@ interface DaemonTool {
 }
 
 const STORAGE_KEY = 'daemon_tools_v2';
+const MAX_TOOL_NAME_LENGTH = 64;
+const MAX_TOOL_DESCRIPTION_LENGTH = 256;
+const MAX_TOOL_CODE_LENGTH = 50_000;
+const MAX_EXECUTED_ARGS_LENGTH = 4_096;
+const MAX_OS_ACTION_ARG_LENGTH = 2_048;
+const SAFE_TOOL_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+type VfsModule = {
+  writeFile: (path: string, content: string) => void;
+  readFile: (path: string) => string | null;
+  listDir: (path: string) => string[] | null;
+  stat: (path: string) => { type?: 'directory' | 'file' } | null | undefined;
+  delete: (path: string) => boolean;
+};
+
+type MemoryModule = {
+  remember: (content: string, tags: string[]) => void;
+};
+
+async function getVfs(): Promise<VfsModule> {
+  return vfs as VfsModule;
+}
+
+async function getMemory(): Promise<MemoryModule> {
+  return memory as MemoryModule;
+}
+
+function getArg(raw: unknown, fallback = ''): string {
+  return typeof raw === 'string' ? raw : fallback;
+}
+
+function toStringArg(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function isSafeToolName(name: string): boolean {
+  return SAFE_TOOL_NAME.test(name) && name.length <= MAX_TOOL_NAME_LENGTH;
+}
+
+function clampLength(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max) : value;
+}
+
+function normalizeOsPath(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+  if (!trimmed.startsWith('/')) return '';
+  if (trimmed.includes('\0')) return '';
+  if (trimmed.includes('..')) return '';
+  return trimmed.replace(/\/+/g, '/');
+}
+
+function sanitizeActionArg(value: string): string {
+  return clampLength(value.trim(), MAX_OS_ACTION_ARG_LENGTH);
+}
+
+function safeJsonStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '"[unserializable]"';
+  }
+}
 
 export class ToolForge {
   private tools: Map<string, DaemonTool> = new Map();
-  // Callback for OS-level actions (set by App.tsx to avoid circular deps)
   private _osActionHandler: ((action: ParsedOsAction) => Promise<string>) | null = null;
-  private _loaded = false;
-  private _saveTimeout: any = null;
-  private _loadPromise: Promise<void> | null = null;
+  private _saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private _loadPromise: Promise<void>;
 
   constructor() {
-    // True deferred async initialization to avoid blocking critical rendering path
     this._loadPromise = new Promise((resolve) => {
       const load = () => {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           if (raw) {
             const parsed = JSON.parse(raw) as DaemonTool[];
-            for (const t of parsed) this.tools.set(t.name, t);
+            for (const t of parsed) {
+              if (t && isSafeToolName(t.name)) {
+                this.tools.set(t.name, {
+                  name: clampLength(t.name.trim(), MAX_TOOL_NAME_LENGTH),
+                  description: clampLength(typeof t.description === 'string' ? t.description : '', MAX_TOOL_DESCRIPTION_LENGTH),
+                  code: clampLength(typeof t.code === 'string' ? t.code : '', MAX_TOOL_CODE_LENGTH),
+                  createdAt: typeof t.createdAt === 'number' ? t.createdAt : Date.now()
+                });
+              }
+            }
           }
-        } catch(e) {} finally {
+        } catch {
+        } finally {
           resolve();
         }
       };
 
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(load);
+        (window as Window & typeof globalThis & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(load);
       } else {
         setTimeout(load, 0);
       }
@@ -60,25 +131,44 @@ export class ToolForge {
     }, 100);
   }
 
-  // Parse and register user-created tools
-  // Format: ```javascript\n// @tool ToolName\n// @desc Description\nfunction ToolName...```
+  private validateToolPayload(name: string, desc: string, code: string): boolean {
+    return isSafeToolName(name) && desc.length <= MAX_TOOL_DESCRIPTION_LENGTH && code.length > 0 && code.length <= MAX_TOOL_CODE_LENGTH;
+  }
+
+  private extractSingleExpressionResult(code: string, scope: Record<string, unknown>): unknown {
+    const trimmed = code.trim();
+    if (!trimmed) return undefined;
+    if (/[;{}=]/.test(trimmed)) {
+      throw new Error('Tool code contains unsupported statements. Only single-expression tools are allowed.');
+    }
+    const argNames = Object.keys(scope);
+    const argValues = Object.values(scope);
+    const fn = new Function(...argNames, `return (${trimmed});`) as (...args: unknown[]) => unknown;
+    return fn(...argValues);
+  }
+
   public async parseAndRegister(text: string): Promise<boolean> {
     await this.ensureLoadedAsync();
     const rx = /```javascript\s*\/\/\s*@tool\s+([a-zA-Z0-9_]+)\s*\n\/\/\s*@desc\s+(.+)\n([\s\S]+?)```/g;
-    let match;
+    let match: RegExpExecArray | null;
     let registered = false;
     while ((match = rx.exec(text)) !== null) {
-      const name = match[1].trim();
-      const desc = match[2].trim();
-      const code = match[3].trim();
-      this.tools.set(name, { name, description: desc, code, createdAt: Date.now() });
+      const name = match[1]?.trim() || '';
+      const desc = clampLength(match[2]?.trim() || '', MAX_TOOL_DESCRIPTION_LENGTH);
+      const code = clampLength(match[3]?.trim() || '', MAX_TOOL_CODE_LENGTH);
+      if (!this.validateToolPayload(name, desc, code)) continue;
+      this.tools.set(name, {
+        name,
+        description: desc,
+        code,
+        createdAt: Date.now()
+      });
       registered = true;
     }
     if (registered) this.save();
     return registered;
   }
 
-  // Returns context string for system prompt
   public async getSystemToolContext(): Promise<string> {
     await this.ensureLoadedAsync();
     if (this.tools.size === 0) return '';
@@ -89,23 +179,55 @@ export class ToolForge {
     return ctx;
   }
 
-  // Executes a forged user tool
   public async executeTool(name: string, argsString: string): Promise<string> {
     await this.ensureLoadedAsync();
-    const t = this.tools.get(name);
+    const toolName = name.trim();
+    const t = this.tools.get(toolName);
     if (!t) return `[TOOL ERROR: Tool '${name}' not found. Define it first using // @tool syntax]`;
+
+    if (!isSafeToolName(toolName)) {
+      return `\n[TOOL ERROR: ${name}] → Invalid tool name format\n`;
+    }
+
+    if (argsString.length > MAX_EXECUTED_ARGS_LENGTH) {
+      return `\n[TOOL ERROR: ${name}] → Arguments too long\n`;
+    }
+
     try {
-      const execCode = `${t.code}\nreturn await ${name}(${argsString});`;
-      const asyncFn = new Function(`return (async () => { ${execCode} })()`);
-      const result = await asyncFn();
-      return `\n[TOOL_RESULT: ${name}] → ${JSON.stringify(result)}\n`;
-    } catch (e: any) {
-      return `\n[TOOL ERROR: ${name}] → ${e.message}\n`;
+      const scope = {
+        args: argsString,
+        localBrain,
+        commander,
+        useOS,
+        getVfs,
+        getMemory,
+        osAction: this._osActionHandler,
+        readFile: async (path: string) => {
+          const fs = await getVfs();
+          return fs.readFile(normalizeOsPath(path));
+        },
+        writeFile: async (path: string, content: string) => {
+          const fs = await getVfs();
+          return fs.writeFile(normalizeOsPath(path), content);
+        },
+        listDir: async (path: string) => {
+          const fs = await getVfs();
+          return fs.listDir(normalizeOsPath(path));
+        },
+        emitEvent: (event: string, payload?: unknown) => {
+          eventBus.emit(event, payload);
+          return true;
+        }
+      } as const;
+
+      const result = await Promise.resolve(this.extractSingleExpressionResult(t.code, scope as Record<string, unknown>));
+      return `\n[TOOL_RESULT: ${name}] → ${safeJsonStringify(result)}\n`;
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      return `\n[TOOL ERROR: ${name}] → ${clampLength(message, 500)}\n`;
     }
   }
 
-  // ─── Execute Native OS Actions from AI response ─────────────────────────────
-  // Returns a result string that can be appended to the next AI turn
   public async executeOsActions(text: string): Promise<string> {
     const actions = parseOsActions(text);
     if (actions.length === 0) return '';
@@ -114,26 +236,31 @@ export class ToolForge {
 
     for (const action of actions) {
       let result = '';
+      const actionArgs = Array.isArray(action.args) ? action.args : [];
 
       switch (action.type) {
         case 'OPEN_APP': {
-          const [appIdRaw] = action.args;
-          const parts = appIdRaw.split(':');
-          const appId = parts[0];
-          const filePath = parts[1];
-          if (this._osActionHandler) {
-            result = await this._osActionHandler({ ...action, args: [appId, filePath || ''] });
-          } else {
-            result = `[OS::OPEN_APP] → App "${appId}" queued (OS handler not bound yet)`;
+          const [appIdRaw, filePathRaw = ''] = actionArgs as [unknown, unknown];
+          const appId = toStringArg(appIdRaw).split(':')[0] || '';
+          const filePath = clampLength(toStringArg(filePathRaw), MAX_OS_ACTION_ARG_LENGTH);
+          if (appId) {
+            if (this._osActionHandler) {
+              result = await this._osActionHandler({ ...action, args: [appId, filePath] });
+            } else {
+              result = `[OS::OPEN_APP] → App "${appId}" queued (OS handler not bound yet)`;
+            }
           }
           break;
         }
 
         case 'WRITE_FILE': {
-          const [path, content] = action.args;
-          if (path && content !== undefined) {
-            vfs.writeFile(path, content);
-            memory.remember(`File written: ${path}`, ['file', 'vfs']);
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
+          const content = clampLength(toStringArg(actionArgs[1]), 100_000);
+          if (path && content !== '') {
+            const fs = await getVfs();
+            fs.writeFile(path, content);
+            const mem = await getMemory();
+            mem.remember(`File written: ${path}`, ['file', 'vfs']);
             result = `[OS::WRITE_FILE] → ✅ ${path} saved (${content.length} chars)`;
           } else {
             result = `[OS::WRITE_FILE] → ⚠ Invalid args. Format: OS::WRITE_FILE:/path:content`;
@@ -142,9 +269,10 @@ export class ToolForge {
         }
 
         case 'READ_FILE': {
-          const [path] = action.args;
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
           if (path) {
-            const content = vfs.readFile(path);
+            const fs = await getVfs();
+            const content = fs.readFile(path);
             result = content !== null
               ? `[OS::READ_FILE] → ${path}:\n\`\`\`\n${content.slice(0, 2000)}\n\`\`\``
               : `[OS::READ_FILE] → ⚠ File not found: ${path}`;
@@ -155,9 +283,11 @@ export class ToolForge {
         }
 
         case 'NOTIFY': {
-          const [title, message] = action.args[0].split(':');
+          const raw = getArg(actionArgs[0]);
+          const [title = 'DAEMON', ...messageParts] = raw.split(':');
+          const message = clampLength(messageParts.join(':') || raw, 512);
           if (this._osActionHandler) {
-            result = await this._osActionHandler({ ...action, args: [title || 'DAEMON', message || action.args[0]] });
+            result = await this._osActionHandler({ ...action, args: [sanitizeActionArg(title), message] });
           } else {
             result = `[OS::NOTIFY] → "${title}: ${message}"`;
           }
@@ -165,30 +295,35 @@ export class ToolForge {
         }
 
         case 'REMEMBER': {
-          const [content] = action.args;
+          const content = clampLength(toStringArg(action.args[0]), 4_096);
           if (content) {
-            memory.remember(content, ['daemon', 'ai']);
+            const mem = await getMemory();
+            mem.remember(content, ['daemon', 'ai']);
             result = `[OS::REMEMBER] → ✅ Stored in persistent memory`;
           }
           break;
         }
 
         case 'SEARCH_FILES': {
-          const [query] = action.args;
+          const query = clampLength(toStringArg(action.args[0]), 128);
           if (query) {
+            const fs = await getVfs();
             const hits: string[] = [];
             const searchDir = (dir: string) => {
-              const items = vfs.listDir(dir) || [];
-              items.forEach(name => {
+              const items = fs.listDir(dir) || [];
+              items.forEach((name: string) => {
                 const p = `${dir}/${name}`;
-                const stat = vfs.stat(p);
-                if (stat?.type === 'directory') { searchDir(p); return; }
-                const content = vfs.readFile(p) || '';
+                const stat = fs.stat(p);
+                if (stat?.type === 'directory') {
+                  searchDir(p);
+                  return;
+                }
+                const content = fs.readFile(p) || '';
                 if (content.toLowerCase().includes(query.toLowerCase())) {
                   const lines = content.split('\n');
-                  lines.forEach((line, i) => {
+                  lines.forEach((line: string, i: number) => {
                     if (line.toLowerCase().includes(query.toLowerCase())) {
-                      hits.push(`  ${p}:${i+1} → ${line.trim().slice(0, 80)}`);
+                      hits.push(`  ${p}:${i + 1} → ${line.trim().slice(0, 80)}`);
                     }
                   });
                 }
@@ -196,23 +331,24 @@ export class ToolForge {
             };
             searchDir('/home/user');
             result = hits.length > 0
-              ? `[OS::SEARCH_FILES: "${query}"] → ${hits.length} hits:\n${hits.slice(0,20).join('\n')}`
+              ? `[OS::SEARCH_FILES: "${query}"] → ${hits.length} hits:\n${hits.slice(0, 20).join('\n')}`
               : `[OS::SEARCH_FILES: "${query}"] → No results found`;
           }
           break;
         }
 
         case 'CREATE_FOLDER': {
-          const [path] = action.args;
+          const path = normalizeOsPath(toStringArg(action.args[0]));
           if (path) {
-            vfs.writeFile(`${path}/.keep`, '');
+            const fs = await getVfs();
+            fs.writeFile(`${path}/.keep`, '');
             result = `[OS::CREATE_FOLDER] → ✅ ${path} created`;
           }
           break;
         }
 
         case 'BUILD_APP': {
-          const [desc] = action.args;
+          const desc = clampLength(toStringArg(action.args[0]), 512);
           if (this._osActionHandler) {
             result = await this._osActionHandler({ ...action, args: [desc] });
           } else {
@@ -222,7 +358,7 @@ export class ToolForge {
         }
 
         case 'OPEN_URL': {
-          const [url] = action.args;
+          const url = clampLength(toStringArg(action.args[0]), 2_048);
           if (this._osActionHandler) {
             result = await this._osActionHandler({ ...action, args: [url] });
           } else {
@@ -232,25 +368,24 @@ export class ToolForge {
         }
 
         case 'EXECUTE_JS': {
-          const [code] = action.args;
+          const code = clampLength(toStringArg(action.args[0]), 2_048);
           if (code) {
             try {
-              const asyncFn = new Function(`return (async () => { return ${code} })()`);
-              const res = await asyncFn();
-              result = `[OS::EXECUTE_JS] → ${JSON.stringify(res)}`;
-            } catch (e: any) {
-              result = `[OS::EXECUTE_JS ERROR] → ${e.message}`;
+              const execResult = this.extractSingleExpressionResult(code, {});
+              result = `[OS::EXECUTE_JS] → ${safeJsonStringify(execResult)}`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::EXECUTE_JS ERROR] → ${message}`;
             }
           }
           break;
         }
 
-        // ─── NEW OS ACTIONS (DAEMON v2.0) ─────────────────────────────
-
         case 'DELETE_FILE': {
-          const [path] = action.args;
+          const path = normalizeOsPath(toStringArg(action.args[0]));
           if (path) {
-            const success = vfs.delete(path);
+            const fs = await getVfs();
+            const success = fs.delete(path);
             result = success
               ? `[OS::DELETE_FILE] → ✅ ${path} deleted`
               : `[OS::DELETE_FILE] → ⚠ File not found: ${path}`;
@@ -259,16 +394,18 @@ export class ToolForge {
         }
 
         case 'MOVE_FILE': {
-          const rawArgs = action.args[0];
+          const rawArgs = getArg(action.args[0], '');
           const colonIdx = rawArgs.indexOf(':');
           if (colonIdx > 0) {
-            const src = rawArgs.slice(0, colonIdx);
-            const dest = rawArgs.slice(colonIdx + 1);
-            const content = vfs.readFile(src);
+            const src = normalizeOsPath(rawArgs.slice(0, colonIdx));
+            const dest = normalizeOsPath(rawArgs.slice(colonIdx + 1));
+            const fs = await getVfs();
+            const content = fs.readFile(src);
             if (content !== null) {
-              vfs.writeFile(dest, content);
-              vfs.delete(src);
-              memory.remember(`File moved: ${src} → ${dest}`, ['file', 'vfs']);
+              fs.writeFile(dest, content);
+              fs.delete(src);
+              const mem = await getMemory();
+              mem.remember(`File moved: ${src} → ${dest}`, ['file', 'vfs']);
               result = `[OS::MOVE_FILE] → ✅ ${src} → ${dest}`;
             } else {
               result = `[OS::MOVE_FILE] → ⚠ Source not found: ${src}`;
@@ -280,14 +417,15 @@ export class ToolForge {
         }
 
         case 'COPY_FILE': {
-          const rawArgs = action.args[0];
+          const rawArgs = getArg(action.args[0], '');
           const colonIdx = rawArgs.indexOf(':');
           if (colonIdx > 0) {
-            const src = rawArgs.slice(0, colonIdx);
-            const dest = rawArgs.slice(colonIdx + 1);
-            const content = vfs.readFile(src);
+            const src = normalizeOsPath(rawArgs.slice(0, colonIdx));
+            const dest = normalizeOsPath(rawArgs.slice(colonIdx + 1));
+            const fs = await getVfs();
+            const content = fs.readFile(src);
             if (content !== null) {
-              vfs.writeFile(dest, content);
+              fs.writeFile(dest, content);
               result = `[OS::COPY_FILE] → ✅ ${src} copied to ${dest}`;
             } else {
               result = `[OS::COPY_FILE] → ⚠ Source not found: ${src}`;
@@ -299,28 +437,26 @@ export class ToolForge {
         }
 
         case 'LIST_DIR': {
-          const [path] = action.args;
-          const dirPath = path || '/home/user';
-          const items = vfs.listDir(dirPath) || [];
+          const path = normalizeOsPath(toStringArg(action.args[0])) || '/home/user';
+          const fs = await getVfs();
+          const items = fs.listDir(path) || [];
           if (items.length > 0) {
-            const listing = items.map(item => {
-              const stat = vfs.stat(`${dirPath}/${item}`);
+            const listing = items.map((item: string) => {
+              const stat = fs.stat(`${path}/${item}`);
               return stat?.type === 'directory' ? `📁 ${item}/` : `📄 ${item}`;
             }).join('\n');
-            result = `[OS::LIST_DIR: ${dirPath}]\n${listing}`;
+            result = `[OS::LIST_DIR: ${path}]\n${listing}`;
           } else {
-            result = `[OS::LIST_DIR: ${dirPath}] → (empty directory)`;
+            result = `[OS::LIST_DIR: ${path}] → (empty directory)`;
           }
           break;
         }
 
         case 'CLOSE_APP': {
-          const [windowIdOrAppId] = action.args;
+          const windowIdOrAppId = sanitizeActionArg(toStringArg(actionArgs[0]));
           if (windowIdOrAppId) {
             const osState = useOS.getState();
-            const win = osState.windows.find(
-              (w: any) => w.id === windowIdOrAppId || w.appId === windowIdOrAppId
-            );
+            const win = osState.windows.find((w) => w.id === windowIdOrAppId || w.appId === windowIdOrAppId);
             if (win) {
               osState.closeWindow(win.id);
               result = `[OS::CLOSE_APP] → ✅ Closed ${win.title}`;
@@ -332,15 +468,14 @@ export class ToolForge {
         }
 
         case 'FOCUS_APP': {
-          const [appId] = action.args;
+          const appId = sanitizeActionArg(toStringArg(actionArgs[0]));
           if (appId) {
             const osState = useOS.getState();
-            const win = osState.windows.find((w: any) => w.appId === appId);
+            const win = osState.windows.find((w) => w.appId === appId);
             if (win) {
               osState.focusWindow(win.id);
               result = `[OS::FOCUS_APP] → ✅ Focused ${win.title}`;
             } else {
-              // Open it if not already open
               osState.openWindow(appId);
               result = `[OS::FOCUS_APP] → ✅ Opened and focused ${appId}`;
             }
@@ -350,7 +485,7 @@ export class ToolForge {
 
         case 'MINIMIZE_ALL': {
           const osState = useOS.getState();
-          osState.windows.forEach((w: any) => {
+          osState.windows.forEach((w) => {
             if (!w.isMinimized) osState.minimizeWindow(w.id);
           });
           result = `[OS::MINIMIZE_ALL] → ✅ All ${osState.windows.length} windows minimized`;
@@ -358,7 +493,7 @@ export class ToolForge {
         }
 
         case 'SET_WALLPAPER': {
-          const [wallpaperId] = action.args;
+          const wallpaperId = sanitizeActionArg(toStringArg(actionArgs[0]));
           if (wallpaperId) {
             useOS.getState().setWallpaper(wallpaperId);
             result = `[OS::SET_WALLPAPER] → ✅ Wallpaper set to ${wallpaperId}`;
@@ -367,13 +502,14 @@ export class ToolForge {
         }
 
         case 'RUN_COMMAND': {
-          const [cmd] = action.args;
+          const cmd = clampLength(toStringArg(actionArgs[0]), 2_048);
           if (cmd) {
-            const { commander } = await import('./commander');
             const output: string[] = [];
             await commander.execute(
               cmd,
-              (text, type) => { if (type === 'out') output.push(text); },
+              (text, type) => {
+                if (type === 'out') output.push(text);
+              },
               useOS.getState().kernelRules
             );
             result = `[OS::RUN_COMMAND: ${cmd}]\n${output.join('\n')}`;
@@ -382,17 +518,18 @@ export class ToolForge {
         }
 
         case 'RUN_NATIVE': {
-          const [cmd] = action.args;
+          const cmd = clampLength(toStringArg(actionArgs[0]), 512);
           if (cmd && window.electron && window.electron.invoke) {
             try {
               const res = await window.electron.invoke('native-exec', cmd);
               if (res.success) {
-                  result = `[OS::RUN_NATIVE: ${cmd}] SUCCESS\nSTDOUT: ${res.stdout}\nSTDERR: ${res.stderr}`;
+                result = `[OS::RUN_NATIVE: ${cmd}] SUCCESS\nSTDOUT: ${res.stdout}\nSTDERR: ${res.stderr}`;
               } else {
-                  result = `[OS::RUN_NATIVE: ${cmd}] ERROR\n${res.error || res.stderr}`;
+                result = `[OS::RUN_NATIVE: ${cmd}] ERROR\n${res.error || res.stderr}`;
               }
-            } catch (err: any) {
-              result = `[OS::RUN_NATIVE: ${cmd}] IPC ERROR: ${err.message}`;
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : String(err);
+              result = `[OS::RUN_NATIVE: ${cmd}] IPC ERROR: ${message}`;
             }
           } else {
             result = `[OS::RUN_NATIVE: ${cmd}] FAILED: Native execution unavailable (Electron IPC required).`;
@@ -401,14 +538,13 @@ export class ToolForge {
         }
 
         case 'SCHEDULE_TASK': {
-          const rawArgs = action.args[0];
+          const rawArgs = getArg(actionArgs[0], '');
           const colonIdx = rawArgs.indexOf(':');
           if (colonIdx > 0) {
             const interval = parseInt(rawArgs.slice(0, colonIdx));
-            const cmd = rawArgs.slice(colonIdx + 1);
+            const cmd = clampLength(rawArgs.slice(colonIdx + 1), 2_048);
             if (interval > 0 && cmd) {
               const { cronScheduler } = await import('./cronScheduler');
-              const { commander } = await import('./commander');
               const jobId = cronScheduler.register(`daemon_task_${Date.now()}`, { intervalMs: interval * 1000 }, `OS::RUN_COMMAND:${cmd}`);
               result = `[OS::SCHEDULE_TASK] → ✅ Task scheduled every ${interval}s (job: ${jobId})`;
             }
@@ -419,12 +555,11 @@ export class ToolForge {
         }
 
         case 'EMIT_EVENT': {
-          const rawArgs = action.args[0];
+          const rawArgs = getArg(actionArgs[0], '');
           const colonIdx = rawArgs.indexOf(':');
           if (colonIdx > 0) {
-            const event = rawArgs.slice(0, colonIdx);
+            const event = sanitizeActionArg(rawArgs.slice(0, colonIdx));
             const data = rawArgs.slice(colonIdx + 1);
-            const { eventBus } = await import('./eventBus');
             try {
               eventBus.emit(event, JSON.parse(data));
             } catch {
@@ -452,7 +587,7 @@ export class ToolForge {
 
   public async deleteTool(name: string): Promise<void> {
     await this.ensureLoadedAsync();
-    this.tools.delete(name);
+    this.tools.delete(name.trim());
     this.save();
   }
 

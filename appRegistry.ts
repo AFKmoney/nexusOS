@@ -66,11 +66,13 @@ import {
   Key, Mic, Rss, Accessibility, Target, Camera
 } from 'lucide-react';
 
+export const CORE_APP_IDS = ['welcome', 'dashboard', 'explorer', 'terminal', 'notepad', 'settings', 'netrunner'] as const;
+
 export const SYSTEM_APPS: AppManifest[] = [
   // ── Dashboard ──────────────────────────────────────────────────────────────
   {
     id: 'welcome',
-    name: 'Introduction',
+    name: 'Welcome',
     icon: Zap,
     component: WelcomeApp,
     permissions: [],

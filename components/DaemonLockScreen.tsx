@@ -17,6 +17,8 @@ export const DaemonLockScreen: React.FC = () => {
 
   if (!daemonLocked) return null;
 
+  const timestamp = new Date().toISOString().split('T')[1]?.slice(0, 8) || '--:--:--';
+
   return (
     <div className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center font-mono font-bold select-none cursor-wait overflow-hidden">
       {/* Visual Glitch Effects */}
@@ -32,12 +34,12 @@ export const DaemonLockScreen: React.FC = () => {
           <div className="flex flex-col gap-1 w-full text-xs text-red-400">
             {daemonLockLog.map((log, i) => (
               <div key={i} className="flex gap-2">
-                <span className="text-zinc-600">[{new Date().toISOString().split('T')[1].slice(0, 8)}]</span>
+                <span className="text-zinc-600">[{timestamp}]</span>
                 <span className="text-red-400/80">{log}</span>
               </div>
             ))}
             <div className="flex gap-2 animate-pulse mt-2">
-              <span className="text-zinc-600">[{new Date().toISOString().split('T')[1].slice(0, 8)}]</span>
+              <span className="text-zinc-600">[{timestamp}]</span>
               <span className="text-emerald-500 flex items-center gap-2"><Terminal size={12}/> REBUILDING NEURAL PATHWAYS <span className="animate-bounce">...</span></span>
             </div>
           </div>

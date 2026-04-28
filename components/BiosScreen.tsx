@@ -15,11 +15,17 @@ export default function BiosScreen({ onExit }: { onExit: () => void }) {
         const handler = (e: KeyboardEvent) => {
             e.preventDefault();
             if (e.key === 'ArrowRight') {
-                setSelectedTab(prev => tabs[(tabs.indexOf(prev) + 1) % tabs.length]);
+                setSelectedTab(prev => {
+                    const currentIndex = tabs.indexOf(prev);
+                    return tabs[(currentIndex + 1) % tabs.length] ?? prev;
+                });
                 setActiveRow(0);
             }
             if (e.key === 'ArrowLeft') {
-                setSelectedTab(prev => tabs[(tabs.indexOf(prev) - 1 + tabs.length) % tabs.length]);
+                setSelectedTab(prev => {
+                    const currentIndex = tabs.indexOf(prev);
+                    return tabs[(currentIndex - 1 + tabs.length) % tabs.length] ?? prev;
+                });
                 setActiveRow(0);
             }
             if (e.key === 'ArrowDown') {
@@ -36,13 +42,19 @@ export default function BiosScreen({ onExit }: { onExit: () => void }) {
                 }
                 if (selectedTab === 'Advanced' && activeRow === 0) {
                     const speeds = [1.2, 2.4, 3.4, 4.2, 5.0];
-                    const next = speeds[(speeds.indexOf(kernelRules.cpuSpeed || 3.4) + 1) % speeds.length];
-                    updateKernelRules({ cpuSpeed: next });
+                    const currentSpeed = kernelRules.cpuSpeed ?? 3.4;
+                    const next = speeds[(speeds.indexOf(currentSpeed) + 1) % speeds.length];
+                    if (next !== undefined) {
+                        updateKernelRules({ cpuSpeed: next });
+                    }
                 }
                 if (selectedTab === 'Boot' && activeRow === 0) {
                     const devices = ['VFS', 'CLOUD', 'GGUF'] as const;
-                    const next = devices[(devices.indexOf(kernelRules.primaryBootDevice || 'VFS') + 1) % devices.length];
-                    updateKernelRules({ primaryBootDevice: next });
+                    const currentDevice = kernelRules.primaryBootDevice ?? 'VFS';
+                    const next = devices[(devices.indexOf(currentDevice) + 1) % devices.length];
+                    if (next !== undefined) {
+                        updateKernelRules({ primaryBootDevice: next });
+                    }
                 }
                 if (selectedTab === 'Exit') {
                     if (activeRow === 0) onExit();
@@ -101,7 +113,7 @@ export default function BiosScreen({ onExit }: { onExit: () => void }) {
                         <>
                             <div className={`flex justify-between p-1 ${activeRow === 0 ? 'bg-[#aaaaaa] text-[#0000aa]' : ''}`}>
                                 <span>Virtual CPU Clock Speed</span>
-                                <span className={activeRow === 0 ? '' : 'text-white'}>[{kernelRules.cpuSpeed || 3.4} GHz]</span>
+                                <span className={activeRow === 0 ? '' : 'text-white'}>[{kernelRules.cpuSpeed ?? 3.4} GHz]</span>
                             </div>
                             <div className={`flex justify-between p-1 ${activeRow === 1 ? 'bg-[#aaaaaa] text-[#0000aa]' : ''}`}>
                                 <span>Autonomy Engine Injection</span>
@@ -126,7 +138,7 @@ export default function BiosScreen({ onExit }: { onExit: () => void }) {
                         <>
                             <div className={`flex justify-between p-1 ${activeRow === 0 ? 'bg-[#aaaaaa] text-[#0000aa]' : ''}`}>
                                 <span>Primary Boot Device</span>
-                                <span className={activeRow === 0 ? '' : 'text-white'}>[{kernelRules.primaryBootDevice || 'VFS'}]</span>
+                                <span className={activeRow === 0 ? '' : 'text-white'}>[{kernelRules.primaryBootDevice ?? 'VFS'}]</span>
                             </div>
                             <div className="mt-2 pl-4 text-[#5555ff]">{'>'} Network Boot (PXE)</div>
                             <div className="pl-4 text-[#5555ff]">{'>'} USB Virtual Drive</div>

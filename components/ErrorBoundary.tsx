@@ -2,23 +2,29 @@ import React from 'react';
 import { Terminal, AlertTriangle } from 'lucide-react';
 import { eventBus } from '../kernel/eventBus';
 
-export class ErrorBoundary extends React.Component<{
+type ErrorBoundaryProps = {
   appId: string;
   windowId: string;
   children: React.ReactNode;
-}, { hasError: boolean; error: any }> {
-  public state = { hasError: false, error: null };
-  public props: any;
+};
 
-  constructor(props: any) {
+type ErrorBoundaryState = {
+  hasError: boolean;
+  error: Error | null;
+};
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false, error: null };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error(`[ErrorBoundary] ${this.props.appId} crashed:`, error, errorInfo);
     // Send event to DAEMON for self-healing
     eventBus.emit('daemon:urgent', `APP_CRASH: ${this.props.appId} crashed with error "${error.message}". DAEMON MUST read the source code of this app in /apps/ and rewrite it to fix the crash.`);

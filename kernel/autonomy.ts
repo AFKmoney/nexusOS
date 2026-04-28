@@ -6,6 +6,7 @@ import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
+import { memory } from './memory';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -19,6 +20,15 @@ interface Mission {
   trigger: string;
   weight: (state: SystemSnapshot) => number; // 0-1, higher = more likely
   prompt: (state: SystemSnapshot) => string;
+}
+
+interface EventPayload {
+  path?: string;
+  appId?: string;
+  title?: string;
+  name?: string;
+  jobId?: string;
+  action?: string;
 }
 
 interface SystemSnapshot {
@@ -160,16 +170,20 @@ export class AutonomyEngine {
   private bindEvents() {
     // Listen to OS events and queue them for the autonomy engine
     eventBus.on(OS_EVENTS.FILE_CREATED, (payload) => {
-      this.queueEvent(`FILE_CREATED: ${payload?.path || 'unknown'}`);
+      const eventPayload = (payload ?? {}) as EventPayload;
+      this.queueEvent(`FILE_CREATED: ${eventPayload.path || 'unknown'}`);
     });
     eventBus.on(OS_EVENTS.FILE_DELETED, (payload) => {
-      this.queueEvent(`FILE_DELETED: ${payload?.path || 'unknown'}`);
+      const eventPayload = (payload ?? {}) as EventPayload;
+      this.queueEvent(`FILE_DELETED: ${eventPayload.path || 'unknown'}`);
     });
     eventBus.on(OS_EVENTS.WINDOW_OPENED, (payload) => {
-      this.queueEvent(`WINDOW_OPENED: ${payload?.appId || 'unknown'}`);
+      const eventPayload = (payload ?? {}) as EventPayload;
+      this.queueEvent(`WINDOW_OPENED: ${eventPayload.appId || 'unknown'}`);
     });
     eventBus.on(OS_EVENTS.WINDOW_CLOSED, (payload) => {
-      this.queueEvent(`WINDOW_CLOSED: ${payload?.title || 'unknown'}`);
+      const eventPayload = (payload ?? {}) as EventPayload;
+      this.queueEvent(`WINDOW_CLOSED: ${eventPayload.title || 'unknown'}`);
     });
     eventBus.on('daemon:urgent', (payload) => {
       this.queueEvent(`URGENT: ${typeof payload === 'string' ? payload : JSON.stringify(payload)}`);
@@ -179,9 +193,10 @@ export class AutonomyEngine {
     
     // Listen for internal Cron events mapped to OS Actions
     eventBus.on('CRON_TRIGGERED', (payload) => {
-      this.queueEvent(`CRON_TRIGGERED: ${payload?.name || payload?.jobId}`);
-      if (payload?.action?.startsWith('OS::RUN_COMMAND:')) {
-         const cmd = payload.action.substring(16);
+      const eventPayload = (payload ?? {}) as EventPayload;
+      this.queueEvent(`CRON_TRIGGERED: ${eventPayload.name || eventPayload.jobId || 'unknown'}`);
+      if (eventPayload.action?.startsWith('OS::RUN_COMMAND:')) {
+         const cmd = eventPayload.action.substring(16);
          commander.execute(cmd, () => {}, useOS.getState().kernelRules);
       }
     });
@@ -199,17 +214,48 @@ export class AutonomyEngine {
     if (this.isRunning) return;
     this.isRunning = true;
     const os = useOS.getState();
-    os.addAutonomyLog('◈ Neural Substrate v2.0 Online. Event-driven autonomy engaged.');
+    os.addAutonomyLog('◈ Neural Substrate v2.0 Online. Triadic Fractal Scheduler engaged.');
     os.addAutonomyLog(`◈ Mission pool: ${MISSION_POOL.length} strategic directives loaded.`);
-    os.addAutonomyLog('◈ EventBus listeners active. Reactive mode enabled.');
-    this.tick();
-    const interval = os.kernelRules.autonomyInterval || 30000;
-    this.intervalId = setInterval(() => this.tick(), interval);
+    os.addAutonomyLog('◈ Law of Cascade: Vn,k = 7 * 2^n * 3^k (Temporal Folding Active).');
+    
+    this.runFractalTick();
+  }
+
+  private runFractalTick() {
+    if (!this.isRunning) return;
+    
+    this.tick().finally(() => {
+        const nextDelay = this.calculateNextFractalDelay();
+        this.intervalId = setTimeout(() => this.runFractalTick(), nextDelay);
+    });
+  }
+
+  private calculateNextFractalDelay(): number {
+    const os = useOS.getState();
+    // n: folding depth (compression) -> based on window count (complexity)
+    const n = Math.min(os.windows.length, 5); 
+    // k: branching expansion (generation) -> based on recent event density
+    const k = Math.min(this.eventQueue.length, 3);
+    
+    // Formula: V = 7 * 2^n * 3^k
+    // We use this to modulate a baseline of 30s
+    // High n/k should lead to high "value", which we map to higher activity (shorter delay)
+    const baseValue = 7 * Math.pow(2, n) * Math.pow(3, k);
+    
+    // Normalize to a reasonable range (5s to 60s)
+    // baseValue for n=0, k=0 is 7. For n=5, k=3 is 7 * 32 * 27 = 6048.
+    // We want higher activity (high baseValue) to LOWER the delay.
+    const baseline = 60000; // 60s max
+    const minDelay = 5000;  // 5s min
+    
+    const fractalDelay = Math.max(minDelay, baseline - (baseValue * 8));
+    
+    return fractalDelay;
   }
 
   public stop() {
     this.isRunning = false;
-    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.intervalId) clearTimeout(this.intervalId);
     useOS.getState().setAutonomyState('IDLE');
     useOS.getState().addAutonomyLog('◈ Strategic protocols suspended.');
   }
@@ -261,7 +307,13 @@ export class AutonomyEngine {
       }))
       .sort((a, b) => b.score - a.score);
 
-    const selectedMission = scoredMissions[0].mission;
+    const topMission = scoredMissions[0];
+    if (!topMission) {
+      os.addAutonomyLog('◈ STATUS: No mission candidates available.');
+      os.setAutonomyState('IDLE');
+      return;
+    }
+    const selectedMission = topMission.mission;
 
     const fullPrompt = `
 ${selectedMission.prompt(snapshot)}
@@ -290,8 +342,8 @@ Return ONLY PURE JSON (no markdown, no explanation):
 - none
 `;
 
-    os.setCurrentObjective(`[${selectedMission.id}] Analyzing... (score: ${scoredMissions[0].score.toFixed(2)})`);
-    os.addAutonomyLog(`◈ MISSION: ${selectedMission.id} (tick #${this.tickCount}, score: ${scoredMissions[0].score.toFixed(2)})`);
+    os.setCurrentObjective(`[${selectedMission.id}] Analyzing... (score: ${topMission.score.toFixed(2)})`);
+    os.addAutonomyLog(`◈ MISSION: ${selectedMission.id} (tick #${this.tickCount}, score: ${topMission.score.toFixed(2)})`);
 
     try {
       const response = await aiService.generateOnce(fullPrompt, {
@@ -314,22 +366,38 @@ Return ONLY PURE JSON (no markdown, no explanation):
       }
 
       // Mission chaining: execute multiple commands in sequence
+      const legacyCommand = typeof decision.command === 'string' ? decision.command : '';
       const commands: string[] = Array.isArray(decision.commands) 
         ? decision.commands 
-        : (decision.command && decision.command.toLowerCase() !== 'none') 
-          ? [decision.command] 
+        : (legacyCommand && legacyCommand.toLowerCase() !== 'none') 
+          ? [legacyCommand] 
           : [];
 
       if (commands.length > 0) {
+        const { mirrorGuard } = await import('./mirrorGuard');
+        
         for (const cmd of commands) {
           if (!cmd || cmd.toLowerCase() === 'none') continue;
           
+          // 🔷 T' MODE VERIFICATION
+          const [verb = ''] = cmd.split(' ');
+          const validation = await mirrorGuard.validate({
+              type: verb.toUpperCase(),
+              args: cmd.split(' ').slice(1),
+              raw: cmd
+          });
+
+          if (!validation.valid) {
+              os.addAutonomyLog(`🔷 MIRROR REJECT: ${validation.reason}`);
+              continue;
+          }
+
           const isForge = ['build', 'forge', 'create', 'make'].some(k => cmd.toLowerCase().startsWith(k));
 
           if (isForge) {
             const now = Date.now();
             const osState = useOS.getState() as any;
-            const isAlreadyForging = osState.isForging;
+            const isAlreadyForging = Boolean(osState?.isForging);
             const cooldownPassed = (now - this.lastForgeTime) > this.FORGE_COOLDOWN_MS;
 
             if (isAlreadyForging) {
@@ -339,7 +407,7 @@ Return ONLY PURE JSON (no markdown, no explanation):
               os.addAutonomyLog(`◈ FORGE COOLDOWN: ${remaining}s remaining. Skipping.`);
             } else {
               this.lastForgeTime = now;
-              if (osState.setForging) osState.setForging(true);
+              if (typeof osState?.setForging === 'function') osState.setForging(true);
               os.addAutonomyLog(`◈ DISPATCH: ${cmd}`);
               await commander.execute(
                 cmd,

@@ -2,17 +2,16 @@
  * EVENT BUS — Centralized pub/sub system for inter-app communication
  */
 
-export type EventHandler = (payload: any) => void;
+export type EventHandler = (payload: unknown) => void;
 
 class EventBus {
   private listeners: Map<string, Set<EventHandler>> = new Map();
-  private history: { event: string; payload: any; timestamp: number }[] = [];
+  private history: { event: string; payload: unknown; timestamp: number }[] = [];
   private maxHistory = 100;
 
   on(event: string, handler: EventHandler): () => void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(handler);
-    // Return unsubscribe function
     return () => { this.listeners.get(event)?.delete(handler); };
   }
 
@@ -24,13 +23,12 @@ class EventBus {
     return this.on(event, wrapper);
   }
 
-  emit(event: string, payload?: any) {
+  emit(event: string, payload?: unknown) {
     this.history.push({ event, payload, timestamp: Date.now() });
     if (this.history.length > this.maxHistory) this.history.shift();
     this.listeners.get(event)?.forEach(handler => {
       try { handler(payload); } catch (e) { console.error(`[EventBus] Error in handler for "${event}":`, e); }
     });
-    // Wildcard listeners
     this.listeners.get('*')?.forEach(handler => {
       try { handler({ event, payload }); } catch (e) {}
     });
@@ -44,7 +42,7 @@ class EventBus {
     }
   }
 
-  getHistory(limit = 20): { event: string; payload: any; timestamp: number }[] {
+  getHistory(limit = 20): { event: string; payload: unknown; timestamp: number }[] {
     return this.history.slice(-limit);
   }
 
@@ -60,7 +58,6 @@ class EventBus {
 
 export const eventBus = new EventBus();
 
-// ── Standard OS Events ──────────────────────────────────────────────────────
 export const OS_EVENTS = {
   WINDOW_OPENED: 'os:window:opened',
   WINDOW_CLOSED: 'os:window:closed',

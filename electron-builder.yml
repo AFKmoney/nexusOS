@@ -1,5 +1,5 @@
-appId: com.daemon.nxss
-productName: NXSS
+appId: com.daemon.nexusos
+productName: NexusOS
 compression: store
 directories:
   output: dist_electron
@@ -7,15 +7,16 @@ directories:
 files:
   - dist/**/*
   - electron-main.cjs
+  - daemon-bridge-server.cjs
   - preload.cjs
   - package.json
 win:
-  target: 
+  target:
     - nsis
-  icon: public/favicon.ico
+  icon: public/nexus_logo.png
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  shortcutName: "NXSS Nexus"
-  artifactName: "NXSS_Setup_${version}.${ext}"
+  shortcutName: "NexusOS"
+  artifactName: "NexusOS_Setup_${version}.${ext}"
   deleteAppDataOnUninstall: true

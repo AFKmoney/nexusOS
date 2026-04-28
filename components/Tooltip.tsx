@@ -10,7 +10,7 @@ interface TooltipProps {
 export default function Tooltip({ text, children, position = 'top', delay = 400 }: TooltipProps) {
   const [visible, setVisible] = useState(false);
   const [coords, setCoords] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const show = () => {
@@ -30,12 +30,15 @@ export default function Tooltip({ text, children, position = 'top', delay = 400 
 
   const hide = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
     setVisible(false);
   };
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
-  const positionClass: Record<string, string> = {
+  const positionClass: Record<'top' | 'bottom' | 'left' | 'right', string> = {
     top: '-translate-x-1/2 -translate-y-full',
     bottom: '-translate-x-1/2',
     left: '-translate-x-full -translate-y-1/2',
