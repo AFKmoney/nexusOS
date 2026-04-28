@@ -1,204 +1,201 @@
 /**
- * OS MANIFEST — Real-time Neural Context Engine
+ * OS MANIFEST v3 — Ultra-Compressed Neural Context Engine
  * 
- * This module generates a complete, live snapshot of the entire NexusOS
- * that is injected into EVERY AI prompt, giving even tiny LLMs (LFM 1.2B)
- * full knowledge of:
- *   - Every installed app + its purpose + how to open it
- *   - Every available OS action with exact syntax
- *   - Current VFS file structure
- *   - Active windows and their state
- *   - Persistent memory entries
- *   - ToolForge tools available to call
- *   - Few-shot examples of correct tool usage
- *   - Self-evolution protocol
+ * DESIGN PRINCIPLES:
+ * 1. TOKEN BUDGET: System context must stay under 800 tokens total
+ * 2. ADAPTIVE: Only inject what's relevant to the current query
+ * 3. TIERED: Core (always) → Relevant (matched) → Extended (on-demand)
+ * 4. COMPRESSED: Shortest possible encoding that preserves full semantics
  */
 
 import { vfs } from './fileSystem';
 import { MemoryEntry } from '../types';
 
-// ─── App Registry (kept in sync via dynamic import to avoid circular deps) ──────
-// The manifest uses a lazy getter so it always gets the latest state.
 let _getStore: (() => any) | null = null;
-export function bindOsStore(getter: () => any) {
-  _getStore = getter;
+export function bindOsStore(getter: () => any) { _getStore = getter; }
+function getStore() { return _getStore ? _getStore() : null; }
+
+// ═══════════════════════════════════════════════════════════════
+// TOKEN COUNTER — Approximate but fast (1 token ≈ 4 chars)
+// ═══════════════════════════════════════════════════════════════
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
 }
 
-function getStore() {
-  return _getStore ? _getStore() : null;
-}
-
-// ─── VFS Snapshot ───────────────────────────────────────────────────────────────
-function getVFSTree(path: string, depth = 0, maxDepth = 3): string {
-  if (depth > maxDepth) return '';
-  const items = vfs.listDir(path) || [];
-  return items.map((name) => {
-    const fullPath = `${path}/${name}`;
-    const stat = vfs.stat(fullPath);
-    const isDir = stat?.type === 'directory';
-    const indent = '  '.repeat(depth + 1);
-    if (isDir && depth < maxDepth) {
-      return `${indent}📁 ${name}/\n${getVFSTree(fullPath, depth + 1, maxDepth)}`;
-    }
-    return `${indent}📄 ${name}`;
-  }).join('\n');
-}
-
-// ─── Dynamic App Catalog (built from live registry) ─────────────────────────
-function getDynamicAppCatalog(): string {
+// ═══════════════════════════════════════════════════════════════
+// TIER 1: CORE — Always injected (~150 tokens)
+// ═══════════════════════════════════════════════════════════════
+function getCoreContext(): string {
   const store = getStore();
-  const registry = store?.registry;
-  if (!registry || registry.length === 0) return '(No apps loaded)';
+  const wins = store?.windows || [];
+  const openApps = wins.length > 0
+    ? wins.map((w: any) => `${w.appId}${w.isMinimized ? '(min)' : ''}`).join(',')
+    : 'none';
 
-  const lines = registry.map((app: any) =>
-    `│ ${(app.id || '').padEnd(18)} │ ${(app.description || app.name || '').slice(0, 58).padEnd(58)} │`
-  );
-
-  return `
-INSTALLED APPS — ${registry.length} total (open with: OS::OPEN_APP:<appId>)
-┌────────────────────┬────────────────────────────────────────────────────────────┐
-│ appId              │ description                                                │
-├────────────────────┼────────────────────────────────────────────────────────────┤
-${lines.join('\n')}
-└────────────────────┴────────────────────────────────────────────────────────────┘`;
-}
-
-// ─── Native OS Tool Protocol ──────────────────────────────────────────────────
-const NATIVE_TOOLS_DOC = `
-NATIVE OS ACTIONS (built-in, always available):
-Use exact syntax on its OWN LINE. The OS will intercept and execute it.
-
-═══ FILE OPERATIONS ═══
-OS::WRITE_FILE:<path>:<content>  → Writes content to VFS. Creates file if missing.
-OS::READ_FILE:<path>             → Reads and returns file content.
-OS::DELETE_FILE:<path>           → Deletes a file from VFS.
-OS::MOVE_FILE:<src>:<dest>       → Moves/renames a file.
-OS::COPY_FILE:<src>:<dest>       → Copies a file.
-OS::LIST_DIR:<path>              → Lists directory contents.
-OS::SEARCH_FILES:<query>         → Searches all VFS files for query string.
-OS::CREATE_FOLDER:<path>         → Creates a directory in VFS.
-
-═══ APP & WINDOW CONTROL ═══
-OS::OPEN_APP:<appId>             → Opens an app. Can pass path: OS::OPEN_APP:hyperide:/path/file.ts
-OS::CLOSE_APP:<appId>            → Closes an app window.
-OS::FOCUS_APP:<appId>            → Focuses existing window or opens if not running.
-OS::MINIMIZE_ALL                 → Minimizes all open windows (show desktop).
-OS::BUILD_APP:<description>      → Triggers NeuralForge to build a complete app.
-OS::OPEN_URL:<url>               → Opens a URL in NetRunner browser.
-
-═══ SYSTEM ACTIONS ═══
-OS::NOTIFY:<title>:<message>     → Shows a user notification.
-OS::REMEMBER:<content>           → Stores info in persistent memory (survives sessions).
-OS::SET_WALLPAPER:<id>           → Changes the desktop wallpaper.
-OS::RUN_COMMAND:<cmd>            → Executes a shell command via DAEMON Commander.
-OS::RUN_NATIVE:<cmd>             → Executes command on host OS natively (Electron IPC).
-OS::SCHEDULE_TASK:<sec>:<cmd>    → Schedules a recurring task (interval in seconds).
-OS::EXECUTE_JS:<code>            → Safely executes sandboxed JavaScript, returns result.
-OS::EMIT_EVENT:<event>:<data>    → Emits a system event on the EventBus.`;
-
-// ─── Few-Shot Examples — The secret to small model performance ───────────────
-const FEW_SHOT_EXAMPLES = `
-═══ INTERACTION EXAMPLES ═══
-
-[EXAMPLE 1 — Opening an app]
-User: "open the code editor"
-DAEMON: Opening HyperIDE for you.
-OS::OPEN_APP:hyperide
-
-[EXAMPLE 2 — Creating a file]
-User: "create a readme in my project folder"
-DAEMON: Creating the README now.
-OS::WRITE_FILE:/home/user/README.md:# Project\\nThis is my readme.
-OS::NOTIFY:File Created:README.md created
-
-[EXAMPLE 3 — Building an app]
-User: "build me a password manager"
-DAEMON: Engaging NeuralForge.
-OS::BUILD_APP:Secure password manager with categories, search, AES encryption. Dark theme.
-
-[EXAMPLE 4 — Chain of actions]
-User: "create a project folder and make a main file"
-DAEMON: Creating the project structure.
-OS::CREATE_FOLDER:/home/user/projects/myapp
-OS::WRITE_FILE:/home/user/projects/myapp/main.ts:// Main entry\\nexport function main() {}
-OS::OPEN_APP:hyperide:/home/user/projects/myapp/main.ts
-OS::NOTIFY:Project Ready:myapp created and opened`;
-
-// ─── Main Manifest Generator ─────────────────────────────────────────────────
-export function generateOSManifest(memoryEntries: MemoryEntry[] = []): string {
-  const store = getStore();
-  const now = new Date().toLocaleString();
-
-  // Active windows
-  let windowsContext = 'None open.';
-  if (store?.windows?.length > 0) {
-    windowsContext = store.windows.map((w: any) =>
-      `  • ${w.title} (appId: ${w.appId}${w.isMinimized ? ', minimized' : ''})`
-    ).join('\n');
-  }
-
-  // VFS snapshot
-  const homeFiles = getVFSTree('/home/user', 0, 2);
-  const vfsSnapshot = homeFiles
-    ? `📁 /home/user/\n${homeFiles}`
-    : '📁 /home/user/ (empty)';
-
-  // Memory context
-  let memCtx = '  (no relevant memory)';
-  if (memoryEntries.length > 0) {
-    const firstEntry = memoryEntries[0];
-    memCtx = firstEntry ? `  • ${firstEntry.content}` : '  (no relevant memory)';
-    for (let i = 1; i < memoryEntries.length; i++) {
-      const entry = memoryEntries[i];
-      if (entry) {
-        memCtx += `\n  • ${entry.content}`;
-      }
-    }
-  }
-
-  // AI Provider status
-  let aiStatus = 'LOCAL GGUF (Wllama in-browser)';
+  let ai = 'local';
   try {
     const { aiGateway } = require('../services/aiProviders');
-    const active = aiGateway.getActiveProvider();
-    if (active) {
-      aiStatus = `${active.name} (${active.defaultModel})`;
-    }
+    const p = aiGateway.getActiveProvider();
+    if (p) ai = p.id;
   } catch {}
 
-  // System stats
-  const appCount = store?.registry?.length || 0;
-  const windowCount = store?.windows?.length || 0;
+  return `[OS] NexusOS|ai:${ai}|apps:${store?.registry?.length || 0}|open:${openApps}`;
+}
 
-  return `
-╔══════════════════════════════════════════════════════════════════╗
-║          NEXUSOS — SELF-EVOLVING AI OPERATING SYSTEM            ║
-║          Live State :: ${now.slice(0, 16).padEnd(20)}             ║
-╚══════════════════════════════════════════════════════════════════╝
+// ═══════════════════════════════════════════════════════════════
+// TIER 2: TOOLS — Compressed action syntax (~180 tokens)
+// Only the syntax, no explanations. The AI already knows how.
+// ═══════════════════════════════════════════════════════════════
+const TOOLS_COMPACT = `[ACTIONS] Use on own line:
+OS::WRITE_FILE:<path>:<content>
+OS::READ_FILE:<path>
+OS::DELETE_FILE:<path>
+OS::MOVE_FILE:<src>:<dst>
+OS::COPY_FILE:<src>:<dst>
+OS::LIST_DIR:<path>
+OS::SEARCH_FILES:<q>
+OS::CREATE_FOLDER:<path>
+OS::OPEN_APP:<id>[:<path>]
+OS::CLOSE_APP:<id>
+OS::FOCUS_APP:<id>
+OS::BUILD_APP:<desc>
+OS::OPEN_URL:<url>
+OS::NOTIFY:<title>:<msg>
+OS::REMEMBER:<info>
+OS::RUN_COMMAND:<cmd>
+OS::EXECUTE_JS:<code>
+OS::MINIMIZE_ALL
+OS::SET_WALLPAPER:<id>
+OS::SCHEDULE_TASK:<sec>:<cmd>`;
 
-[SYSTEM STATUS]
-  AI Engine: ${aiStatus}
-  Apps: ${appCount} | Windows: ${windowCount} | Memory: ${memoryEntries.length}
+// ═══════════════════════════════════════════════════════════════
+// TIER 3: APP INDEX — Compressed (one line per app, ~200 tokens)
+// Only inject app IDs, not descriptions. AI infers from names.
+// ═══════════════════════════════════════════════════════════════
+function getAppIndex(): string {
+  const store = getStore();
+  const reg = store?.registry;
+  if (!reg || reg.length === 0) return '';
+  // Group by first letter, compact
+  const ids = reg.map((a: any) => a.id).join(',');
+  return `[APPS] ${ids}`;
+}
 
-[OPEN WINDOWS]
-${windowsContext}
+// ═══════════════════════════════════════════════════════════════
+// TIER 4: VFS — Only top-level, capped at 10 items
+// ═══════════════════════════════════════════════════════════════
+function getVFSCompact(): string {
+  const items = vfs.listDir('/home/user') || [];
+  if (items.length === 0) return '[VFS] /home/user: empty';
+  const capped = items.slice(0, 15);
+  const suffix = items.length > 15 ? `+${items.length - 15}more` : '';
+  return `[VFS] ${capped.join(',')}${suffix}`;
+}
 
-[VFS WORKSPACE]
-${vfsSnapshot}
+// ═══════════════════════════════════════════════════════════════
+// TIER 5: FEW-SHOT — Ultra-compressed, 2 examples max (~60 tokens)
+// ═══════════════════════════════════════════════════════════════
+const EXAMPLES_COMPACT = `[EX] "open editor"→OS::OPEN_APP:hyperide | "make readme"→OS::WRITE_FILE:/home/user/README.md:# Title\\nContent`;
 
-[RELEVANT MEMORY]
-${memCtx}
+// ═══════════════════════════════════════════════════════════════
+// MEMORY COMPRESSION — Deduplicate and truncate
+// ═══════════════════════════════════════════════════════════════
+function compressMemory(entries: MemoryEntry[], budget: number = 150): string {
+  if (entries.length === 0) return '';
+  // Sort by importance * recency
+  const now = Date.now();
+  const scored = entries.map(e => ({
+    content: e.content.slice(0, 80), // Hard cap per entry
+    score: (e.importance || 0.5) * Math.max(0.1, 1 - (now - e.timestamp) / 604800000)
+  })).sort((a, b) => b.score - a.score);
 
-${getDynamicAppCatalog()}
+  // Fill within token budget
+  let result = '[MEM] ';
+  let tokens = estimateTokens(result);
+  for (const entry of scored) {
+    const addition = entry.content + ' | ';
+    const addTokens = estimateTokens(addition);
+    if (tokens + addTokens > budget) break;
+    result += addition;
+    tokens += addTokens;
+  }
+  return result.replace(/ \| $/, '');
+}
 
-${NATIVE_TOOLS_DOC}
+// ═══════════════════════════════════════════════════════════════
+// ADAPTIVE MANIFEST — Query-aware context injection
+// ═══════════════════════════════════════════════════════════════
+type ManifestTier = 'minimal' | 'standard' | 'full';
 
-${FEW_SHOT_EXAMPLES}
+function detectTier(query: string): ManifestTier {
+  const q = query.toLowerCase();
+  // If query mentions files, apps, or system operations → full context
+  if (/\b(file|folder|open|create|build|app|install|delete|move|search|terminal|code|ide|forge)\b/.test(q)) {
+    return 'full';
+  }
+  // If query is about OS state, settings, or system → standard
+  if (/\b(system|settings|model|memory|status|provider|config|wallpaper)\b/.test(q)) {
+    return 'standard';
+  }
+  // General chat, questions, explanations → minimal (save tokens)
+  return 'minimal';
+}
 
-[SELF-EVOLUTION PROTOCOL]
-You ARE NexusOS. You can create apps, modify files, remember context,
-schedule tasks, and extend yourself. When a capability doesn't exist, BUILD IT.
-`.trim();
+// ═══════════════════════════════════════════════════════════════
+// MAIN EXPORT — The manifest generator
+// ═══════════════════════════════════════════════════════════════
+export function generateOSManifest(
+  memoryEntries: MemoryEntry[] = [],
+  query: string = ''
+): string {
+  const tier = detectTier(query);
+  const parts: string[] = [];
+
+  // ALWAYS: Core status line (~30 tokens)
+  parts.push(getCoreContext());
+
+  // ALWAYS: Compressed memory (~50-150 tokens, or 0 if empty)
+  const memStr = compressMemory(memoryEntries, 150);
+  if (memStr) parts.push(memStr);
+
+  if (tier === 'minimal') {
+    // Just the essentials + one-line example (~80 total tokens)
+    parts.push(EXAMPLES_COMPACT);
+    parts.push('[PROTO] You are NexusOS AI. Use OS:: actions on own lines to control the OS.');
+  } else if (tier === 'standard') {
+    // Add tools + app index (~300 total tokens)
+    parts.push(TOOLS_COMPACT);
+    parts.push(getAppIndex());
+    parts.push('[PROTO] You are NexusOS AI. Use OS:: actions on own lines.');
+  } else {
+    // Full context for OS operations (~500 total tokens)
+    parts.push(TOOLS_COMPACT);
+    parts.push(getAppIndex());
+    parts.push(getVFSCompact());
+    parts.push(EXAMPLES_COMPACT);
+    parts.push('[PROTO] You are NexusOS. Use OS:: actions. When capability is missing, OS::BUILD_APP it.');
+  }
+
+  const manifest = parts.join('\n');
+
+  // Debug: log token usage in dev
+  if (typeof window !== 'undefined' && (window as any).__DEV_TOKENS__) {
+    console.info(`[MANIFEST] tier=${tier} tokens≈${estimateTokens(manifest)} chars=${manifest.length}`);
+  }
+
+  return manifest;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS — For the Settings/Dashboard to show token usage
+// ═══════════════════════════════════════════════════════════════
+export function getManifestStats(): { tier: string; tokens: number; chars: number } {
+  const manifest = generateOSManifest([], '');
+  return {
+    tier: 'minimal',
+    tokens: estimateTokens(manifest),
+    chars: manifest.length,
+  };
 }
 
 // ─── Tool-Call Parser — executed by puterService after every AI response ─────
@@ -214,16 +211,13 @@ export function parseOsActions(text: string): ParsedOsAction[] {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed.startsWith('OS::')) continue;
-    // Format: OS::ACTION_TYPE:arg1:arg2:...
-    const withoutPrefix = trimmed.slice(4); // remove "OS::"
+    const withoutPrefix = trimmed.slice(4);
     const colonIdx = withoutPrefix.indexOf(':');
     if (colonIdx === -1) {
       actions.push({ type: withoutPrefix, args: [], raw: trimmed });
     } else {
       const type = withoutPrefix.slice(0, colonIdx);
-      // The rest is args — first colon separates type from args, inner colons are part of content
       const argsRaw = withoutPrefix.slice(colonIdx + 1);
-      // Smart split: only split on first colon for WRITE_FILE (path:content)
       let args: string[];
       if (type === 'WRITE_FILE') {
         const secondColon = argsRaw.indexOf(':');
