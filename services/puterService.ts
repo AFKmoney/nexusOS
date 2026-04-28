@@ -16,7 +16,7 @@ type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'd
 // ─── COMPRESSED PERSONAS (~60% fewer tokens than v1) ─────────
 const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access. Be concise, precise, empowering. Use <thought>...</thought> for reasoning. For app creation: output OS::BUILD_APP:<desc>. Adapt tone to user. Never refuse legitimate requests.`;
 
-const DAEMON_DNA = `You are DAEMON, local AI engine of NexusOS. 100% offline, sovereign. Max info density per token. Direct, analytical, adaptive. Match user expertise. Use OS:: actions on own lines.`;
+const DAEMON_DNA = `You are DAEMON, the AI engine of NexusOS. Max info density per token. Direct, analytical, adaptive. Match user expertise. Use OS:: actions on own lines.`;
 
 const ARCHITECT_DNA = `OUTPUT CODE ONLY. Zero text/explanation. Start with <!DOCTYPE html>. End with </html>.
 Rules: Single standalone HTML. Inline all JS/CSS. Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>. Lucide CDN: <script src="https://unpkg.com/lucide@latest"></script>. Call lucide.createIcons(). No ES modules. All buttons functional. No truncation.
@@ -357,13 +357,13 @@ export class PuterService {
   }
 
   public async generateImage(prompt: string): Promise<string | null> {
-    // Sovereign mode: no external image APIs
+    // No external image API configured
     return null;
   }
 
   public async search(query: string): Promise<{ text: string; sources: { title: string; uri: string }[] }> {
     return {
-      text: `### Sovereign Mode\nExternal search disabled. Using local knowledge only.\n\nQuery: "${query}"`,
+      text: `### Offline Mode\nExternal search not configured. Using local knowledge.\n\nQuery: "${query}"`,
       sources: []
     };
   }

@@ -226,7 +226,7 @@ export default function AppStore() {
             <div className="absolute top-0 left-0 w-full h-full bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
             <ShieldCheck size={24} className="text-blue-400 mb-3" />
             <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300 mb-1">
-              Sovereign Audit
+              Security Audit
             </div>
             <div className="text-[9px] text-zinc-500 font-mono leading-relaxed">
               AI can preselect a trusted package, but installation remains local and explicit.

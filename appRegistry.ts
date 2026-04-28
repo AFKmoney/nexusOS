@@ -165,7 +165,7 @@ export const SYSTEM_APPS: AppManifest[] = [
   },
   {
     id: 'fractal',
-    name: 'Fractal Memory',
+    name: 'Context Memory',
     icon: Network,
     component: FractalVisualizerApp,
     permissions: [],

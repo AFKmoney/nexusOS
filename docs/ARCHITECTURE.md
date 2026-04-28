@@ -1,7 +1,7 @@
 # NexusOS Architecture
 
 ## Core Principles
-NexusOS is an Electron + React (Vite/TypeScript) based sovereign operating system running within a host OS. It acts as a bridge between high-performance neural compute (via AI Services) and an encapsulated Virtual File System (VFS).
+NexusOS is an Electron + React (Vite/TypeScript) based AI-native operating system running within a host OS. It acts as a bridge between high-performance neural compute (via AI Services) and an encapsulated Virtual File System (VFS).
 
 ### The Triad Architecture
 1. **The Kernel (Logic Layer)**:

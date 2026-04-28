@@ -78,7 +78,7 @@ export default function BootScreen() {
         <div className="text-white font-black tracking-[0.4em] text-2xl text-center" style={{ color: 'white' }}>
           NEXUS<span className="text-emerald-500">OS</span>
         </div>
-        <div className="text-zinc-600 text-xs text-center tracking-[0.3em] mt-1 uppercase">Sovereign Operating System</div>
+        <div className="text-zinc-600 text-xs text-center tracking-[0.3em] mt-1 uppercase">AI-Native Operating System</div>
       </div>
 
       <div className="w-72 mb-6">

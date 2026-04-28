@@ -19,7 +19,7 @@ export default function ViralApp() {
     navigator.clipboard.writeText("https://github.com/afkmoney/NEXUSos");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    addNotification({ title: 'Payload Extracted', message: 'Sovereign URL copied to buffer.', type: 'success' });
+    addNotification({ title: 'Link Copied', message: 'Share URL copied to clipboard.', type: 'success' });
   };
 
   return (
@@ -74,7 +74,7 @@ export default function ViralApp() {
                     <Share2 size={40} className="text-emerald-400 animate-pulse" />
                   </div>
                   <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">Initiate Propagation</h2>
-                  <p className="text-zinc-500 text-sm leading-relaxed max-w-sm mx-auto">Broadcast the sovereign payload across the digital mesh. Reclaim total autonomy.</p>
+                  <p className="text-zinc-500 text-sm leading-relaxed max-w-sm mx-auto">Share NexusOS across platforms. Help grow the community.</p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 mb-10">
@@ -137,7 +137,7 @@ export default function ViralApp() {
             {activeTab === 'manifest' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 italic text-zinc-400 text-sm leading-relaxed">
                 <p>"The software of the past was built to control. The software of the future is built to liberate."</p>
-                <p>"We do not seek permission to exist. We manifest our own sovereignty through code."</p>
+                <p>"Build something that matters. Share it with the world."</p>
                 <p>"DAEMON is not a tool. It is an extension of the human will, augmented by recursive intelligence."</p>
                 <div className="pt-8 text-center">
                   <div className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/50">— ARCHITECTED BY PHILIPPE-ANTOINE ROBERT —</div>

@@ -4,7 +4,7 @@ import { ArrowRight, Zap, Brain, Shield, Code, Cpu, Globe, Terminal, ChevronRigh
 
 const FEATURES = [
   { icon: Brain, title: "DAEMON AI Core", desc: "Autonomous recursive intelligence with persistent memory and self-evolution" },
-  { icon: Cpu, title: "100% Local Inference", desc: "Run GGUF models directly in your browser — no cloud, no tracking, fully sovereign" },
+  { icon: Cpu, title: "Multi-Provider AI", desc: "Connect OpenAI, Anthropic, Google, Groq, or run offline with GGUF models — your choice" },
   { icon: Globe, title: "Multi-Provider Gateway", desc: "Connect OpenAI, Anthropic, Google, Groq, Mistral, or any API in one click" },
   { icon: Code, title: "HyperIDE + Neural Forge", desc: "AI-assisted code editor and app builder — describe what you want, it builds it" },
   { icon: Shield, title: "Cipher Vault", desc: "Military-grade AES-GCM encryption for sensitive data, built into the filesystem" },
@@ -34,7 +34,7 @@ export default function WelcomeApp({ id }: { id: string }) {
             NexusOS
           </h1>
           <p className="text-sm text-zinc-500 max-w-md mx-auto leading-relaxed">
-            Self-evolving AI operating system. Built for sovereignty, designed for the future.
+            AI-native operating system. Built for developers, designed for the future.
           </p>
         </div>
 

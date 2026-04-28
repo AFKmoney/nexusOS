@@ -585,7 +585,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
                  <Code size={80} className="text-zinc-800 relative z-10 drop-shadow-2xl" />
               </div>
               <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-white mb-3">HyperIDE <span className="text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Core</span></h2>
-              <p className="text-zinc-500 font-mono text-sm max-w-md text-center mb-10 leading-relaxed">The sovereign development environment. Open a manifest from the explorer or instantiate a new node.</p>
+              <p className="text-zinc-500 font-mono text-sm max-w-md text-center mb-10 leading-relaxed">The integrated development environment. Open a manifest from the explorer or instantiate a new node.</p>
               <div className="flex gap-4">
                 <button onClick={() => { setShowSide(true); setSidePanel('files'); }} className="px-8 py-3.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm font-black text-blue-400 uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]">Browse Files</button>
                 <button onClick={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); }} className="px-8 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-black text-white uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-lg">New Manifest</button>

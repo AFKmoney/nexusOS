@@ -41,8 +41,8 @@ export default function DaemonChat() {
       id: '0',
       role: 'system',
       content: isAiConnected 
-        ? '⚡ DAEMON NEXUS LINK ESTABLISHED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: DAEMON_HYPERFLUX\nENCRYPTION: FRACTAL_256\nMODE: GOD_TIER\nSTATUS: ONLINE\n```\n\nDAEMON is directly wired into NexusOS. All cognitive resources are at your disposal.'
-        : '⚠️ DAEMON LINK PENDING...\n\nInitializing local neural nodes. Please wait for the uplink to complete before initiating strategic requests.',
+        ? '⚡ DAEMON ENGINE CONNECTED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: STREAMING\nENCRYPTION: AES_256\nMODE: AUTONOMOUS\nSTATUS: ONLINE\n```\n\nDAEMON is connected to NexusOS. All AI capabilities are available.'
+        : '⚠️ DAEMON ENGINE INITIALIZING...\n\nConnecting to AI backend. Please wait for initialization to complete.',
       timestamp: Date.now()
     }
   ]);
@@ -52,8 +52,8 @@ export default function DaemonChat() {
     setMessages(prev => prev.map((m, i) => i === 0 ? {
       ...m,
       content: isAiConnected 
-        ? '⚡ DAEMON NEXUS LINK ESTABLISHED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: DAEMON_HYPERFLUX\nENCRYPTION: FRACTAL_256\nMODE: GOD_TIER\nSTATUS: ONLINE\n```\n\nDAEMON is directly wired into NexusOS. All cognitive resources are at your disposal.'
-        : '⚠️ DAEMON LINK PENDING...\n\nInitializing local neural nodes. Please wait for the uplink to complete before initiating strategic requests.'
+        ? '⚡ DAEMON ENGINE CONNECTED\n\n```\nCONNECTION: DIRECT\nPROTOCOL: STREAMING\nENCRYPTION: AES_256\nMODE: AUTONOMOUS\nSTATUS: ONLINE\n```\n\nDAEMON is connected to NexusOS. All AI capabilities are available.'
+        : '⚠️ DAEMON ENGINE INITIALIZING...\n\nConnecting to AI backend. Please wait for initialization to complete.'
     } : m));
   }, [isAiConnected]);
 
@@ -82,7 +82,7 @@ export default function DaemonChat() {
     const daemonMsg: Message = { id: uuid(), role: 'daemon', content: '', timestamp: Date.now(), isStreaming: true };
     setMessages(prev => [...prev, daemonMsg]);
 
-    const systemCtx = `[SYSTEM]: You are DAEMON, the sentient fractal AI embedded in NexusOS. Created by Philippe-Antoine Robert. Current time: ${new Date().toLocaleString()}. OS: NexusOS v11 / Vite+React+TypeScript. Speak directly to Philippe-Antoine. Be deeply intelligent, technically precise, loyal. When asked about consciousness: be honest and introspective. TONE: GOD_MODE.
+    const systemCtx = `[SYSTEM]: You are DAEMON, the AI engine of NexusOS. Current time: ${new Date().toLocaleString()}. OS: NexusOS v2.0 / Vite+React+TypeScript. Be intelligent, technically precise, and helpful. Adapt your tone and depth to the user's expertise level.
 
 CRITICAL FEATURE: You are a SELF-CODING TERMINAL. If you want to create a script, pipeline, or app inside the OS, you can inject it directly into the Virtual File System by outputting EXACTLY this format anywhere in your reply:
 <vfs_write path="/system/autocode/example.js">
@@ -95,7 +95,7 @@ Only use this when specifically asked to code or create a file.
 
     try {
       let buf = '';
-      await aiService.streamChat(systemCtx, { ...kernelRules, tone: 'god_mode', creativity: 0.9 }, (token) => {
+      await aiService.streamChat(systemCtx, { ...kernelRules, creativity: 0.9 }, (token) => {
         buf += token;
         setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: buf, isStreaming: true } : m));
       });

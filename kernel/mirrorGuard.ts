@@ -61,7 +61,7 @@ Args: ${JSON.stringify(proposal.args)}
 Criteria:
 1. Does this action break the OS stability?
 2. Is the code/content syntactically valid?
-3. Does it violate the ZMSFA Triadic balance?
+3. Does it violate the system integrity guidelines?
 
 Return JSON: {"stable": boolean, "coherence": number, "critique": string}
     `.trim();

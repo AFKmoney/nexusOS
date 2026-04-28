@@ -62,7 +62,7 @@ export interface UserProfile {
 export interface KernelRules {
   verbosity: number;
   creativity: number;
-  tone: 'neutral' | 'friendly' | 'professional' | 'cyberpunk' | 'god_mode' | 'precise' | 'creative' | 'minimal';
+  tone: 'neutral' | 'friendly' | 'professional' | 'cyberpunk' | 'adaptive' | 'precise' | 'creative' | 'minimal';
   modelId: string;
   autonomyEnabled: boolean;
   autonomyInterval?: number;
