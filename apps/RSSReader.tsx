@@ -29,23 +29,42 @@ export default function RSSReader() {
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify(feeds));
     refreshArticles();
-  }, [feeds]);
+  }, [feeds, activeFeedId]);
+
 
   const refreshArticles = async () => {
     setLoading(true);
-    // Mock local aggregator since browser CORS blocks direct RSS
-    const mockArticles: Article[] = [
-      { title: "Neural Fractal Compression Reaches 1000x Efficiency", link: "#", snippet: "Philippe-Antoine Robert announces a breakthrough in data topology...", date: new Date().toISOString(), source: "Nexus Labs" },
-      { title: "The Future of Browser-Based Operating Systems", link: "#", snippet: "Why AI-native desktop environments are the next computing paradigm...", date: new Date().toISOString(), source: "Tech Insights" },
-      { title: "Quantum Canvas: GPU-Accelerated Procedural Art", link: "#", snippet: "How WebGPU is changing the way we render digital environments...", date: new Date().toISOString(), source: "Tech Matrix" },
-    ];
-    
-    // Simulate network delay
-    setTimeout(() => {
-      setArticles(mockArticles);
-      setLoading(false);
-    }, 800);
+    const targetFeeds = activeFeedId === 'all' ? feeds : feeds.filter(f => f.id === activeFeedId);
+    const allArticles: Article[] = [];
+
+    for (const feed of targetFeeds) {
+      try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
+        const res = await fetch(proxyUrl);
+        const json = await res.json();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(json.contents, 'application/xml');
+        const items = Array.from(xml.querySelectorAll('item')).slice(0, 8);
+        for (const item of items) {
+          allArticles.push({
+            title: item.querySelector('title')?.textContent?.trim() || 'Untitled',
+            link: item.querySelector('link')?.textContent?.trim() || '#',
+            snippet: (item.querySelector('description')?.textContent || '').replace(/<[^>]*>/g, '').slice(0, 180).trim(),
+            date: item.querySelector('pubDate')?.textContent?.trim() || new Date().toISOString(),
+            source: feed.title,
+          });
+        }
+      } catch {
+        // Feed failed silently — continue with others
+      }
+    }
+
+    // Sort by date descending
+    allArticles.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setArticles(allArticles.length > 0 ? allArticles : []);
+    setLoading(false);
   };
+
 
   const addFeed = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +148,7 @@ export default function RSSReader() {
                   </div>
                   <h2 className="text-lg font-bold text-zinc-100 group-hover:text-orange-400 transition-colors mb-2">{art.title}</h2>
                   <p className="text-sm text-zinc-500 leading-relaxed mb-4">{art.snippet}</p>
-                  <a href={art.link} className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500/70 hover:text-orange-400 transition-colors">
+                  <a href={art.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500/70 hover:text-orange-400 transition-colors">
                     Access Node <ExternalLink size={12} />
                   </a>
                 </div>

@@ -1,23 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, Shield, Key, Eye, EyeOff, Copy, Trash2, Plus, Search, ExternalLink, RefreshCw, Check } from 'lucide-react';
 import { useOS } from '../store/osStore';
 import { uuid } from '../utils/uuid';
 
 interface Entry { id: string; site: string; username: string; pass: string; url: string; }
-const LS_KEY = 'nexus_vault_v2';
+const LS_KEY = 'nexus_vault_v3'; // bumped to avoid conflict with plaintext v2 entries
+const SALT_KEY = 'nexus_vault_salt';
+
+// ─── AES-GCM helpers ──────────────────────────────────────────────────────────
+async function getKey(): Promise<CryptoKey> {
+  let salt = localStorage.getItem(SALT_KEY);
+  if (!salt) {
+    salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(SALT_KEY, salt);
+  }
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(salt), { name: 'PBKDF2' }, false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('nexusos-vault'), iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptText(text: string, key: CryptoKey): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptText(ciphertext: string, key: CryptoKey): Promise<string> {
+  try {
+    const data = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const iv = data.slice(0, 12);
+    const ct = data.slice(12);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch {
+    return '••••••••'; // failed to decrypt — probably legacy entry
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function PasswordManager() {
   const { addNotification } = useOS();
-  const [entries, setEntries] = useState<Entry[]>(() => {
-    try {
-      const saved = localStorage.getItem(LS_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [
-      { id: '1', site: 'GitHub', username: 'afkmoney', pass: '********', url: 'https://github.com' },
-      { id: '2', site: 'Nexus Registry', username: 'daemon_core', pass: '********', url: 'https://nexus.os' },
-    ];
-  });
+  const [cryptoKey, setCryptoKey] = useState<CryptoKey | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [decryptedPasswords, setDecryptedPasswords] = useState<Record<string, string>>({});
 
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -25,18 +60,42 @@ export default function PasswordManager() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({ site: '', username: '', pass: '', url: '' });
 
+  // Initialize crypto key and load entries
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    getKey().then(k => {
+      setCryptoKey(k);
+      try {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) setEntries(JSON.parse(saved));
+      } catch {}
+    });
+  }, []);
+
+  // Persist entries whenever they change
+  useEffect(() => {
+    if (entries.length > 0) localStorage.setItem(LS_KEY, JSON.stringify(entries));
   }, [entries]);
 
-  const addEntry = (e: React.FormEvent) => {
+  // Decrypt a password on demand
+  const revealPassword = useCallback(async (id: string, ciphertext: string) => {
+    if (!cryptoKey) return;
+    if (decryptedPasswords[id]) {
+      setDecryptedPasswords(prev => { const n = { ...prev }; delete n[id]; return n; });
+    } else {
+      const plain = await decryptText(ciphertext, cryptoKey);
+      setDecryptedPasswords(prev => ({ ...prev, [id]: plain }));
+    }
+  }, [cryptoKey, decryptedPasswords]);
+
+  const addEntry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEntry.site.trim()) return;
-    const entry: Entry = { ...newEntry, id: uuid() };
-    setEntries([entry, ...entries]);
+    if (!newEntry.site.trim() || !cryptoKey) return;
+    const encryptedPass = await encryptText(newEntry.pass, cryptoKey);
+    const entry: Entry = { ...newEntry, pass: encryptedPass, id: uuid() };
+    setEntries(prev => [entry, ...prev]);
     setNewEntry({ site: '', username: '', pass: '', url: '' });
     setShowAdd(false);
-    addNotification({ title: 'Vault Updated', message: `Credential for ${entry.site} secured.`, type: 'success' });
+    addNotification({ title: 'Vault Updated', message: `Credential for ${entry.site} secured with AES-GCM.`, type: 'success' });
   };
 
   const deleteEntry = (id: string) => {
@@ -154,12 +213,12 @@ export default function PasswordManager() {
                       </div>
                       <div className="bg-black/40 rounded-2xl p-4 border border-white/5 relative">
                         <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Cipher</span>
-                        <div className="text-sm font-mono text-zinc-300">{showPass === e.id ? e.pass : '••••••••••••'}</div>
+                        <div className="text-sm font-mono text-zinc-300">{decryptedPasswords[e.id] ? decryptedPasswords[e.id] : '••••••••••••'}</div>
                         <div className="absolute right-3 top-4 flex gap-1">
-                          <button onClick={() => setShowPass(showPass === e.id ? null : e.id)} className="p-1.5 text-zinc-600 hover:text-white transition-colors">
-                            {showPass === e.id ? <EyeOff size={14} /> : <Eye size={14} />}
+                          <button onClick={() => revealPassword(e.id, e.pass)} className="p-1.5 text-zinc-600 hover:text-white transition-colors">
+                            {decryptedPasswords[e.id] ? <EyeOff size={14} /> : <Eye size={14} />}
                           </button>
-                          <button onClick={() => copyToClipboard(e.pass, e.id + '_p')} className="p-1.5 text-zinc-600 hover:text-white transition-colors">
+                          <button onClick={() => copyToClipboard(decryptedPasswords[e.id] || e.pass, e.id + '_p')} className="p-1.5 text-zinc-600 hover:text-white transition-colors">
                             {copiedId === e.id + '_p' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                           </button>
                         </div>
