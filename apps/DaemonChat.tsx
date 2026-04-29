@@ -205,7 +205,7 @@ Only use this when specifically asked to code or create a file.
       {/* Quick Prompts */}
       {showQuick && (
         <div className="px-4 py-3 border-b border-white/5 shrink-0">
-          <div className="text-xs text-zinc-700 mb-2 uppercase tracking-widest">Quick Access</div>
+          <div className="text-xs text-zinc-500 mb-2 uppercase tracking-widest">Quick Access</div>
           <div className="flex flex-wrap gap-1.5">
             {QUICK_PROMPTS.map(qp => (
               <button
@@ -237,7 +237,7 @@ Only use this when specifically asked to code or create a file.
                 <div className="bg-zinc-800 text-white text-sm px-4 py-3 rounded-2xl rounded-br-sm leading-relaxed font-sans">
                   {msg.content}
                 </div>
-                <div className="text-xs text-zinc-700 mt-1 text-right">You · {new Date(msg.timestamp).toLocaleTimeString()}</div>
+                <div className="text-xs text-zinc-500 mt-1 text-right">You · {new Date(msg.timestamp).toLocaleTimeString()}</div>
               </div>
             )}
 
@@ -255,7 +255,7 @@ Only use this when specifically asked to code or create a file.
                     <Copy size={12} />
                   </button>
                 </div>
-                <div className="text-xs text-zinc-700 mt-1 flex items-center gap-1.5">
+                <div className="text-xs text-zinc-500 mt-1 flex items-center gap-1.5">
                   DAEMON · {new Date(msg.timestamp).toLocaleTimeString()}
                   {msg.isStreaming && <span className="ml-1 text-emerald-700">● streaming</span>}
                 </div>
@@ -272,7 +272,7 @@ Only use this when specifically asked to code or create a file.
           <Terminal size={14} className="text-emerald-700 shrink-0 mb-0.5" />
           <textarea
             ref={inputRef}
-            className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-zinc-700 resize-none max-h-32 min-h-[20px] leading-relaxed font-sans"
+            className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-zinc-500 resize-none max-h-32 min-h-[20px] leading-relaxed font-sans"
             placeholder="Speak to DAEMON..."
             value={input}
             onChange={e => setInput(e.target.value)}

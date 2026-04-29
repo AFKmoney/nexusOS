@@ -115,7 +115,7 @@ export default function RSSReader() {
             <button onClick={() => setActiveFeedId('all')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${activeFeedId === 'all' ? 'bg-orange-500/10 text-orange-400' : 'text-zinc-500 hover:bg-white/5'}`}>
               <Globe size={14} /> <span className="text-xs font-bold uppercase tracking-widest">Global Stream</span>
             </button>
-            <div className="text-[9px] font-black text-zinc-700 uppercase tracking-widest px-3 mt-4 mb-2">Sources</div>
+            <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-3 mt-4 mb-2">Sources</div>
             {feeds.map(f => (
               <div key={f.id} className="group relative flex items-center">
                 <button 

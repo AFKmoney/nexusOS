@@ -183,7 +183,7 @@ RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOC
                     </div>
                     <div className="p-4 bg-[#0a0a0c]">
                       <div className="text-xs font-black text-white mb-1 uppercase tracking-wider">{preset.name}</div>
-                      <div className="text-[10px] text-zinc-500 line-clamp-1">{preset.desc}</div>
+                      <div className="text-[10px] text-zinc-400 line-clamp-1">{preset.desc}</div>
                     </div>
                   </button>
                 );
@@ -206,7 +206,7 @@ RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOC
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Vision Prompt</label>
                 <textarea
-                  className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-4 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-all resize-none placeholder:text-zinc-700"
+                  className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-4 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-all resize-none placeholder:text-zinc-500 font-mono"
                   placeholder="e.g. A flowing river of binary code in a neon forest..."
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}

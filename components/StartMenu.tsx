@@ -107,7 +107,7 @@ export default function StartMenu() {
                <div className="absolute -inset-1 bg-accent/20 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
                <Search className="absolute left-5 top-3.5 text-zinc-500 group-focus-within:text-accent transition-colors" size={20} />
                <input 
-                  className="w-full relative bg-black/60 border border-white/10 rounded-2xl py-3.5 pl-14 pr-6 text-sm text-zinc-100 focus:outline-none focus:border-accent/50 transition-all placeholder:text-zinc-700 shadow-inner font-medium tracking-wide"
+                  className="w-full relative bg-black/60 border border-white/10 rounded-2xl py-3.5 pl-14 pr-6 text-sm text-zinc-100 focus:outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 shadow-inner font-medium tracking-wide"
                   placeholder="Query system nodes or DAEMON commands..."
                    value={search}
                    onChange={e => setSearch(e.target.value)}
@@ -227,7 +227,7 @@ export default function StartMenu() {
              {displayedApps.length === 0 && (
                  <div className="col-span-4 text-center py-24 flex flex-col items-center gap-4">
                       <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-2 border border-white/5">
-                        <Search size={32} className="text-zinc-700" />
+                        <Search size={32} className="text-zinc-500" />
                       </div>
                      <div className="text-xs font-black uppercase tracking-[0.3em] text-zinc-500">No Neural Nodes Detected</div>
                  </div>

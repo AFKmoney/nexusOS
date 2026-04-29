@@ -84,7 +84,7 @@ export default function HabitTracker() {
           {/* Input Area */}
           <form onSubmit={addHabit} className="relative group mb-8">
             <input 
-              className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl py-4 pl-5 pr-16 text-sm outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700 shadow-inner"
+              className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl py-4 pl-5 pr-16 text-sm outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500 shadow-inner"
               placeholder="Define new protocol..."
               value={newHabit}
               onChange={e => setNewHabit(e.target.value)}
@@ -114,7 +114,7 @@ export default function HabitTracker() {
 
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
-                    <div className={`flex items-center gap-1.5 text-xs font-black font-mono ${h.streak > 0 ? 'text-orange-500' : 'text-zinc-700'}`}>
+                    <div className={`flex items-center gap-1.5 text-xs font-black font-mono ${h.streak > 0 ? 'text-orange-500' : 'text-zinc-500'}`}>
                       <Flame size={14} fill={h.streak > 0 ? 'currentColor' : 'none'} />
                       {h.streak} DAYS
                     </div>

@@ -243,7 +243,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
               {isGenerating && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
               {isAiConnected ? (statusMsg || status) : 'Waiting for Neural Core...'}
               {isGenerating && tokenCount > 0 && (
-                <span className="text-zinc-700 ml-1">({tokenCount} tok)</span>
+                <span className="text-zinc-500 ml-1">({tokenCount} tok)</span>
               )}
               {retryCount > 0 && !isGenerating && (
                 <span className="text-yellow-600 ml-1">[{retryCount} retries]</span>
@@ -270,7 +270,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
       <div className="p-3 bg-black border-b border-zinc-900/80 flex gap-2 shrink-0">
         <div className="flex-1 relative">
           <input
-            className="w-full bg-[#0a0a0c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-emerald-50 outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-700 font-sans"
+            className="w-full bg-[#0a0a0c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-emerald-50 outline-none focus:border-emerald-500/40 transition-all placeholder:text-zinc-500 font-sans"
             placeholder="Describe the app to forge... (e.g. 'Pomodoro timer with dark theme')"
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
@@ -311,7 +311,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
               <div className="text-xs font-black uppercase tracking-[0.4em] text-emerald-500 animate-pulse">{status}</div>
               <div className="text-xs font-mono text-zinc-600">{statusMsg}</div>
               {tokenCount > 0 && (
-                <div className="text-xs font-mono text-zinc-700">{tokenCount} tokens generated</div>
+                <div className="text-xs font-mono text-zinc-500">{tokenCount} tokens generated</div>
               )}
             </div>
           </div>
@@ -340,9 +340,9 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
         {!isGenerating && !code && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className="w-20 h-20 rounded-2xl bg-zinc-900/50 border border-white/5 flex items-center justify-center mb-4">
-              <Cpu size={28} className="text-zinc-700" />
+              <Cpu size={28} className="text-zinc-500" />
             </div>
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-zinc-700 mb-2">Neural Core Idle</div>
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-zinc-500 mb-2">Neural Core Idle</div>
             <div className="text-xs text-zinc-800 max-w-[240px] text-center">Type an app description above and press FORGE to synthesize</div>
           </div>
         )}

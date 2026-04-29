@@ -96,7 +96,7 @@ export default function CalculatorPro() {
                 {h}
               </div>
             ))}
-            {!history.length && <div className="text-[9px] text-zinc-700 italic">No cycles performed</div>}
+            {!history.length && <div className="text-[9px] text-zinc-500 italic">No cycles performed</div>}
           </div>
         </div>
       </div>

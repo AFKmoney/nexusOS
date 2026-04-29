@@ -92,7 +92,7 @@ export default function NativeZipApp() {
             </div>
             
             <div className="flex justify-center">
-               <ArrowRight size={24} className="text-zinc-700" />
+               <ArrowRight size={24} className="text-zinc-500" />
             </div>
 
             <div>

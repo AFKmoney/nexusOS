@@ -54,7 +54,7 @@ export default function LoginScreen({
           ))}
         </div>
 
-        <div className="mt-16 text-[10px] font-mono text-zinc-700 tracking-widest flex items-center gap-2">
+        <div className="mt-16 text-[10px] font-mono text-zinc-500 tracking-widest flex items-center gap-2">
           <Lock size={10} /> ENCRYPTED BOOT · <span className="text-emerald-600">VERIFIED</span>
         </div>
       </div>

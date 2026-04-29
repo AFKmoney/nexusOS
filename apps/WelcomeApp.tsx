@@ -82,7 +82,7 @@ export default function WelcomeApp({ id }: { id: string }) {
         </div>
 
         {/* Version */}
-        <div className="text-center mt-6 text-[9px] text-zinc-700 font-mono uppercase tracking-[0.2em]">
+        <div className="text-center mt-6 text-[9px] text-zinc-500 font-mono uppercase tracking-[0.2em]">
           NexusOS v2.0.3 — Created by Philippe-Antoine Robert
         </div>
       </div>

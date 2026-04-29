@@ -166,7 +166,7 @@ export default function AionAgent() {
           <div className="relative bg-[#0a0a0c]/90 backdrop-blur-3xl border border-white/10 rounded-[28px] p-2 flex items-end shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <textarea
               rows={1}
-              className="flex-1 bg-transparent border-none outline-none py-4 px-6 text-sm text-white placeholder:text-zinc-700 resize-none max-h-40 custom-scrollbar font-medium tracking-wide"
+              className="flex-1 bg-transparent border-none outline-none py-4 px-6 text-sm text-white placeholder:text-zinc-500 resize-none max-h-40 custom-scrollbar font-medium tracking-wide"
               placeholder="Direct neural command..."
               value={input}
               onChange={e => setAiInput(e.target.value)}
@@ -180,7 +180,7 @@ export default function AionAgent() {
               {isAiThinking ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} fill="currentColor" />}
             </button>
           </div>
-          <div className="text-center mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-zinc-700 select-none">
+          <div className="text-center mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500 select-none">
             Ctrl+Space for Global Search · Shift+Enter for Newline
           </div>
         </div>
