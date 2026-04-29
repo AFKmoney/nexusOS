@@ -1,7 +1,7 @@
 # NexusOS: Audit & Future Roadmap
 
 ## Current Status
-**Version:** 2.0.1
+**Version:** 2.0.2
 **Core Health:** Stable
 **VFS Architecture:** Fully persistent (LocalStorage/IndexedDB).
 **App Forge:** Operational. Saves custom apps as isolated HTML files.
@@ -13,6 +13,13 @@
 ### 1. File System Limitations (High Priority) [RESOLVED]
 - **Issue**: The current VFS stores entire file contents inside a single `osStore` state object or LocalStorage string. This will eventually hit browser quota limits (typically 5MB-10MB).
 - **Fix**: The `vfs.content` storage has been migrated to `IndexedDB` as an asynchronous massive storage layer, while preserving the synchronous memory-mapped execution layer. The 5MB-10MB quota is bypassed.
+
+### 6. App Functional Bugs — Audit Pass 1 (v2.0.2) [RESOLVED]
+- **WeatherApp**: Was using hardcoded mock data. Now calls real **Open-Meteo API** (geocoding + 5-day forecast, no API key required).
+- **RSSReader**: Was using hardcoded fake articles. Now fetches live RSS feeds via **AllOrigins CORS proxy** with XML DOMParser.
+- **PasswordManager**: Labelled 'AES-GCM Encrypted' but stored passwords in **plain text**. Now uses real **Web Crypto API** (PBKDF2 key derivation + AES-GCM-256 encrypt/decrypt per entry).
+- **VideoPlayer**: Volume and mute state were not wired to the native `<video>` element. Fixed via `useEffect` sync.
+- **WelcomeApp**: Contained duplicate feature card and incorrect version label. Both fixed.
 
 ### 2. Multi-User Authentication & Cloud Sync
 - **Issue**: Profiles are currently local and unencrypted.

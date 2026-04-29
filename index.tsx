@@ -62,7 +62,8 @@ if (crashCount > 3) {
   localStorage.setItem(CRASH_KEY, '0');
 }
 
-console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.1 booting...", "color: #10b981; font-weight: bold;");
+console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.2 booting...", "color: #10b981; font-weight: bold;");
+
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 
