@@ -66,7 +66,7 @@ export const WALLPAPER_LIBRARY: WallpaperPreset[] = [
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0,p=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 for(let i=0;i<200;i++)p.push({x:Math.random()*W,y:Math.random()*H,vx:0,vy:0});
 function d(){
@@ -91,7 +91,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   x.fillStyle='rgba(0,0,0,0.1)';x.fillRect(0,0,W,H);
@@ -115,7 +115,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0,p=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;mx=W/2;my=H/2;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);mx=W/2;my=H/2;}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 for(let i=0;i<300;i++)p.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*2,vy:(Math.random()-.5)*2});
 function d(){
@@ -138,7 +138,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   x.fillStyle='rgba(0,0,0,0.1)';x.fillRect(0,0,W,H);
@@ -157,7 +157,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000,p=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 for(let i=0;i<100;i++)p.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5),vy:(Math.random()-.5)});
 function d(){
@@ -184,7 +184,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,p=[],t=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{
   for(let i=0;i<5;i++)p.push({x:e.clientX,y:e.clientY,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,l:1,c:t*10});
 };
@@ -208,7 +208,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-100,my=-100;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function hex(cx,cy,s){
   x.beginPath();
@@ -241,7 +241,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000,drops=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;drops=Array(Math.floor(W/16)).fill(0);}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);drops=Array(Math.floor(innerWidth/16)).fill(0);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   x.fillStyle='rgba(0,0,0,0.1)';x.fillRect(0,0,W,H);
@@ -266,7 +266,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   x.fillStyle='#000';x.fillRect(0,0,W,H);
@@ -294,7 +294,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000,p=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 for(let i=0;i<1000;i++)p.push({x:Math.random()*W,y:Math.random()*H});
 function d(){
@@ -318,7 +318,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000,t=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   t+=0.05;x.fillStyle='rgba(0,0,0,0.1)';x.fillRect(0,0,W,H);
@@ -344,7 +344,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,rings=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;
 onmousemove=e=>{if(Math.random()>0.9)rings.push({x:e.clientX,y:e.clientY,r:0});};
 onclick=e=>{rings.push({x:e.clientX,y:e.clientY,r:0,thick:true});};
@@ -369,7 +369,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=-1000,my=-1000,p=[];
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 for(let i=0;i<400;i++)p.push({ox:Math.random()*10000,oy:Math.random()*10000});
 function d(){
@@ -392,7 +392,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;mx=W/2;my=H/2;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);mx=W/2;my=H/2;}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   x.fillStyle='#000';x.fillRect(0,0,W,H);
@@ -415,7 +415,7 @@ function d(){
     code: `<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000"><canvas id="c"></canvas><script>
 const c=document.getElementById('c'),x=c.getContext('2d');
 let W,H,mx=0,my=0,t=0;
-function r(){W=c.width=innerWidth;H=c.height=innerHeight;}
+function r(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;x.scale(devicePixelRatio,devicePixelRatio);}
 r();onresize=r;onmousemove=e=>{mx=e.clientX;my=e.clientY;};
 function d(){
   t+=0.05;x.fillStyle='#000';x.fillRect(0,0,W,H);

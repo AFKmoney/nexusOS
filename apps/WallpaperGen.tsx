@@ -72,6 +72,7 @@ REQUIREMENTS:
 - Single HTML file starting with <!DOCTYPE html>
 - Full-screen, no scrollbars (body: margin:0; overflow:hidden)
 - Must use requestAnimationFrame animation loop
+- Must handle high-DPI screens correctly (canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);)
 - Must be visually stunning with particle systems, waves, or geometric patterns
 - Cyberpunk/Sci-Fi/Abstract aesthetics only
 - Use only vanilla JS and Canvas API — no external libraries
@@ -86,6 +87,7 @@ RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOC
 
       if (cleanCode.includes('<!DOCTYPE') || cleanCode.includes('<html')) {
         const timestamp = Date.now();
+        vfs.createDir('/home/user/Wallpapers');
         const filePath = `/home/user/Wallpapers/Synthesis_${timestamp}.html`;
         vfs.writeFile(filePath, cleanCode);
         setWallpaper(filePath);
