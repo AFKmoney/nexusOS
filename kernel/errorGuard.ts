@@ -339,9 +339,9 @@ export class ErrorGuard {
     if (fences % 2 !== 0) {
       return {
         complete: false,
-        issue: 'Code fence not closed',
-        needsContinuation: false,
-        continuationHint: 'Close the code block with ```.',
+        issue: 'Code block truncated',
+        needsContinuation: true,
+        continuationHint: 'Continue the code block from where you stopped. Do not repeat previous code. Close the block when finished.',
       };
     }
     return { complete: true, issue: null, needsContinuation: false, continuationHint: '' };

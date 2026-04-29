@@ -298,12 +298,16 @@ export class PuterService {
     let retries = 0;
     let code = '';
 
-    const buildPrompt = async (desc: string, previousCode?: string) => {
+    const buildSystemPrompt = async () => {
       const toolCtx = await toolForge.getSystemToolContext();
+      return `${STRICT_CODER_DNA}${toolCtx}`;
+    };
+
+    const buildUserPrompt = (desc: string, previousCode?: string) => {
       if (previousCode) {
-        return `${STRICT_CODER_DNA}${toolCtx}\n\n[CONTINUATION TASK]\nThe previous generation was INCOMPLETE (HTML was truncated).\nHere is what was generated so far:\n\`\`\`\n${previousCode.slice(-500)}\n\`\`\`\nCONTINUE from where it stopped and complete the HTML. Output ONLY the remaining HTML to complete the file. End with </body></html>.`;
+        return `[CONTINUATION TASK]\nThe previous generation was INCOMPLETE (HTML was truncated).\nHere is what was generated so far:\n\`\`\`\n${previousCode.slice(-500)}\n\`\`\`\nCONTINUE from where it stopped and complete the HTML. Output ONLY the remaining HTML to complete the file. End with </body></html>.`;
       }
-      return `${STRICT_CODER_DNA}${toolCtx}\n\nAPP TO BUILD: ${desc}\n\nOUTPUT:`;
+      return `APP TO BUILD: ${desc}\n\nOUTPUT:`;
     };
 
     // Post-process: strip any text before <!DOCTYPE html> and after </html>
@@ -320,11 +324,12 @@ export class PuterService {
       onStatus(retries === 0 ? 'ARCHITECTING' : `RETRY_${retries}`);
       
       let buffer = retries === 0 ? '' : code;
-      const prompt = await buildPrompt(description, retries > 0 ? code : undefined);
+      const systemPrompt = await buildSystemPrompt();
+      const userPrompt = buildUserPrompt(description, retries > 0 ? code : undefined);
 
-      // ─── 100% OFFLINE LOCAL INFERENCE ─────────────────────────────────
       try {
-        await localBrain.stream(prompt, '', (token) => {
+        const cloudProvider = aiGateway.getActiveProvider();
+        const handleToken = (token: string) => {
           buffer += token;
           if (retries === 0) {
             code = buffer;
@@ -332,7 +337,13 @@ export class PuterService {
             code = code + token;
           }
           onToken(token);
-        });
+        };
+
+        if (cloudProvider) {
+          await aiGateway.stream(systemPrompt, userPrompt, handleToken);
+        } else {
+          await localBrain.stream(userPrompt, systemPrompt, handleToken);
+        }
       } catch (e) {
         // Partial generation is ok, we'll check below
       }
