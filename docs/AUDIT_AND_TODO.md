@@ -1,7 +1,7 @@
 # NexusOS: Audit & Future Roadmap
 
 ## Current Status
-**Version:** 2.0.0
+**Version:** 2.0.1
 **Core Health:** Stable
 **VFS Architecture:** Fully persistent (LocalStorage/IndexedDB).
 **App Forge:** Operational. Saves custom apps as isolated HTML files.
