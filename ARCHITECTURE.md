@@ -97,7 +97,7 @@ The `kernel/` directory contains the core OS primitives.
 
 A browser-persisted, app-permission-gated virtual file tree.
 
-- **Storage**: `localStorage` key `nexus_vfs_v1`
+- **Storage**: Asynchronous `IndexedDB` backend (bypassing 5MB storage limits) with a synchronous memory-mapped execution layer (`localStorage` fallback available).
 - **Node types**: `file`, `directory`, `symlink`
 - **Operations**: `listDir`, `readFile`, `writeFile`, `createDir`, `delete`, `move`, `moveMany`, `createSymlink`, `moveToTrash`, `getStats`
 - **Permissions**: Every operation requires a valid `appId` with appropriate capability (`vfs.read` or `vfs.write`). Missing `appId` is denied.
@@ -179,7 +179,8 @@ Dynamic context enrichment for AI prompts.
 - Recent action log
 - Active app, file, and window context
 - VFS sampling for relevant files
-- Memory recall from fractal embeddings
+- Context expansion up to 8000+ tokens to allow full-app generation and modification
+- Memory recall from fractal embeddings with deep continuity
 - System prompt fragment injection
 
 ### 4.10 DAEMON Bridge (`daemonBridge.ts`)
@@ -213,6 +214,7 @@ Local AI inference layer.
 
 - **Wllama**: In-browser GGUF model inference
 - **LM Studio**: OpenAI-compatible local server on port 1234
+- **Universal Gateway**: Supports API multiplexers (e.g., Clod API), OpenAI, Anthropic, Google, and more.
 - Model registration, switching, and hot-swap
 - HuggingFace model download with path validation
 - Streaming generation support
