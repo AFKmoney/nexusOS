@@ -1,7 +1,7 @@
 # NexusOS: Audit & Future Roadmap
 
 ## Current Status
-**Version:** 2.0.2
+**Version:** 2.0.3
 **Core Health:** Stable
 **VFS Architecture:** Fully persistent (LocalStorage/IndexedDB).
 **App Forge:** Operational. Saves custom apps as isolated HTML files.
@@ -21,7 +21,11 @@
 - **VideoPlayer**: Volume and mute state were not wired to the native `<video>` element. Fixed via `useEffect` sync.
 - **WelcomeApp**: Contained duplicate feature card and incorrect version label. Both fixed.
 
-### 2. Multi-User Authentication & Cloud Sync
+### 7. AI Gateway & LLM Integration (v2.0.3) [RESOLVED]
+- **Clod API**: Integrated the `api.clod.io/v1` endpoint properly. Pulled the real list of 42 available models (including `gpt-5`, `grok-4`, `claude-opus-4-7`).
+- **Free Tier Support**: Set default Clod model to `trinity-mini`, which has been verified to work on the free tier (bypassing the 'Team quota exceeded' errors).
+- **Context Limit**: Increased max tokens to 32768 for the Clod provider to ensure full app generation without truncation.
+
 - **Issue**: Profiles are currently local and unencrypted.
 - **Fix**: Implement a backend (e.g., Supabase or Puter SDK) to sync VFS nodes and user profiles. Add AES encryption to the VFS.
 
