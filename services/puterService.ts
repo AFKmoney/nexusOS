@@ -205,15 +205,18 @@ export class PuterService {
 
         // Post-processing: tools, OS actions
         if (await toolForge.parseAndRegister(fullResponse)) {
-          onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
+          if (mode === 'chat') onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
         }
         const osActionResults = await toolForge.executeOsActions(fullResponse);
         if (osActionResults.trim()) {
-          onToken(osActionResults);
+          if (mode === 'chat') onToken(osActionResults);
         }
         return;
       } catch (cloudErr: any) {
-        onToken(`\n[Cloud provider error: ${cloudErr.message}. Falling back to local...]\n`);
+        console.warn(`[Cloud provider error: ${cloudErr.message}. Falling back to local...]`);
+        if (mode === 'chat') {
+          onToken(`\n[Cloud provider error: ${cloudErr.message}. Falling back to local...]\n`);
+        }
         // Fall through to local
       }
     }
@@ -238,12 +241,16 @@ export class PuterService {
       });
 
       if (await toolForge.parseAndRegister(fullResponse)) {
-        onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
+        if (mode === 'chat') onToken('\n\n⚡ **[TOOL FORGED]** New capability compiled and registered.\n');
       }
 
       const streamCheck = errorGuard.analyzeStreamCompletion(fullResponse, mode);
       if (!streamCheck.complete && streamCheck.needsContinuation) {
-        onToken(`\n\n🔄 *[ErrorGuard: ${streamCheck.issue} — continuing...]*\n\n`);
+        if (mode === 'chat') {
+          onToken(`\n\n🔄 *[ErrorGuard: ${streamCheck.issue} — continuing...]*\n\n`);
+        } else {
+          console.log(`[ErrorGuard: ${streamCheck.issue} — continuing...]`);
+        }
         const contPrompt = `${streamCheck.continuationHint}\n\nPrevious output ended with:\n${fullResponse.slice(-300)}`;
         await localBrain.stream(contPrompt, stPrompt, (token) => {
           fullResponse += token;
@@ -257,10 +264,10 @@ export class PuterService {
 
       const osActionResults = await toolForge.executeOsActions(fullResponse);
       if (osActionResults.trim()) {
-        onToken(osActionResults);
+        if (mode === 'chat') onToken(osActionResults);
         const hasRead = fullResponse.includes('OS::READ_FILE') || fullResponse.includes('OS::SEARCH_FILES') || fullResponse.includes('OS::EXECUTE_JS');
         if (hasRead) {
-          onToken('\n\n');
+          if (mode === 'chat') onToken('\n\n');
           const continuationPrompt = `[OS_ACTION_RESULTS]\n${osActionResults}\n\nUsing the above results, complete your response to the user.`;
           await localBrain.stream(continuationPrompt, stPrompt, (token) => {
             onToken(token);
@@ -273,17 +280,24 @@ export class PuterService {
         const toolName = callMatch[1];
         if (!toolName) return;
         const toolArgs = callMatch[2] || "''";
-        onToken(`\n\n⚙️ **[DAEMON EXECUTING]** → ${toolName}(${toolArgs})\n`);
+        if (mode === 'chat') onToken(`\n\n⚙️ **[DAEMON EXECUTING]** → ${toolName}(${toolArgs})\n`);
         const result = await toolForge.executeTool(toolName, toolArgs);
-        onToken(result);
+        if (mode === 'chat') {
+          onToken(result);
+          onToken('\n');
+        }
         const continuationPrompt = `[TOOL RESULT: ${toolName}] → ${result}\n\nUse this result to complete your response.`;
-        onToken('\n');
         await localBrain.stream(continuationPrompt, stPrompt, (token) => {
           onToken(token);
         });
       }
     } catch (error: any) {
-      onToken(`\n[NEURAL LINK SEVERED: ${error?.message}]`);
+      console.error(`[NEURAL LINK SEVERED: ${error?.message}]`);
+      if (mode === 'chat') {
+        onToken(`\n[NEURAL LINK SEVERED: ${error?.message}]`);
+      } else {
+        throw error;
+      }
     }
   }
 

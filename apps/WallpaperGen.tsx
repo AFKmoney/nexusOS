@@ -72,7 +72,7 @@ REQUIREMENTS:
 - Single HTML file starting with <!DOCTYPE html>
 - Full-screen, no scrollbars (body: margin:0; overflow:hidden)
 - Must use requestAnimationFrame animation loop
-- Must handle high-DPI screens correctly (canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);)
+- Must handle high-DPI screens correctly (canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px'; ctx.scale(devicePixelRatio, devicePixelRatio);)
 - Must be visually stunning with particle systems, waves, or geometric patterns
 - Cyberpunk/Sci-Fi/Abstract aesthetics only
 - Use only vanilla JS and Canvas API — no external libraries
