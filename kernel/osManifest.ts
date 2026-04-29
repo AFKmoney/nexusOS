@@ -100,12 +100,12 @@ const EXAMPLES_COMPACT = `[EX] "open editor"→OS::OPEN_APP:hyperide | "make rea
 // ═══════════════════════════════════════════════════════════════
 // MEMORY COMPRESSION — Deduplicate and truncate
 // ═══════════════════════════════════════════════════════════════
-function compressMemory(entries: MemoryEntry[], budget: number = 150): string {
+function compressMemory(entries: MemoryEntry[], budget: number = 1500): string {
   if (entries.length === 0) return '';
   // Sort by importance * recency
   const now = Date.now();
   const scored = entries.map(e => ({
-    content: e.content.slice(0, 80), // Hard cap per entry
+    content: e.content.slice(0, 2000), // Increased cap per entry to allow code blocks
     score: (e.importance || 0.5) * Math.max(0.1, 1 - (now - e.timestamp) / 604800000)
   })).sort((a, b) => b.score - a.score);
 
@@ -154,8 +154,8 @@ export function generateOSManifest(
   // ALWAYS: Core status line (~30 tokens)
   parts.push(getCoreContext());
 
-  // ALWAYS: Compressed memory (~50-150 tokens, or 0 if empty)
-  const memStr = compressMemory(memoryEntries, 150);
+  // ALWAYS: Compressed memory (~1500 tokens max)
+  const memStr = compressMemory(memoryEntries, 1500);
   if (memStr) parts.push(memStr);
 
   if (tier === 'minimal') {
@@ -168,7 +168,7 @@ export function generateOSManifest(
     parts.push(getAppIndex());
     parts.push('[PROTO] You are NexusOS AI. Use OS:: actions on own lines.');
   } else {
-    // Full context for OS operations (~500 total tokens)
+    // Full context for OS operations (~2000+ total tokens)
     parts.push(TOOLS_COMPACT);
     parts.push(getAppIndex());
     parts.push(getVFSCompact());

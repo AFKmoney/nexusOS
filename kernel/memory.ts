@@ -1,8 +1,8 @@
 import { MemoryEntry, MemoryCategory } from '../types';
 
 const MEMORY_KEY = 'nexus_memory_v2';
-const MAX_ENTRIES = 200; // Reduced from 500 — quality over quantity
-const MAX_CONTENT_LEN = 200; // Hard cap per entry (was unlimited)
+const MAX_ENTRIES = 500; // Increased to allow more context
+const MAX_CONTENT_LEN = 4000; // Hard cap per entry increased significantly
 
 // Inline uuid
 function uuid(): string {
@@ -29,7 +29,7 @@ function jaccardSimilarity(a: string, b: string): number {
 
 export class MemorySystem {
   private entries: MemoryEntry[] = [];
-  private _tokenBudget: number = 400; // Max tokens for memory context
+  private _tokenBudget: number = 2000; // Max tokens for memory context
 
   constructor() {
     try {
