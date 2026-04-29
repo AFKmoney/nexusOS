@@ -84,7 +84,7 @@ export default function SnippetsApp() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-zinc-600" size={14} />
               <input 
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
+                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500"
                 placeholder="Search repository..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -101,7 +101,7 @@ export default function SnippetsApp() {
                 <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{s.title}</div>
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">{s.language}</span>
-                  <span className="text-[8px] font-black text-zinc-700 uppercase bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{s.tags[0]}</span>
+                  <span className="text-[8px] font-black text-zinc-500 uppercase bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{s.tags[0]}</span>
                 </div>
               </button>
             ))}

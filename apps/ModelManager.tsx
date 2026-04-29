@@ -453,7 +453,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
             <div className="relative">
               <Search size={16} className="absolute left-3 top-2.5 text-zinc-600" />
               <input
-                className="w-full bg-black/60 border border-white/10 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 transition-all"
+                className="w-full bg-black/60 border border-white/10 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40 transition-all"
                 placeholder="Search models on Hugging Face..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -487,7 +487,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
                       <div className="text-xs text-zinc-500 mb-2">{model.description}</div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-zinc-600 font-mono">{model.author}</span>
-                        <span className="text-xs text-zinc-700">·</span>
+                        <span className="text-xs text-zinc-500">·</span>
                         <button 
                           onClick={() => {
                               const input = prompt(`Enter the GGUF filename to download from ${model.repoId}:`, model.filename);
@@ -568,7 +568,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
               <div>
                 <div className="text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Repository ID</div>
                 <input
-                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 transition-all font-mono"
+                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40 transition-all font-mono"
                   placeholder="e.g. bartowski/Llama-3.2-3B-Instruct-GGUF"
                   value={customRepo}
                   onChange={e => setCustomRepo(e.target.value)}
@@ -577,7 +577,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
               <div>
                 <div className="text-xs text-zinc-500 uppercase tracking-widest mb-1.5">GGUF Filename</div>
                 <input
-                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 transition-all font-mono"
+                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40 transition-all font-mono"
                   placeholder="e.g. Llama-3.2-3B-Instruct-Q4_K_M.gguf"
                   value={customFile}
                   onChange={e => setCustomFile(e.target.value)}

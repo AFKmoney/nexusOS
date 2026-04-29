@@ -246,7 +246,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
             placeholder="Search or enter URL..."
           />
           {urlInput && (
-            <button onClick={() => setUrlInput('')} className="text-zinc-700 hover:text-zinc-400">
+            <button onClick={() => setUrlInput('')} className="text-zinc-500 hover:text-zinc-400">
               <X size={13} />
             </button>
           )}
@@ -283,7 +283,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                   <Search size={18} className="text-zinc-600 shrink-0" />
                   <input
                     autoFocus
-                    className="flex-1 bg-transparent text-base outline-none text-white placeholder:text-zinc-700"
+                    className="flex-1 bg-transparent text-base outline-none text-white placeholder:text-zinc-500"
                     placeholder="Search the web or enter a URL..."
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
@@ -322,7 +322,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                 <div className="flex flex-col items-center justify-center h-48 gap-4">
                   <Loader2 size={32} className="text-emerald-500 animate-spin" />
                   <div className="text-sm text-zinc-500">NetRunner is analyzing {url}...</div>
-                  <div className="text-xs text-zinc-700">AI is constructing semantic snapshot</div>
+                  <div className="text-xs text-zinc-500">AI is constructing semantic snapshot</div>
                 </div>
               )}
               {!isLoading && aiContent && (
@@ -368,7 +368,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
 
               {!isLoading && !aiContent && !isNewTab && (
                 <div className="flex flex-col items-center justify-center h-48 gap-3">
-                  <AlertTriangle size={32} className="text-zinc-700" />
+                  <AlertTriangle size={32} className="text-zinc-500" />
                   <div className="text-sm text-zinc-600">Page not loaded. Press Enter or click Go.</div>
                 </div>
               )}
@@ -390,7 +390,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                 <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">NetRunner AI</span>
                 {isChatThinking && <Loader2 size={12} className="animate-spin text-emerald-500" />}
               </div>
-              <button onClick={() => setChatOpen(false)} className="text-zinc-700 hover:text-zinc-300">
+              <button onClick={() => setChatOpen(false)} className="text-zinc-500 hover:text-zinc-300">
                 <X size={14} />
               </button>
             </div>
@@ -424,7 +424,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
             <div className="p-2 border-t border-white/5">
               <div className="flex items-end gap-2 bg-black/60 border border-white/5 rounded-xl px-3 py-2 focus-within:border-emerald-500/30 transition-all">
                 <textarea
-                  className="flex-1 bg-transparent text-xs outline-none text-white placeholder:text-zinc-700 resize-none max-h-20 min-h-[18px] font-sans leading-relaxed"
+                  className="flex-1 bg-transparent text-xs outline-none text-white placeholder:text-zinc-500 resize-none max-h-20 min-h-[18px] font-sans leading-relaxed"
                   placeholder="Ask about this page..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}

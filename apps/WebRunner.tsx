@@ -287,7 +287,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
             placeholder="Search or enter URL..."
           />
           {urlInput && (
-            <button onClick={() => setUrlInput('')} className="text-zinc-700 hover:text-zinc-400 shrink-0">
+            <button onClick={() => setUrlInput('')} className="text-zinc-500 hover:text-zinc-400 shrink-0">
               <X size={13} />
             </button>
           )}
@@ -317,7 +317,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
                 <Search size={18} className="text-zinc-600 shrink-0" />
                 <input
                   autoFocus
-                  className="flex-1 bg-transparent text-base outline-none text-white placeholder:text-zinc-700"
+                  className="flex-1 bg-transparent text-base outline-none text-white placeholder:text-zinc-500"
                   placeholder="Search the web or enter a URL..."
                   value={urlInput}
                   onChange={e => setUrlInput(e.target.value)}
@@ -361,7 +361,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 gap-4">
             <Loader2 size={36} className="text-blue-500 animate-spin" />
             <div className="text-sm text-zinc-400">Loading {hostname}...</div>
-            <div className="text-xs text-zinc-700 font-mono">{currentUrl}</div>
+            <div className="text-xs text-zinc-500 font-mono">{currentUrl}</div>
           </div>
         ) : loadError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-8">
@@ -407,7 +407,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
             {isSecure && <Lock size={10} className="text-green-600 shrink-0" />}
             <span className="truncate font-mono">{hostname}</span>
           </div>
-          <div className="text-xs text-zinc-700">
+          <div className="text-xs text-zinc-500">
             {loadError ? 'Error' : 'Ready'}
           </div>
         </div>

@@ -182,7 +182,7 @@ export default function AppStore() {
               size={18}
             />
             <input
-              className="w-full relative bg-black/60 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-zinc-700"
+              className="w-full relative bg-black/60 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-zinc-400"
               placeholder="Query package index..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -262,7 +262,7 @@ export default function AppStore() {
                 {category === 'All' ? 'All manifests' : category}
               </div>
 
-              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
+              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
                 {appCards.length} package{appCards.length === 1 ? '' : 's'}
               </div>
             </div>
@@ -304,7 +304,7 @@ export default function AppStore() {
                       {app.name}
                     </h3>
 
-                    <p className="text-xs text-zinc-500 leading-relaxed font-medium mb-8 line-clamp-2 h-10">
+                    <p className="text-xs text-zinc-400 leading-relaxed font-medium mb-8 line-clamp-2 h-10">
                       {app.description || 'Standard system application node.'}
                     </p>
 
@@ -345,7 +345,7 @@ export default function AppStore() {
             {appCards.length === 0 && (
               <div className="text-center py-24">
                 <div className="mx-auto w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/5">
-                  <Search size={32} className="text-zinc-700" />
+                  <Search size={32} className="text-zinc-500" />
                 </div>
                 <div className="text-xs font-black uppercase tracking-[0.3em] text-zinc-500">
                   No matching package nodes
@@ -358,10 +358,10 @@ export default function AppStore() {
 
       <div className="h-10 bg-[#0a0a0c] border-t border-white/5 px-8 flex items-center justify-between shrink-0 relative z-10">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
+          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-500 uppercase tracking-widest">
             <Cpu size={10} /> Local Cache: {Math.max(1.4, appCards.length * 0.18).toFixed(1)} GB
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
+          <div className="flex items-center gap-2 text-[9px] font-mono text-zinc-500 uppercase tracking-widest">
             <Shield size={10} /> Security: KERNEL_LEVEL
           </div>
         </div>

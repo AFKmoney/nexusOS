@@ -346,7 +346,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                                 <Terminal size={16} /> daemon_nfr_core.bin
                             </div>
                             <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-                                {terminalLogs.length === 0 && <span className="text-zinc-700 italic">Ready for input...</span>}
+                                {terminalLogs.length === 0 && <span className="text-zinc-500 italic">Ready for input...</span>}
                                 {terminalLogs.map((log, i) => (
                                     <div key={i} className={`break-all ${log.includes('[ERR]') || log.includes('[FATAL]') ? 'text-red-400' : 'text-zinc-400'}`}>
                                         {log}

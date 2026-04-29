@@ -135,7 +135,7 @@ export default function PasswordManager() {
             <div className="relative group">
               <Search className="absolute left-3 top-2.5 text-zinc-600 group-focus-within:text-amber-400 transition-colors" size={14} />
               <input 
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-amber-500/50 transition-all placeholder:text-zinc-700 font-mono"
+                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-amber-500/50 transition-all placeholder:text-zinc-500 font-mono"
                 placeholder="Search vault..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}

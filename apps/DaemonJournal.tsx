@@ -78,7 +78,7 @@ export default function DaemonJournalApp() {
         ) : (
           filtered.map((entry, i) => (
             <div key={i} className={`${colorize(entry)} leading-relaxed`}>
-              <span className="text-zinc-700 mr-2">{String(i + 1).padStart(4, '0')}</span>
+              <span className="text-zinc-500 mr-2">{String(i + 1).padStart(4, '0')}</span>
               {entry}
             </div>
           ))

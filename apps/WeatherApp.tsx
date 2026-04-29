@@ -91,7 +91,7 @@ export default function WeatherApp() {
         <form onSubmit={handleSearch} className="relative flex-1 max-w-xs group">
           <Search size={14} className="absolute left-3 top-2.5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
           <input
-            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700"
+            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500"
             placeholder="Search city..."
             value={search}
             onChange={e => setSearch(e.target.value)}

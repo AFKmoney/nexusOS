@@ -597,7 +597,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
                 {/* Line Numbers Gutter */}
                 <div className="w-14 shrink-0 bg-[#0A0A0C] border-r border-white/5 flex flex-col items-end py-4 pr-3 select-none overflow-hidden">
                   {Array.from({ length: lineCount }, (_, i) => (
-                    <div key={i} className={`text-[13px] leading-6 font-mono transition-colors ${i + 1 === cursorPos.line ? 'text-blue-400 font-bold drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]' : 'text-zinc-700'}`}>
+                    <div key={i} className={`text-[13px] leading-6 font-mono transition-colors ${i + 1 === cursorPos.line ? 'text-blue-400 font-bold drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]' : 'text-zinc-500'}`}>
                       {i + 1}
                     </div>
                   ))}
