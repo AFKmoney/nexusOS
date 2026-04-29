@@ -17,10 +17,10 @@ export default function LoginScreen({
 }: LoginScreenProps) {
   return (
     <div className="h-screen w-screen bg-black flex flex-col items-center justify-center relative overflow-hidden font-sans" style={{ backgroundColor: '#050505', color: 'white' }}>
-      <div className="absolute inset-0" style={{
+      <div className="absolute inset-0 pointer-events-none" style={{
         background: 'radial-gradient(ellipse at 30% 50%, rgba(16,185,129,0.06) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,95,70,0.08) 0%, transparent 50%)',
       }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/80" />
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black via-transparent to-black/80" />
       <div className="absolute inset-0 pointer-events-none" style={{
         background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.01) 3px, rgba(255,255,255,0.01) 4px)',
       }} />

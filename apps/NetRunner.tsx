@@ -16,8 +16,7 @@ import {
   BookOpen,
   Copy,
   ExternalLink,
-  Home,
-  Shield
+  Home
 } from 'lucide-react';
 import { aiService } from '../services/puterService';
 import DOMPurify from 'dompurify';
@@ -134,11 +133,15 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
       setUrl(finalUrl);
       setUrlInput(finalUrl);
 
+      // Store URL in window data so Chromium mode (WebRunner) can access it
+      const os = useOS.getState();
+      os.updateWindow(windowId, { data: { url: finalUrl } });
+
       if (mode === 'ai') {
         await aiNavigate(finalUrl);
       }
     },
-    [url, mode, normalizeUrl]
+    [url, mode, normalizeUrl, windowId]
   );
 
   const goBack = () => {
@@ -230,7 +233,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
 
         <div className="flex-1 flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 focus-within:border-blue-500/40 rounded-xl px-3 py-1 transition-all">
           {url ? (
-            mode === 'ai' ? <Sparkles size={13} className="text-emerald-500 shrink-0" /> : <Shield size={13} className="text-green-500 shrink-0" />
+            mode === 'ai' ? <Sparkles size={13} className="text-emerald-500 shrink-0" /> : <Globe size={13} className="text-green-500 shrink-0" />
           ) : (
             <Search size={13} className="text-zinc-600 shrink-0" />
           )}
@@ -373,13 +376,8 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
           )}
 
           {!isNewTab && mode === 'chromium' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="p-1 bg-amber-500/5 border-b border-amber-500/10 text-xs text-amber-600 flex items-center gap-1.5 px-3 shrink-0">
-                <Shield size={11} /> Chromium mode — live page rendering handled by the embedded browser surface.
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <WebRunnerApp windowId={windowId} />
-              </div>
+            <div className="flex-1 overflow-hidden">
+              <WebRunnerApp windowId={windowId} initialUrl={url} />
             </div>
           )}
         </div>
