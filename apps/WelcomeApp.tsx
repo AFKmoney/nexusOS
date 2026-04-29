@@ -5,10 +5,10 @@ import { ArrowRight, Zap, Brain, Shield, Code, Cpu, Globe, Terminal, ChevronRigh
 const FEATURES = [
   { icon: Brain, title: "DAEMON AI Core", desc: "Autonomous recursive intelligence with persistent memory and self-evolution" },
   { icon: Cpu, title: "Multi-Provider AI", desc: "Connect OpenAI, Anthropic, Google, Groq, or run offline with GGUF models — your choice" },
-  { icon: Globe, title: "Multi-Provider Gateway", desc: "Connect OpenAI, Anthropic, Google, Groq, Mistral, or any API in one click" },
   { icon: Code, title: "HyperIDE + Neural Forge", desc: "AI-assisted code editor and app builder — describe what you want, it builds it" },
   { icon: Shield, title: "Cipher Vault", desc: "Military-grade AES-GCM encryption for sensitive data, built into the filesystem" },
-  { icon: Terminal, title: "49+ Native Apps", desc: "Full OS ecosystem: terminal, file explorer, browser, kanban, music, and more" },
+  { icon: Terminal, title: "50+ Native Apps", desc: "Full OS ecosystem: terminal, file explorer, browser, kanban, music, and more" },
+  { icon: Globe, title: "Cloud Multiplexer", desc: "Route AI requests to Clod, OpenAI, Anthropic, DeepSeek, or any OpenAI-compatible endpoint" },
 ];
 
 export default function WelcomeApp({ id }: { id: string }) {
@@ -83,7 +83,7 @@ export default function WelcomeApp({ id }: { id: string }) {
 
         {/* Version */}
         <div className="text-center mt-6 text-[9px] text-zinc-700 font-mono uppercase tracking-[0.2em]">
-          NexusOS v2.0 — Created by Philippe-Antoine Robert
+          NexusOS v2.0.1 — Created by Philippe-Antoine Robert
         </div>
       </div>
     </div>
