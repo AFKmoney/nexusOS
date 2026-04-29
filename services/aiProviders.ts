@@ -110,6 +110,15 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     maxTokens: 4096,
   },
   {
+    id: 'clod',
+    name: 'Clod API',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.clod.io/v1',
+    defaultModel: 'clod-model',
+    models: ['clod-model', 'clod-fast', 'clod-pro'],
+    maxTokens: 8192,
+  },
+  {
     id: 'custom',
     name: 'Custom Endpoint',
     type: 'openai-compatible',

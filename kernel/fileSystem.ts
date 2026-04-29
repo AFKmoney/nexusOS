@@ -112,22 +112,82 @@ function safeClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
+// IndexedDB Helper Setup
+const DB_NAME = 'NexusOS_VFS';
+const DB_VERSION = 1;
+const STORE_NAME = 'vfs_store';
+const RECORD_KEY = 'vfs_root';
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(): Promise<any> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(RECORD_KEY);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(data: any): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put(data, RECORD_KEY);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
 export class VirtualFileSystem {
   private root: { [key: string]: FileNode };
   private isBatching = false;
+  private isInitialized = false;
+  private saveTimeout: any = null;
 
   constructor() {
+    // Sync fallback so the OS doesn't crash on initial render before init()
+    this.root = safeClone(INITIAL_FS);
+  }
+
+  public async init() {
     try {
-      const saved = localStorage.getItem(VFS_STORAGE_KEY);
-      if (saved) {
-        this.root = JSON.parse(saved);
+      const data = await idbGet();
+      if (data) {
+        this.root = data;
       } else {
-        this.root = safeClone(INITIAL_FS);
-        this.save();
+        // Fallback to legacy localStorage migration
+        const saved = localStorage.getItem(VFS_STORAGE_KEY);
+        if (saved) {
+          this.root = JSON.parse(saved);
+        } else {
+          this.root = safeClone(INITIAL_FS);
+        }
+        await this.saveAsync();
       }
     } catch (e) {
-      this.root = safeClone(INITIAL_FS);
+      console.error("[VFS] Failed to initialize IndexedDB:", e);
+      // Ultimate fallback
+      const saved = localStorage.getItem(VFS_STORAGE_KEY);
+      if (saved) this.root = JSON.parse(saved);
     }
+    this.isInitialized = true;
+    console.log("[VFS] Virtual File System Initialized via IndexedDB.");
   }
 
   public batch(fn: () => void) {
@@ -141,8 +201,26 @@ export class VirtualFileSystem {
   }
 
   private save() {
-    if (this.isBatching) return;
-    localStorage.setItem(VFS_STORAGE_KEY, JSON.stringify(this.root));
+    if (this.isBatching || !this.isInitialized) return;
+    
+    // Debounce the save to prevent transaction spam
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      this.saveAsync();
+    }, 100);
+  }
+
+  private async saveAsync() {
+    try {
+      await idbPut(this.root);
+    } catch (e) {
+      console.warn("[VFS] IndexedDB save failed, falling back to LocalStorage:", e);
+      try {
+        localStorage.setItem(VFS_STORAGE_KEY, JSON.stringify(this.root));
+      } catch (e2) {
+        console.error("[VFS] CRITICAL: Storage Quota Exceeded!", e2);
+      }
+    }
   }
 
   private getHomeDir(): string {

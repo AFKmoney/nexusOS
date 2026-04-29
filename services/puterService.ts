@@ -305,7 +305,7 @@ export class PuterService {
 
     const buildUserPrompt = (desc: string, previousCode?: string) => {
       if (previousCode) {
-        return `[CONTINUATION TASK]\nThe previous generation was INCOMPLETE (HTML was truncated).\nHere is what was generated so far:\n\`\`\`\n${previousCode.slice(-500)}\n\`\`\`\nCONTINUE from where it stopped and complete the HTML. Output ONLY the remaining HTML to complete the file. End with </body></html>.`;
+        return `[CONTINUATION TASK]\nThe previous generation was INCOMPLETE (HTML was truncated).\nHere is what was generated so far:\n\`\`\`\n${previousCode.slice(-8000)}\n\`\`\`\nCONTINUE from where it stopped and complete the HTML. Output ONLY the remaining HTML to complete the file. End with </body></html>.`;
       }
       return `APP TO BUILD: ${desc}\n\nOUTPUT:`;
     };

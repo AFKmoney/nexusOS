@@ -10,9 +10,9 @@
 
 ## What's Left to Do (TODO)
 
-### 1. File System Limitations (High Priority)
+### 1. File System Limitations (High Priority) [RESOLVED]
 - **Issue**: The current VFS stores entire file contents inside a single `osStore` state object or LocalStorage string. This will eventually hit browser quota limits (typically 5MB-10MB).
-- **Fix**: Migrate `vfs.content` storage to the `File System Access API` or `IndexedDB` directly, keeping only the directory tree structure in memory.
+- **Fix**: The `vfs.content` storage has been migrated to `IndexedDB` as an asynchronous massive storage layer, while preserving the synchronous memory-mapped execution layer. The 5MB-10MB quota is bypassed.
 
 ### 2. Multi-User Authentication & Cloud Sync
 - **Issue**: Profiles are currently local and unencrypted.
@@ -22,9 +22,9 @@
 - **Issue**: `App.tsx` is over 600 lines long and handles desktop drag-and-drop, global shortcuts, contextual menus, and rendering.
 - **Fix**: Split `App.tsx` into smaller orchestrator components: `ShortcutOrchestrator`, `DesktopGrid`, `DesktopBackground`.
 
-### 4. Background Daemon (Missing Bridge)
+### 4. Background Daemon (Missing Bridge) [RESOLVED]
 - **Issue**: `electron-main.cjs` has `startBridgeServer()` commented out because `daemon-bridge-server.cjs` is missing.
-- **Fix**: Re-implement `daemon-bridge-server.cjs` to provide a robust websocket layer for the DAEMON AI to perform background tasks while the UI is closed.
+- **Fix**: The `daemon-bridge-server.cjs` has been re-implemented with a robust `ws` WebSocket layer, allowing DAEMON AI to execute background commands and push updates seamlessly to the UI.
 
 ### 5. Dependency Cleanup
 - **Issue**: The `node_modules` folder was manually copied over from a previous deployment.

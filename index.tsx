@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { hydrateOSRegistry } from './store/osStore';
+import { vfs } from './kernel/fileSystem';
 
 // CRITICAL: Hydrate app registry before first render
 hydrateOSRegistry().catch(e => console.error('[SYSTEM] Registry hydration failed:', e));
@@ -64,11 +65,19 @@ if (crashCount > 3) {
 console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.0 booting...", "color: #10b981; font-weight: bold;");
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
-try {
-  console.log("[SYSTEM] Mounting React Root...");
-  root.render(<App />);
-  console.log("[SYSTEM] React Mount Requested.");
-} catch (e: any) {
-  console.error("[SYSTEM] MOUNT ERROR:", e);
-  document.body.innerHTML = `<h1 style="color:red">REACT MOUNT ERROR: ${e.message}</h1>`;
+
+async function bootSystem() {
+  try {
+    console.log("[SYSTEM] Initializing Storage Architecture (VFS)...");
+    await vfs.init();
+    
+    console.log("[SYSTEM] Mounting React Root...");
+    root.render(<App />);
+    console.log("[SYSTEM] React Mount Requested.");
+  } catch (e: any) {
+    console.error("[SYSTEM] BOOT SEQUENCE FAILED:", e);
+    document.body.innerHTML = `<h1 style="color:red">REACT MOUNT ERROR: ${e.message}</h1>`;
+  }
 }
+
+bootSystem();
