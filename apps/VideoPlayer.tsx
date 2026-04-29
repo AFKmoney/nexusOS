@@ -10,6 +10,14 @@ export default function VideoPlayer() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Sync volume and mute state to native video element
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = isMuted ? 0 : volume / 100;
+      videoRef.current.muted = isMuted;
+    }
+  }, [volume, isMuted]);
+
   const togglePlay = () => {
     if (videoRef.current) {
       if (isPlaying) videoRef.current.pause();
@@ -38,13 +46,13 @@ export default function VideoPlayer() {
       
       {/* Video Content */}
       <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden">
-        <video 
+        <video
           ref={videoRef}
           onTimeUpdate={handleTimeUpdate}
+          onEnded={() => setIsPlaying(false)}
           className="max-w-full max-h-full"
-          poster="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop"
         >
-          <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4" />
+          {/* No hardcoded source — user opens files via File Explorer */}
         </video>
 
         {/* Big Play Overlay (visible when paused) */}
