@@ -33,16 +33,28 @@ export default function KanbanApp() {
   };
 
   const moveTask = (fromCol: string, taskId: string, direction: 1 | -1) => {
-    const fromIdx = columns.findIndex(c => c.id === fromCol);
-    const toIdx = fromIdx + direction;
-    if (toIdx < 0 || toIdx >= columns.length) return;
-    const task = columns[fromIdx].tasks.find(t => t.id === taskId);
-    if (!task) return;
-    setColumns(prev => prev.map((c, i) => {
-      if (i === fromIdx) return { ...c, tasks: c.tasks.filter(t => t.id !== taskId) };
-      if (i === toIdx) return { ...c, tasks: [...c.tasks, task] };
-      return c;
-    }));
+    setColumns(prev => {
+      const fromIdx = prev.findIndex(c => c.id === fromCol);
+      if (fromIdx === -1) return prev;
+      const toIdx = fromIdx + direction;
+      if (toIdx < 0 || toIdx >= prev.length) return prev;
+
+      const sourceCol = prev[fromIdx];
+      const taskIdx = sourceCol.tasks.findIndex(t => t.id === taskId);
+      if (taskIdx === -1) return prev;
+
+      const task = sourceCol.tasks[taskIdx];
+      const next = [...prev];
+
+      const newFromTasks = [...sourceCol.tasks];
+      newFromTasks.splice(taskIdx, 1);
+      next[fromIdx] = { ...sourceCol, tasks: newFromTasks };
+
+      const targetCol = next[toIdx];
+      next[toIdx] = { ...targetCol, tasks: [...targetCol.tasks, task] };
+
+      return next;
+    });
   };
 
   const addColumn = () => {
