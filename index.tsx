@@ -25,13 +25,33 @@ window.onerror = function (msg, url, line, col, error) {
     return true;
   }
 
-  document.body.innerHTML = `<div style="color:red;padding:20px;font-family:monospace;background:#111;height:100vh">
-    <h1>CRITICAL SYSTEM FAILURE</h1>
-    <h2>${msg}</h2>
-    <p>Location: ${url}:${line}:${col}</p>
-    <pre>${error?.stack || 'No stack trace'}</pre>
-    <button onclick="window.location.reload()" style="padding:10px;margin-top:20px">REBOOT SYSTEM</button>
-  </div>`;
+  const container = document.createElement('div');
+  container.setAttribute('style', 'color:red;padding:20px;font-family:monospace;background:#111;height:100vh');
+
+  const h1 = document.createElement('h1');
+  h1.textContent = 'CRITICAL SYSTEM FAILURE';
+  container.appendChild(h1);
+
+  const h2 = document.createElement('h2');
+  h2.textContent = String(msg);
+  container.appendChild(h2);
+
+  const p = document.createElement('p');
+  p.textContent = `Location: ${url}:${line}:${col}`;
+  container.appendChild(p);
+
+  const pre = document.createElement('pre');
+  pre.textContent = error?.stack || 'No stack trace';
+  container.appendChild(pre);
+
+  const btn = document.createElement('button');
+  btn.textContent = 'REBOOT SYSTEM';
+  btn.setAttribute('style', 'padding:10px;margin-top:20px');
+  btn.onclick = () => window.location.reload();
+  container.appendChild(btn);
+
+  document.body.innerHTML = '';
+  document.body.appendChild(container);
   return false;
 };
 
@@ -48,5 +68,9 @@ try {
   console.log("[SYSTEM] React Mount Requested.");
 } catch (e: any) {
   console.error("[SYSTEM] MOUNT ERROR:", e);
-  document.body.innerHTML = `<h1 style="color:red">REACT MOUNT ERROR: ${e.message}</h1>`;
+  document.body.innerHTML = '';
+  const h1 = document.createElement('h1');
+  h1.setAttribute('style', 'color:red');
+  h1.textContent = `REACT MOUNT ERROR: ${e.message}`;
+  document.body.appendChild(h1);
 }
