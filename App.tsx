@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOS } from './store/osStore';
 import { WindowFrame } from './components/WindowFrame';
 import TaskSwitcher from './components/TaskSwitcher';
@@ -8,13 +8,11 @@ import StartMenu from './components/StartMenu';
 import Taskbar from './components/Taskbar';
 import { vfs } from './kernel/fileSystem';
 import { getSmartIcon } from './utils/smartIcons';
-import { Bell, X, Info, Trash2, ArrowRight, Lock, Sparkles, Cpu, Activity, Zap, Users } from 'lucide-react';
+import { Lock, Cpu, Zap, Users } from 'lucide-react';
 import { bindOsStore } from './services/puterService';
 import { toolForge } from './kernel/toolForge';
 import { sounds } from './kernel/sounds';
-import { processManager } from './kernel/processManager';
 import { themeEngine } from './kernel/themeEngine';
-import { eventBus, OS_EVENTS } from './kernel/eventBus';
 import GlobalSearchOverlay from './components/GlobalSearch';
 import BiosScreen from './components/BiosScreen';
 
