@@ -1,6 +1,6 @@
 const { app, BrowserWindow, session, ipcMain } = require('electron');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn } = require('child_process');
 const os = require('os');
 
 const isDev = !app.isPackaged;
@@ -112,18 +112,38 @@ ipcMain.handle('get-os-info', async () => {
 });
 
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    let proc;
     if (os.platform() === 'win32') {
-      exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
-      });
+      proc = spawn('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        'Expand-Archive -Path $args[0] -DestinationPath $args[1] -Force',
+        source,
+        dest
+      ]);
     } else {
-      exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
+      proc = spawn('unzip', ['-o', source, '-d', dest]);
+    }
+
+    let errorData = '';
+    if (proc.stdout) {
+      proc.stdout.resume(); // Drain stdout to avoid process hang
+    }
+    if (proc.stderr) {
+      proc.stderr.on('data', (data) => {
+        errorData += data.toString();
       });
     }
+
+    proc.on('close', (code) => {
+      if (code === 0) resolve({ success: true });
+      else resolve({ success: false, error: errorData.trim() || `Exit code ${code}` });
+    });
+
+    proc.on('error', (err) => {
+      resolve({ success: false, error: err.message });
+    });
   });
 });
 
@@ -131,21 +151,52 @@ ipcMain.handle('native-search', async (event, query) => {
   return new Promise((resolve) => {
     if (!query) return resolve([]);
     const desktopPath = path.join(os.homedir(), 'Desktop');
+    let proc;
     if (os.platform() === 'win32') {
-      // Find matching files in Desktop
-      exec(`dir "${desktopPath}\\*${query}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
-        if (error) { resolve([]); return; }
-        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20); // max 20 results
-        resolve(files);
-      });
+      proc = spawn('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        'Get-ChildItem -Path $args[0] -Filter "*$($args[1])*" -Recurse | Select-Object -First 20 | ForEach-Object { $_.FullName }',
+        desktopPath,
+        query
+      ]);
     } else {
       // Unix find
-      exec(`find "${desktopPath}" -iname "*${query}*" -head 20`, { timeout: 5000 }, (error, stdout) => {
-        if (error) { resolve([]); return; }
-        const files = stdout.split('\n').filter(Boolean).slice(0, 20);
-        resolve(files);
+      proc = spawn('find', [desktopPath, '-iname', `*${query}*`]);
+    }
+
+    let stdoutData = '';
+    if (proc.stdout) {
+      proc.stdout.on('data', (data) => {
+        stdoutData += data.toString();
       });
     }
+
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        proc.kill();
+        resolve([]);
+      }
+    }, 5000);
+
+    proc.on('close', () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        const files = stdoutData.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20);
+        resolve(files);
+      }
+    });
+
+    proc.on('error', () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve([]);
+      }
+    });
   });
 });
 
