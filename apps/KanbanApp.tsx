@@ -18,10 +18,12 @@ const COLUMN_COLORS = [
 export default function KanbanApp() {
   const { addNotification } = useOS();
   const [columns, setColumns] = useState<Column[]>(() => {
-    try { 
+    try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load kanban columns from localStorage:', e);
+    }
     return [
       { id: 'todo', title: 'To Do', tasks: [], color: COLUMN_COLORS[0] },
       { id: 'progress', title: 'In Progress', tasks: [], color: COLUMN_COLORS[1] },

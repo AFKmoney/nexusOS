@@ -16,7 +16,9 @@ export default function StickyNotes() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load sticky notes from localStorage:', e);
+    }
     return [
       { id: '1', content: 'DAEMON: Initialize neural uplink at 02:00.', color: COLORS[0], x: 20, y: 20 },
       { id: '2', content: 'Remember to verify VFS integrity.', color: COLORS[1], x: 250, y: 50 },

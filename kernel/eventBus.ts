@@ -32,7 +32,9 @@ class EventBus {
     });
     // Wildcard listeners
     this.listeners.get('*')?.forEach(handler => {
-      try { handler({ event, payload }); } catch (e) {}
+      try { handler({ event, payload }); } catch (e) {
+        console.error(`[EventBus] Error in wildcard handler for "${event}":`, e);
+      }
     });
   }
 

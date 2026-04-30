@@ -134,7 +134,9 @@ export default function ContextMenu() {
             const original = el.value;
             el.value = original.substring(0, start) + text + original.substring(end);
             el.dispatchEvent(new Event('input', { bubbles: true }));
-        } catch (e) {}
+        } catch (e) {
+            console.error('Failed to paste from clipboard:', e);
+        }
     } 
     else if (clipboard && (contextMenu.targetType === 'desktop' || contextMenu.targetType === 'background')) {
         const sourceName = clipboard.path.split('/').pop() || 'file';

@@ -14,7 +14,9 @@ export default function RSSReader() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load RSS feeds from localStorage:', e);
+    }
     return [
       { id: '1', url: 'https://news.ycombinator.com/rss', title: 'Hacker News', category: 'Tech' },
       { id: '2', url: 'https://techcrunch.com/feed/', title: 'TechCrunch', category: 'Tech' },

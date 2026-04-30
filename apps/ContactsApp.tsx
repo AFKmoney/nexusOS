@@ -12,7 +12,9 @@ export default function ContactsApp() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load contacts from localStorage:', e);
+    }
     return [
       { id: '1', name: 'Philippe-Antoine Robert', email: 'creator@nexus.os', phone: '+1 048 000 000', tags: ['CREATOR', 'ROOT'], favorite: true },
       { id: '2', name: 'DAEMON Core', email: 'ai@nexus.os', phone: 'LOCAL_PIPE_01', tags: ['AI', 'SYSTEM'], favorite: true },

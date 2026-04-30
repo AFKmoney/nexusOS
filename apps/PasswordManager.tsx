@@ -12,7 +12,9 @@ export default function PasswordManager() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load passwords from localStorage:', e);
+    }
     return [
       { id: '1', site: 'GitHub', username: 'afkmoney', pass: '********', url: 'https://github.com' },
       { id: '2', site: 'Nexus Registry', username: 'daemon_core', pass: '********', url: 'https://nexus.os' },

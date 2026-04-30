@@ -13,7 +13,9 @@ export default function CalendarApp() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load calendar events from localStorage:', e);
+    }
     return [
       { id: '1', title: 'Neural Core Maintenance', time: '02:00', date: new Date().toISOString().split('T')[0], type: 'system' },
       { id: '2', title: 'Global Sync Protocol', time: '14:30', date: new Date().toISOString().split('T')[0], type: 'work' },

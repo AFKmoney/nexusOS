@@ -12,7 +12,9 @@ export default function HabitTracker() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load habits from localStorage:', e);
+    }
     return [
       { id: '1', name: 'Neural Focus Session', streak: 5, completedToday: false, history: [] },
       { id: '2', name: 'Code Architecture Review', streak: 12, completedToday: true, history: [] },

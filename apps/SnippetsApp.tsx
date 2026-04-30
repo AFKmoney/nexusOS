@@ -12,7 +12,9 @@ export default function SnippetsApp() {
     try {
       const saved = localStorage.getItem(LS_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load snippets from localStorage:', e);
+    }
     return [
       { id: '1', title: 'Neural Initialization', code: 'const core = new NeuralCore();\ncore.boot();', language: 'typescript', tags: ['KERNEL'], created: Date.now() },
       { id: '2', title: 'VFS Mount Protocol', code: 'vfs.mount("/home/user", device);', language: 'javascript', tags: ['FILESYSTEM'], created: Date.now() },
