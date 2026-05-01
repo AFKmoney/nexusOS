@@ -222,11 +222,20 @@ export class AutonomyEngine {
 
   private runFractalTick() {
     if (!this.isRunning) return;
-    
-    this.tick().finally(() => {
+
+    // .catch BEFORE .finally so an unhandled rejection inside tick() can never
+    // halt the scheduler loop. Without this, a single throw would surface as an
+    // unhandled promise rejection and (in some environments) prevent the next
+    // tick from being scheduled at all.
+    this.tick()
+      .catch((err) => {
+        console.error('[AUTONOMY] tick() failed:', err);
+      })
+      .finally(() => {
+        if (!this.isRunning) return;
         const nextDelay = this.calculateNextFractalDelay();
         this.intervalId = setTimeout(() => this.runFractalTick(), nextDelay);
-    });
+      });
   }
 
   private calculateNextFractalDelay(): number {
