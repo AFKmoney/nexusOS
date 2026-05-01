@@ -373,7 +373,11 @@ export class LocalBrain {
              });
              if (!res.ok) throw new Error('Port 1234 Local REST Failure');
              const d = await res.json();
-             return d.choices[0].message.content;
+             const content = d?.choices?.[0]?.message?.content;
+             if (typeof content !== 'string') {
+               throw new Error('LM Studio returned an unexpected response shape');
+             }
+             return content;
          } catch (e) {
              console.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
              // Silently switch to default local model for this request

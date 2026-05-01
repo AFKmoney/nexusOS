@@ -373,7 +373,9 @@ export class AIProviderGateway {
   ): Promise<string | ReadableStream<Uint8Array>> {
     const modelId = model || provider.defaultModel;
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-    const url = `${provider.baseUrl}/models/${modelId}:${endpoint}?key=${provider.apiKey}`;
+    // Pass the API key in a header rather than the URL to keep it out of
+    // referers, server logs, browser history, and proxy access logs.
+    const url = `${provider.baseUrl}/models/${modelId}:${endpoint}`;
 
     // Convert to Gemini format
     const systemInstruction = messages.find(m => m.role === 'system')?.content;
@@ -389,7 +391,10 @@ export class AIProviderGateway {
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': provider.apiKey,
+      },
       body: JSON.stringify(body),
     });
 

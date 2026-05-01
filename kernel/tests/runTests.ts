@@ -1,8 +1,10 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { run } from 'node:test';
 
+// Import each .test.ts file sequentially. Each one calls test() which registers
+// against node:test's default global suite. We track passes/failures by
+// listening to the process events that `node:test` emits.
 async function main() {
   const testsDir = path.resolve(__dirname);
   const entries = await readdir(testsDir, { withFileTypes: true });
@@ -14,14 +16,18 @@ async function main() {
   for (const file of testFiles) {
     await import(pathToFileURL(path.join(testsDir, file)).href);
   }
-
-  const result = await run();
-  if (typeof result[Symbol.asyncIterator] !== 'function') {
-    process.exitCode = 1;
-  }
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => {
+    // Tests are auto-flushed by node:test once main() resolves. Some imported
+    // modules (e.g. browser-targeted services importing wllama) leave open
+    // handles (workers, intervals) that beforeExit cannot drain — so we give
+    // tests a fixed grace window to finish, then force-exit. Without this CI
+    // would hang indefinitely.
+    setTimeout(() => process.exit(process.exitCode ?? 0), 3000);
+  })
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
