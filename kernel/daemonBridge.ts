@@ -132,6 +132,8 @@ class DaemonBridge {
   private state: DaemonCoreState | null = null;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private watchdogInterval: ReturnType<typeof setInterval> | null = null;
+  private autonomyStartTimer: ReturnType<typeof setTimeout> | null = null;
+  private bootLogTimer: ReturnType<typeof setTimeout> | null = null;
   private appUsageTracker: Map<string, number> = new Map();
   private lastActivityTimestamp: number = Date.now();
 
@@ -347,7 +349,8 @@ class DaemonBridge {
 
     // Start the heartbeat & autonomy loop
     this.startHeartbeat();
-    setTimeout(() => autonomy.start(), 3000); // slight delay for model warmup
+    if (this.autonomyStartTimer) clearTimeout(this.autonomyStartTimer);
+    this.autonomyStartTimer = setTimeout(() => autonomy.start(), 3000); // slight delay for model warmup
 
     // Notify the OS
     const os = useOS.getState();
@@ -381,10 +384,12 @@ class DaemonBridge {
 
     // Start heartbeat & restart autonomy loop
     this.startHeartbeat();
-    setTimeout(() => autonomy.start(), 3000); // give model time to initialize
+    if (this.autonomyStartTimer) clearTimeout(this.autonomyStartTimer);
+    this.autonomyStartTimer = setTimeout(() => autonomy.start(), 3000); // give model time to initialize
 
     // Silent notification on boot
-    setTimeout(() => {
+    if (this.bootLogTimer) clearTimeout(this.bootLogTimer);
+    this.bootLogTimer = setTimeout(() => {
       try {
         const os = useOS.getState();
         os.addAutonomyLog(`◈ DAEMON BRIDGE: Boot #${this.state!.bootCount}. All systems nominal.`);

@@ -123,38 +123,55 @@ ipcMain.handle('get-os-info', async () => {
   };
 });
 
+// Reject paths/queries containing shell metacharacters or NUL bytes.
+// Used to prevent command injection in the few exec() calls below that still
+// rely on shell expansion.
+const isShellSafe = (str) => {
+  if (typeof str !== 'string' || str.length === 0 || str.length > 1024) return false;
+  // Disallow: ; & | ` $ ( ) < > newline backslash quotes nul *
+  return !/[;&|`$()<>\n\r\\"'\0]/.test(str);
+};
+
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    if (!isShellSafe(source) || !isShellSafe(dest)) {
+      resolve({ success: false, error: 'invalid path' });
+      return;
+    }
+    const { execFile } = require('child_process');
     if (os.platform() === 'win32') {
-      exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
-      });
+      execFile(
+        'powershell',
+        ['-NoProfile', '-Command', `Expand-Archive -Path '${source.replace(/'/g, "''")}' -DestinationPath '${dest.replace(/'/g, "''")}' -Force`],
+        { timeout: 60_000 },
+        (err) => err ? resolve({ success: false, error: err.message }) : resolve({ success: true })
+      );
     } else {
-      exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
-      });
+      execFile('unzip', ['-o', source, '-d', dest], { timeout: 60_000 },
+        (err) => err ? resolve({ success: false, error: err.message }) : resolve({ success: true })
+      );
     }
   });
 });
 
 ipcMain.handle('native-search', async (event, query) => {
   return new Promise((resolve) => {
-    if (!query) return resolve([]);
+    if (!query || typeof query !== 'string') return resolve([]);
+    // Strip any unsafe characters; keep only alphanumerics, dot, dash, underscore, space.
+    const safeQuery = query.replace(/[^A-Za-z0-9._\- ]/g, '').slice(0, 64);
+    if (!safeQuery) return resolve([]);
     const desktopPath = path.join(os.homedir(), 'Desktop');
+    const { execFile } = require('child_process');
     if (os.platform() === 'win32') {
-      // Find matching files in Desktop
-      exec(`dir "${desktopPath}\\*${query}*" /s /b`, { timeout: 5000 }, (error, stdout) => {
+      execFile('cmd', ['/c', 'dir', `${desktopPath}\\*${safeQuery}*`, '/s', '/b'], { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
-        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20); // max 20 results
+        const files = stdout.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 20);
         resolve(files);
       });
     } else {
-      // Unix find
-      exec(`find "${desktopPath}" -name "*${query}*" | head -n 20`, { timeout: 5000 }, (error, stdout) => {
+      execFile('find', [desktopPath, '-name', `*${safeQuery}*`], { timeout: 5000 }, (error, stdout) => {
         if (error) { resolve([]); return; }
-        resolve(stdout.split('\n').filter(Boolean));
+        resolve(stdout.split('\n').filter(Boolean).slice(0, 20));
       });
     }
   });
@@ -162,14 +179,19 @@ ipcMain.handle('native-search', async (event, query) => {
 
 ipcMain.handle('native-exec', async (event, command) => {
   return new Promise((resolve) => {
-    // SECURITY WARNING: This allows DAEMON direct host machine access (Hardware Overlord Mode).
-    // Bypasses the VFS container and unleashes native Rust/C++/Bash commands.
-    exec(command, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-      resolve({ 
-        success: !error, 
-        stdout: stdout || '', 
-        stderr: stderr || '', 
-        error: error ? error.message : null 
+    // SECURITY WARNING: This is "Hardware Overlord Mode" — by design it gives
+    // the renderer arbitrary host shell access. We still bound the cost
+    // (length cap + timeout) so a stray AI prompt cannot pin the host.
+    if (typeof command !== 'string' || command.length === 0 || command.length > 4096) {
+      resolve({ success: false, stdout: '', stderr: '', error: 'invalid command' });
+      return;
+    }
+    exec(command, { maxBuffer: 1024 * 1024 * 10, timeout: 60_000 }, (error, stdout, stderr) => {
+      resolve({
+        success: !error,
+        stdout: stdout || '',
+        stderr: stderr || '',
+        error: error ? error.message : null
       });
     });
   });
@@ -247,19 +269,28 @@ ipcMain.handle('native-download', async (event, { url, repoId, filename, onProgr
 app.whenReady().then(() => {
   // Protocol handler for local models
   protocol.handle('nexus', (request) => {
-    const urlStr = request.url.replace('nexus://', '');
-    const [repoPart, ...fileParts] = urlStr.split('/');
-    const filename = decodeURIComponent(fileParts.join('/'));
-    const rawRepoId = decodeURIComponent(repoPart);
-    const repoFolder = rawRepoId.replace(/\//g, '_');
-    
-    const userDataPath = app.getPath('userData');
-    const fullPath = path.join(userDataPath, 'models', repoFolder, filename);
-    
-    // Safety check
-    if (fullPath.includes('..')) return new Response('Access denied', { status: 403 });
-    
-    return net.fetch('file://' + fullPath);
+    try {
+      const urlStr = request.url.replace('nexus://', '');
+      const [repoPart, ...fileParts] = urlStr.split('/');
+      const filename = decodeURIComponent(fileParts.join('/'));
+      const rawRepoId = decodeURIComponent(repoPart);
+      const repoFolder = rawRepoId.replace(/\//g, '_');
+
+      const userDataPath = app.getPath('userData');
+      const modelsRoot = path.resolve(path.join(userDataPath, 'models'));
+      const fullPath = path.resolve(path.join(modelsRoot, repoFolder, filename));
+
+      // Robust path-traversal guard: resolved path MUST sit under modelsRoot.
+      // .includes('..') is bypassable via URL-encoded segments or symlinks.
+      const rel = path.relative(modelsRoot, fullPath);
+      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        return new Response('Access denied', { status: 403 });
+      }
+
+      return net.fetch('file://' + fullPath);
+    } catch (e) {
+      return new Response('Bad request', { status: 400 });
+    }
   });
 
   // Start bridge BEFORE creating window
