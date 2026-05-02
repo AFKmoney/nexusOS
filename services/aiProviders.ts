@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // NEXUS AI PROVIDER GATEWAY — Universal Multi-Provider Engine
 // Supports: OpenAI, Anthropic, Google, Groq, Mistral, DeepSeek,
-//           OpenRouter, Together, Ollama, LM Studio, and any
+//           OpenRouter, Together, Zhipu (GLM), xAI (Grok), Cerebras,
+//           Perplexity, Fireworks, Ollama, LM Studio, and any
 //           OpenAI-compatible endpoint.
 // ═══════════════════════════════════════════════════════════════
 
@@ -62,7 +63,16 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.mistral.ai/v1',
     defaultModel: 'mistral-large-latest',
-    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'codestral-latest'],
+    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'codestral-latest', 'mistral-nemo-latest', 'pixtral-12b-2409'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'codestral',
+    name: 'Codestral',
+    type: 'openai-compatible',
+    baseUrl: 'https://codestral.mistral.ai/v1',
+    defaultModel: 'codestral-latest',
+    models: ['codestral-latest', 'codestral-mamba-latest'],
     maxTokens: 4096,
   },
   {
@@ -79,8 +89,17 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'OpenRouter',
     type: 'openai-compatible',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'anthropic/claude-sonnet-4',
-    models: ['anthropic/claude-sonnet-4', 'openai/gpt-4o', 'google/gemini-2.5-flash', 'meta-llama/llama-3.3-70b-instruct'],
+    defaultModel: 'anthropic/claude-3.5-sonnet',
+    models: ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3-opus', 'openai/gpt-4o', 'google/gemini-1.5-pro', 'meta-llama/llama-3.1-70b-instruct', 'meta-llama/llama-3.1-405b-instruct', 'mistralai/mistral-large'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'zhipu',
+    name: 'Zhipu AI (GLM)',
+    type: 'openai-compatible',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    defaultModel: 'glm-4-plus',
+    models: ['glm-4-plus', 'glm-4-air', 'glm-4-airx', 'glm-4-flash', 'glm-4-flashx', 'glm-4-long', 'glm-4', 'glm-4v-plus', 'glm-4v', 'codegeex-4'],
     maxTokens: 4096,
   },
   {
@@ -107,6 +126,48 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'http://127.0.0.1:1234/v1',
     defaultModel: 'local-model',
+    maxTokens: 4096,
+  },
+  {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.x.ai/v1',
+    defaultModel: 'grok-2-latest',
+    models: ['grok-2-latest', 'grok-2-1212', 'grok-2-vision-1212', 'grok-beta', 'grok-vision-beta'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    defaultModel: 'llama-3.3-70b',
+    models: ['llama-3.3-70b', 'llama3.1-70b', 'llama3.1-8b'],
+    maxTokens: 8192,
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.perplexity.ai',
+    defaultModel: 'llama-3.1-sonar-large-128k-online',
+    models: ['llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-small-128k-online', 'llama-3.1-sonar-huge-128k-online'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'fireworks',
+    name: 'Fireworks AI',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    models: [
+      'accounts/fireworks/models/llama-v3p3-70b-instruct',
+      'accounts/fireworks/models/deepseek-v3',
+      'accounts/fireworks/models/deepseek-r1',
+      'accounts/fireworks/models/qwen2p5-coder-32b-instruct',
+      'accounts/fireworks/models/mixtral-8x22b-instruct',
+    ],
     maxTokens: 4096,
   },
   {
@@ -177,10 +238,44 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
 const PROVIDERS_STORAGE_KEY = 'nexus_ai_providers_v1';
 const ACTIVE_PROVIDER_KEY = 'nexus_active_provider_v1';
 
+// ─── Failover state ──────────────────────────────────────────────
+// When a generate() / stream() call fails with a transient error
+// (network timeout, 5xx response, fetch abort) we mark the provider as
+// degraded for FAILOVER_COOLDOWN_MS. During that window, the gateway
+// transparently routes to the next enabled provider with a configured
+// API key. Once the cooldown expires, we retry the original provider
+// on the next call. After FAILOVER_FAILURE_THRESHOLD consecutive
+// failures the provider is degraded immediately.
+
+const FAILOVER_COOLDOWN_MS = 60_000;       // 60 seconds in degraded state
+const FAILOVER_FAILURE_THRESHOLD = 2;      // # of failures before degrading
+const FAILOVER_TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+export interface ProviderHealth {
+  failureCount: number;
+  degradedUntil: number;
+  lastError?: string;
+}
+
+/** Cooldown window after FAILOVER_FAILURE_THRESHOLD failures.
+ *  Exposed for the Dashboard to render a countdown. */
+export const FAILOVER_DEGRADED_WINDOW_MS = FAILOVER_COOLDOWN_MS;
+
+/** Test if an error is worth retrying on a different provider. */
+export function isTransientProviderError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message;
+    if (/\b(5\d\d|408|425|429)\b/.test(msg)) return true;
+    if (/timeout|aborted|network|fetch failed|ECONN|ENOTFOUND/i.test(msg)) return true;
+  }
+  return false;
+}
+
 export class AIProviderGateway {
   private static instance: AIProviderGateway;
   private providers: AIProvider[] = [];
   private activeProviderId: string = 'lmstudio';
+  private health: Map<string, ProviderHealth> = new Map();
 
   private constructor() {
     this.loadProviders();
@@ -373,7 +468,9 @@ export class AIProviderGateway {
   ): Promise<string | ReadableStream<Uint8Array>> {
     const modelId = model || provider.defaultModel;
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-    const url = `${provider.baseUrl}/models/${modelId}:${endpoint}?key=${provider.apiKey}`;
+    // Pass the API key in a header rather than the URL to keep it out of
+    // referers, server logs, browser history, and proxy access logs.
+    const url = `${provider.baseUrl}/models/${modelId}:${endpoint}`;
 
     // Convert to Gemini format
     const systemInstruction = messages.find(m => m.role === 'system')?.content;
@@ -389,7 +486,10 @@ export class AIProviderGateway {
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': provider.apiKey,
+      },
       body: JSON.stringify(body),
     });
 
@@ -406,16 +506,110 @@ export class AIProviderGateway {
     }
   }
 
+  // ─── FIM: Fill-In-The-Middle Completion ────────────────────
+  public async fimCompletion(
+    prompt: string,
+    suffix: string,
+    model?: string,
+    maxTokens?: number
+  ): Promise<string> {
+    const provider = this.getActiveProvider();
+    if (!provider) throw new Error('No AI provider configured.');
+
+    // Only Mistral/Codestral officially support this specific FIM endpoint
+    if (provider.id === 'mistral' || provider.id === 'codestral') {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(provider.apiKey ? { 'Authorization': `Bearer ${provider.apiKey}` } : {}),
+      };
+
+      const res = await fetch(`${provider.baseUrl}/fim/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: model || provider.defaultModel,
+          prompt,
+          suffix,
+          temperature: 0.2,
+          max_tokens: maxTokens || provider.maxTokens || 4096,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`${provider.name} FIM API Error ${res.status}: ${errBody.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || '';
+    }
+
+    // Fallback for other providers: normal generation
+    const fallbackPrompt = `Complete the following code. Return ONLY the code that should go between the PREFIX and SUFFIX.
+
+PREFIX:
+${prompt}
+
+SUFFIX:
+${suffix}`;
+
+    return this.generate('', fallbackPrompt, model, maxTokens);
+  }
+
+  // ─── Health tracking ───────────────────────────────────────
+  /** Mark a provider as having failed; degrades after threshold. */
+  private markFailure(providerId: string, err: unknown): void {
+    const health = this.health.get(providerId) ?? { failureCount: 0, degradedUntil: 0 };
+    health.failureCount += 1;
+    health.lastError = err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200);
+    if (health.failureCount >= FAILOVER_FAILURE_THRESHOLD) {
+      health.degradedUntil = Date.now() + FAILOVER_COOLDOWN_MS;
+    }
+    this.health.set(providerId, health);
+  }
+
+  /** Reset health on a successful call. */
+  private markSuccess(providerId: string): void {
+    this.health.set(providerId, { failureCount: 0, degradedUntil: 0 });
+  }
+
+  /** Returns true if the provider is currently in cooldown. */
+  private isDegraded(providerId: string, now: number = Date.now()): boolean {
+    const health = this.health.get(providerId);
+    return !!health && now < health.degradedUntil;
+  }
+
+  /** Find the next eligible provider for failover: enabled, has an API key
+   *  (or is local), not currently degraded, and not the one we just tried. */
+  private findFailoverProvider(excludeId: string): AIProvider | null {
+    const now = Date.now();
+    for (const p of this.providers) {
+      if (!p.enabled) continue;
+      if (p.id === excludeId) continue;
+      if (this.isDegraded(p.id, now)) continue;
+      const isLocal = p.id === 'lmstudio' || p.id === 'ollama';
+      if (!isLocal && !p.apiKey) continue;
+      return p;
+    }
+    return null;
+  }
+
+  /** Health snapshot for the dashboard. */
+  public getHealthSnapshot(): Record<string, ProviderHealth> {
+    const out: Record<string, ProviderHealth> = {};
+    for (const [id, h] of this.health) out[id] = { ...h };
+    return out;
+  }
+
   // ─── Unified Interface ─────────────────────────────────────
-  public async generate(
+  /** One non-failover invocation against a specific provider. */
+  private async generateOnce(
+    provider: AIProvider,
     systemPrompt: string,
     userPrompt: string,
     model?: string,
     maxTokens?: number,
   ): Promise<string> {
-    const provider = this.getActiveProvider();
-    if (!provider) throw new Error('No AI provider configured. Go to Settings > AI Providers.');
-
     const messages: Array<{ role: string; content: string }> = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
     messages.push({ role: 'user', content: userPrompt });
@@ -428,6 +622,43 @@ export class AIProviderGateway {
       case 'openai-compatible':
       default:
         return this.callOpenAICompatible(provider, messages, false, model, maxTokens);
+    }
+  }
+
+  public async generate(
+    systemPrompt: string,
+    userPrompt: string,
+    model?: string,
+    maxTokens?: number,
+  ): Promise<string> {
+    const primary = this.getActiveProvider();
+    if (!primary) throw new Error('No AI provider configured. Go to Settings > AI Providers.');
+
+    // If the primary is degraded, try a failover provider first.
+    let provider = this.isDegraded(primary.id) ? (this.findFailoverProvider(primary.id) ?? primary) : primary;
+
+    try {
+      const result = await this.generateOnce(provider, systemPrompt, userPrompt, model, maxTokens);
+      this.markSuccess(provider.id);
+      return result;
+    } catch (err) {
+      this.markFailure(provider.id, err);
+      // Only attempt failover if the error is transient AND we have a
+      // healthy alternative. Permanent errors (auth, bad request) propagate.
+      if (isTransientProviderError(err)) {
+        const fallback = this.findFailoverProvider(provider.id);
+        if (fallback) {
+          try {
+            const result = await this.generateOnce(fallback, systemPrompt, userPrompt, model, maxTokens);
+            this.markSuccess(fallback.id);
+            return result;
+          } catch (fallbackErr) {
+            this.markFailure(fallback.id, fallbackErr);
+            throw fallbackErr;
+          }
+        }
+      }
+      throw err;
     }
   }
 

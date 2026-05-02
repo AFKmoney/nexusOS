@@ -10,7 +10,8 @@ test('release configuration files are aligned on NexusOS branding', async () => 
   const buildAndRelease = await readFile(path.join(projectRoot, 'BUILD_AND_RELEASE.md'), 'utf8');
 
   assert.match(packageJson, /"name":\s*"nexusos"/);
-  assert.match(packageJson, /"version":\s*"2\.0\.0"/);
+  // Match any 2.x release line; releases on this branch already moved past 2.0.0.
+  assert.match(packageJson, /"version":\s*"2\.\d+\.\d+"/);
   assert.match(electronBuilder, /productName:\s*NexusOS/);
   assert.match(electronBuilder, /artifactName:\s*"NexusOS_Setup_\$\{version\}\.\$\{ext\}"/);
   assert.match(buildAndRelease, /product name: `NexusOS`/);

@@ -131,13 +131,15 @@ test('parseOsActions - handles empty text and whitespace', () => {
   assert.strictEqual(action?.raw, 'OS::NOTIFY:Test:  Whitespace');
 });
 
-test('generateOSManifest - empty state', () => {
-  // Mock store empty state
-  bindOsStore(() => ({ windows: [] }));
+// generateOSManifest v3 emits an ultra-compressed token-budgeted format
+// (see header in kernel/osManifest.ts). The legacy verbose section format
+// — [OPEN WINDOWS], [VFS WORKSPACE], [RELEVANT MEMORY] — was retired.
+// Each tier emits compact, pipe/comma-delimited lines.
 
-  // Mock VFS empty state
+test('generateOSManifest - empty state', () => {
+  bindOsStore(() => ({ windows: [], registry: [] }));
   const originalListDir = vfs.listDir;
-  vfs.listDir = (path: string) => [];
+  vfs.listDir = (_path: string) => [];
 
   try {
     const manifest = generateOSManifest();
@@ -145,77 +147,78 @@ test('generateOSManifest - empty state', () => {
     assert.match(manifest, /\[OS\] NexusOS\|ai:/);
     assert.match(manifest, /apps:0/);
     assert.match(manifest, /open:none/);
+    // Core OS line is always present and reports no open windows.
+    assert.match(manifest, /\[OS\] NexusOS\|ai:[^|]+\|apps:0\|open:none/);
+    // Minimal tier (no query) always includes the example + protocol lines.
+    assert.match(manifest, /\[EX\] /);
+    assert.match(manifest, /\[PROTO\] You are NexusOS AI\./);
   } finally {
-    // Restore
     vfs.listDir = originalListDir;
   }
 });
 
 test('generateOSManifest - with active windows', () => {
-  // Mock store with windows
   bindOsStore(() => ({
     windows: [
       { title: 'Terminal', appId: 'terminal', isMinimized: false },
       { title: 'Editor', appId: 'hyperide', isMinimized: true }
-    ]
+    ],
+    registry: []
   }));
-
   const originalListDir = vfs.listDir;
-  vfs.listDir = (path: string) => [];
+  vfs.listDir = (_path: string) => [];
 
   try {
     const manifest = generateOSManifest();
 
     assert.match(manifest, /open:terminal,hyperide\(min\)/);
+    // v3 emits open windows comma-separated on the [OS] line; minimized
+    // windows are tagged with "(min)" right after the appId.
+    assert.match(manifest, /\[OS\][^\n]*\|open:terminal,hyperide\(min\)/);
   } finally {
     vfs.listDir = originalListDir;
   }
 });
 
-test('generateOSManifest - with VFS snapshot', () => {
-  bindOsStore(() => ({ windows: [] }));
-
+test('generateOSManifest - with VFS snapshot (full tier via query)', () => {
+  bindOsStore(() => ({ windows: [], registry: [] }));
   const originalListDir = vfs.listDir;
-  const originalStat = vfs.stat;
 
-  // Mock VFS files
+  // v3 only emits the VFS line in the "full" tier, which is selected when the
+  // query contains a file/app keyword. The new format is a single-level
+  // comma-separated listing of /home/user — no recursion, no stat() calls.
   vfs.listDir = (path: string) => {
     if (path === '/home/user') return ['docs', 'notes.txt'];
-    if (path === '/home/user/docs') return ['report.pdf'];
     return [];
-  };
-
-  vfs.stat = (path: string) => {
-    if (path === '/home/user/docs') return { type: 'directory' } as any;
-    if (path === '/home/user/notes.txt') return { type: 'file' } as any;
-    if (path === '/home/user/docs/report.pdf') return { type: 'file' } as any;
-    return null;
   };
 
   try {
     const manifest = generateOSManifest(undefined, 'file'); // 'file' triggers full tier
 
+    const manifest = generateOSManifest([], 'open the file docs');
     assert.match(manifest, /\[VFS\] docs,notes\.txt/);
   } finally {
     vfs.listDir = originalListDir;
-    vfs.stat = originalStat;
   }
 });
 
 test('generateOSManifest - with relevant memory', () => {
-  bindOsStore(() => ({ windows: [] }));
-
+  bindOsStore(() => ({ windows: [], registry: [] }));
   const originalListDir = vfs.listDir;
-  vfs.listDir = (path: string) => [];
+  vfs.listDir = (_path: string) => [];
 
   try {
     const memory = [
-      { id: '1', timestamp: 0, content: 'User likes dark mode.', tags: [], embeddingVector: [] },
-      { id: '2', timestamp: 0, content: 'Project is named "NexusOS"', tags: [], embeddingVector: [] }
+      { id: '1', timestamp: Date.now(), content: 'User likes dark mode.', tags: [], embeddingVector: [], importance: 0.9 },
+      { id: '2', timestamp: Date.now(), content: 'Project is named "NexusOS"', tags: [], embeddingVector: [], importance: 0.9 }
     ];
     const manifest = generateOSManifest(memory);
 
     assert.match(manifest, /\[MEM\] User likes dark mode\. | Project is named "NexusOS"/);
+    // Memory is pipe-delimited on a single [MEM] line, sorted by importance*recency.
+    assert.match(manifest, /\[MEM\] /);
+    assert.ok(manifest.includes('User likes dark mode.'));
+    assert.ok(manifest.includes('Project is named "NexusOS"'));
   } finally {
     vfs.listDir = originalListDir;
   }
