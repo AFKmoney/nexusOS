@@ -383,20 +383,31 @@ Return ONLY PURE JSON (no markdown, no explanation):
 
       if (commands.length > 0) {
         const { mirrorGuard } = await import('./mirrorGuard');
-        
+        const { parseOsActions } = await import('./osManifest');
+
         for (const cmd of commands) {
           if (!cmd || cmd.toLowerCase() === 'none') continue;
-          
-          // 🔷 T' MODE VERIFICATION
-          const [verb = ''] = cmd.split(' ');
-          const validation = await mirrorGuard.validate({
-              type: verb.toUpperCase(),
-              args: cmd.split(' ').slice(1),
-              raw: cmd
-          });
 
+          // Build the proposal that mirrorGuard understands. Two cases:
+          //   1. cmd is an OS:: action — parse it into a structured proposal
+          //      so the kernel can evaluate it against the per-verb policy.
+          //   2. cmd is a shell command — wrap it as RUN_COMMAND so the
+          //      shell denylist (rm -rf /, curl|sh, etc.) gates it.
+          let proposal;
+          if (cmd.trim().startsWith('OS::')) {
+            const parsed = parseOsActions(cmd)[0];
+            if (!parsed) {
+              os.addAutonomyLog(`MIRROR REJECT: malformed OS:: action: ${cmd.slice(0, 80)}`);
+              continue;
+            }
+            proposal = { type: parsed.type, args: parsed.args, raw: parsed.raw };
+          } else {
+            proposal = { type: 'RUN_COMMAND', args: [cmd], raw: cmd };
+          }
+
+          const validation = await mirrorGuard.validate(proposal);
           if (!validation.valid) {
-              os.addAutonomyLog(`🔷 MIRROR REJECT: ${validation.reason}`);
+              os.addAutonomyLog(`MIRROR REJECT: ${validation.reason}`);
               continue;
           }
 
