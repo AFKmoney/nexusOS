@@ -238,10 +238,40 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
 const PROVIDERS_STORAGE_KEY = 'nexus_ai_providers_v1';
 const ACTIVE_PROVIDER_KEY = 'nexus_active_provider_v1';
 
+// ─── Failover state ──────────────────────────────────────────────
+// When a generate() / stream() call fails with a transient error
+// (network timeout, 5xx response, fetch abort) we mark the provider as
+// degraded for FAILOVER_COOLDOWN_MS. During that window, the gateway
+// transparently routes to the next enabled provider with a configured
+// API key. Once the cooldown expires, we retry the original provider
+// on the next call. After FAILOVER_FAILURE_THRESHOLD consecutive
+// failures the provider is degraded immediately.
+
+const FAILOVER_COOLDOWN_MS = 60_000;       // 60 seconds in degraded state
+const FAILOVER_FAILURE_THRESHOLD = 2;      // # of failures before degrading
+const FAILOVER_TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+interface ProviderHealth {
+  failureCount: number;
+  degradedUntil: number;
+  lastError?: string;
+}
+
+/** Test if an error is worth retrying on a different provider. */
+export function isTransientProviderError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message;
+    if (/\b(5\d\d|408|425|429)\b/.test(msg)) return true;
+    if (/timeout|aborted|network|fetch failed|ECONN|ENOTFOUND/i.test(msg)) return true;
+  }
+  return false;
+}
+
 export class AIProviderGateway {
   private static instance: AIProviderGateway;
   private providers: AIProvider[] = [];
   private activeProviderId: string = 'lmstudio';
+  private health: Map<string, ProviderHealth> = new Map();
 
   private constructor() {
     this.loadProviders();
@@ -522,16 +552,60 @@ ${suffix}`;
     return this.generate('', fallbackPrompt, model, maxTokens);
   }
 
+  // ─── Health tracking ───────────────────────────────────────
+  /** Mark a provider as having failed; degrades after threshold. */
+  private markFailure(providerId: string, err: unknown): void {
+    const health = this.health.get(providerId) ?? { failureCount: 0, degradedUntil: 0 };
+    health.failureCount += 1;
+    health.lastError = err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200);
+    if (health.failureCount >= FAILOVER_FAILURE_THRESHOLD) {
+      health.degradedUntil = Date.now() + FAILOVER_COOLDOWN_MS;
+    }
+    this.health.set(providerId, health);
+  }
+
+  /** Reset health on a successful call. */
+  private markSuccess(providerId: string): void {
+    this.health.set(providerId, { failureCount: 0, degradedUntil: 0 });
+  }
+
+  /** Returns true if the provider is currently in cooldown. */
+  private isDegraded(providerId: string, now: number = Date.now()): boolean {
+    const health = this.health.get(providerId);
+    return !!health && now < health.degradedUntil;
+  }
+
+  /** Find the next eligible provider for failover: enabled, has an API key
+   *  (or is local), not currently degraded, and not the one we just tried. */
+  private findFailoverProvider(excludeId: string): AIProvider | null {
+    const now = Date.now();
+    for (const p of this.providers) {
+      if (!p.enabled) continue;
+      if (p.id === excludeId) continue;
+      if (this.isDegraded(p.id, now)) continue;
+      const isLocal = p.id === 'lmstudio' || p.id === 'ollama';
+      if (!isLocal && !p.apiKey) continue;
+      return p;
+    }
+    return null;
+  }
+
+  /** Health snapshot for the dashboard. */
+  public getHealthSnapshot(): Record<string, ProviderHealth> {
+    const out: Record<string, ProviderHealth> = {};
+    for (const [id, h] of this.health) out[id] = { ...h };
+    return out;
+  }
+
   // ─── Unified Interface ─────────────────────────────────────
-  public async generate(
+  /** One non-failover invocation against a specific provider. */
+  private async generateOnce(
+    provider: AIProvider,
     systemPrompt: string,
     userPrompt: string,
     model?: string,
     maxTokens?: number,
   ): Promise<string> {
-    const provider = this.getActiveProvider();
-    if (!provider) throw new Error('No AI provider configured. Go to Settings > AI Providers.');
-
     const messages: Array<{ role: string; content: string }> = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
     messages.push({ role: 'user', content: userPrompt });
@@ -544,6 +618,43 @@ ${suffix}`;
       case 'openai-compatible':
       default:
         return this.callOpenAICompatible(provider, messages, false, model, maxTokens);
+    }
+  }
+
+  public async generate(
+    systemPrompt: string,
+    userPrompt: string,
+    model?: string,
+    maxTokens?: number,
+  ): Promise<string> {
+    const primary = this.getActiveProvider();
+    if (!primary) throw new Error('No AI provider configured. Go to Settings > AI Providers.');
+
+    // If the primary is degraded, try a failover provider first.
+    let provider = this.isDegraded(primary.id) ? (this.findFailoverProvider(primary.id) ?? primary) : primary;
+
+    try {
+      const result = await this.generateOnce(provider, systemPrompt, userPrompt, model, maxTokens);
+      this.markSuccess(provider.id);
+      return result;
+    } catch (err) {
+      this.markFailure(provider.id, err);
+      // Only attempt failover if the error is transient AND we have a
+      // healthy alternative. Permanent errors (auth, bad request) propagate.
+      if (isTransientProviderError(err)) {
+        const fallback = this.findFailoverProvider(provider.id);
+        if (fallback) {
+          try {
+            const result = await this.generateOnce(fallback, systemPrompt, userPrompt, model, maxTokens);
+            this.markSuccess(fallback.id);
+            return result;
+          } catch (fallbackErr) {
+            this.markFailure(fallback.id, fallbackErr);
+            throw fallbackErr;
+          }
+        }
+      }
+      throw err;
     }
   }
 
