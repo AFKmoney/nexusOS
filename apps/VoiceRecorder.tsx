@@ -10,14 +10,54 @@ export default function VoiceRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [duration, setDuration] = useState(0);
+  const [audioData, setAudioData] = useState<number[]>(new Array(24).fill(20));
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const updateVisualizer = () => {
+    if (!analyserRef.current) return;
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(dataArray);
+
+    // Downsample the data array to 24 bars
+    const bars = 24;
+    const step = Math.floor(dataArray.length / bars);
+    const newData = [];
+    for (let i = 0; i < bars; i++) {
+      let sum = 0;
+      for (let j = 0; j < step; j++) {
+        sum += dataArray[i * step + j] || 0;
+      }
+      const avg = sum / step;
+      // Map 0-255 to a minimum height of 20% to maximum 100%
+      newData.push(20 + (avg / 255) * 80);
+    }
+    setAudioData(newData);
+
+    animationFrameRef.current = requestAnimationFrame(updateVisualizer);
+  };
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Setup Web Audio API for visualizer
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioCtx();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      updateVisualizer();
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -52,7 +92,14 @@ export default function VoiceRecorder() {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
     setIsRecording(false);
+    setAudioData(new Array(24).fill(20));
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
@@ -82,14 +129,14 @@ export default function VoiceRecorder() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-black/20 relative overflow-hidden">
-        {/* Recording Visualizer (Mock) */}
+        {/* Recording Visualizer */}
         {isRecording && (
           <div className="flex items-end gap-1 h-32 mb-12">
-            {Array.from({length: 24}).map((_, i) => (
+            {audioData.map((val, i) => (
               <div 
                 key={i} 
-                className="w-1.5 bg-red-500 rounded-full animate-pulse" 
-                style={{ height: `${20 + Math.random() * 80}%`, animationDelay: `${i * 0.05}s` }} 
+                className="w-1.5 bg-red-500 rounded-full transition-all duration-75"
+                style={{ height: `${val}%` }}
               />
             ))}
           </div>

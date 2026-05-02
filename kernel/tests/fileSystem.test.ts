@@ -11,9 +11,12 @@ global.localStorage = {
   key: (index: number) => null,
 } as any;
 
-global.navigator = {
-  hardwareConcurrency: 4,
-} as any;
+Object.defineProperty(global, 'navigator', {
+  value: {
+    hardwareConcurrency: 4,
+  },
+  writable: true
+});
 
 if (typeof global.window === 'undefined') {
   (global as any).window = {};
@@ -167,7 +170,7 @@ test('VirtualFileSystem - constructor handles invalid JSON by falling back to IN
   }
 });
 
-test('VirtualFileSystem - constructor loads saved valid state from localStorage', () => {
+test('VirtualFileSystem - constructor loads saved valid state from localStorage', async () => {
   const originalGetItem = global.localStorage.getItem;
   try {
     const customState = {
@@ -194,6 +197,7 @@ test('VirtualFileSystem - constructor loads saved valid state from localStorage'
     };
 
     const vfs = new VirtualFileSystem();
+    await vfs.init();
     const content = vfs.readFile('/system/custom.log', SYSTEM_VFS_APP_ID);
     assert.strictEqual(content, 'custom loaded content', 'Should load and parse valid JSON state from localStorage');
   } finally {

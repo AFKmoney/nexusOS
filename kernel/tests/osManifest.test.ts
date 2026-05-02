@@ -11,9 +11,12 @@ global.localStorage = {
   key: (index: number) => null,
 } as any;
 
-global.navigator = {
-  hardwareConcurrency: 4,
-} as any;
+Object.defineProperty(global, 'navigator', {
+  value: {
+    hardwareConcurrency: 4,
+  },
+  writable: true
+});
 
 if (typeof global.fetch === 'undefined') {
   (global as any).fetch = async () => ({ ok: false, json: async () => ({}) });
@@ -139,9 +142,9 @@ test('generateOSManifest - empty state', () => {
   try {
     const manifest = generateOSManifest();
 
-    assert.match(manifest, /\[OPEN WINDOWS\]\nNone open\./);
-    assert.match(manifest, /\[VFS WORKSPACE\]\n📁 \/home\/user\/ \(empty\)/);
-    assert.match(manifest, /\[RELEVANT MEMORY\]\n  \(no relevant memory\)/);
+    assert.match(manifest, /\[OS\] NexusOS\|ai:/);
+    assert.match(manifest, /apps:0/);
+    assert.match(manifest, /open:none/);
   } finally {
     // Restore
     vfs.listDir = originalListDir;
@@ -163,7 +166,7 @@ test('generateOSManifest - with active windows', () => {
   try {
     const manifest = generateOSManifest();
 
-    assert.match(manifest, /\[OPEN WINDOWS\]\n  • Terminal \(appId: terminal\)\n  • Editor \(appId: hyperide, minimized\)/);
+    assert.match(manifest, /open:terminal,hyperide\(min\)/);
   } finally {
     vfs.listDir = originalListDir;
   }
@@ -190,9 +193,9 @@ test('generateOSManifest - with VFS snapshot', () => {
   };
 
   try {
-    const manifest = generateOSManifest();
+    const manifest = generateOSManifest(undefined, 'file'); // 'file' triggers full tier
 
-    assert.match(manifest, /\[VFS WORKSPACE\]\n📁 \/home\/user\/\n  📁 docs\/\n    📄 report\.pdf\n  📄 notes\.txt/);
+    assert.match(manifest, /\[VFS\] docs,notes\.txt/);
   } finally {
     vfs.listDir = originalListDir;
     vfs.stat = originalStat;
@@ -212,7 +215,7 @@ test('generateOSManifest - with relevant memory', () => {
     ];
     const manifest = generateOSManifest(memory);
 
-    assert.match(manifest, /\[RELEVANT MEMORY\]\n  • User likes dark mode\.\n  • Project is named "NexusOS"/);
+    assert.match(manifest, /\[MEM\] User likes dark mode\. | Project is named "NexusOS"/);
   } finally {
     vfs.listDir = originalListDir;
   }
