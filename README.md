@@ -7,7 +7,7 @@
 
 <div align="center">
   <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-windows%20installer-10b981?style=flat-square" alt="Download" /></a>
-  <img src="https://img.shields.io/badge/version-2.0.4-10b981?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-2.0.5-10b981?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/typescript-strict-3178c6?style=flat-square" alt="TypeScript strict" />
 </div>
@@ -28,7 +28,7 @@ This repository contains the full source: the React 19 shell, the TypeScript ker
 
 | Metric | Value |
 |---|---|
-| Version | 2.0.4 |
+| Version | 2.0.5 |
 | Source files (TypeScript / TSX) | 134 |
 | Lines of TypeScript | ~26,000 |
 | Kernel modules | 27 |

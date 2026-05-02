@@ -1,6 +1,6 @@
 # NexusOS — Testing Reference
 
-This document describes the test harness, the current coverage, and the gaps. It is grounded in the present state of the repository at version 2.0.4.
+This document describes the test harness, the current coverage, and the gaps. It is grounded in the present state of the repository at version 2.0.5.
 
 The author of every test must read this document before adding new ones; the harness has specific requirements (Node test runner, browser-shim ordering, force-exit grace window) that are easy to miss.
 

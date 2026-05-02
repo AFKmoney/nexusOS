@@ -1,6 +1,6 @@
 # NexusOS — User Manual
 
-**Version:** 2.0.4
+**Version:** 2.0.5
 **Author:** Philippe-Antoine Robert
 
 This manual describes how to use NexusOS as an end user. It is a reference, not an introduction; the [README](README.md) covers what the project is and the [Architecture document](ARCHITECTURE.md) covers how it works internally.
