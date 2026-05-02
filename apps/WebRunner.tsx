@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
 import {
   RefreshCw, AlertTriangle, ExternalLink, ArrowLeft, ArrowRight,
-  Home, Globe, X, Search, Lock, Loader2, Shield
+  Home, Globe, X, Search, Lock, Loader2, Shield, Brain
 } from 'lucide-react';
+import { aiPipelineBridge } from '../kernel/aiPipelineBridge';
 
 /**
  * WebRunner — NexusOS Embedded Web Browser
@@ -249,6 +250,23 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     if (e.key === 'Enter') navigate(urlInput);
   };
 
+  const analyzeWithAI = async () => {
+    if (!pageHtml) return;
+
+    // Strip HTML to get raw text for AI
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = pageHtml;
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+    // Truncate to reasonable context window limit to avoid overwhelming model
+    const truncatedText = textContent.replace(/\s+/g, ' ').trim().slice(0, 10000);
+
+    await aiPipelineBridge.dispatch({
+      type: 'ANSWER',
+      prompt: `Summarize the following content from the webpage at ${currentUrl}:\n\n${truncatedText}`
+    });
+  };
+
   const isHomepage = !currentUrl;
   const hostname = (() => {
     try { return new URL(currentUrl).hostname; } catch { return currentUrl; }
@@ -294,9 +312,14 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
         </div>
 
         {currentUrl && (
-          <button onClick={openExternal} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-600 hover:text-zinc-300" title="Open in system browser">
-            <ExternalLink size={15} />
-          </button>
+          <>
+            <button onClick={analyzeWithAI} disabled={!pageHtml || isLoading} className="p-1.5 hover:bg-blue-500/10 rounded-lg transition-all text-blue-500/70 hover:text-blue-400 disabled:opacity-30 disabled:hover:bg-transparent" title="Analyze with AI">
+              <Brain size={15} />
+            </button>
+            <button onClick={openExternal} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-600 hover:text-zinc-300" title="Open in system browser">
+              <ExternalLink size={15} />
+            </button>
+          </>
         )}
       </div>
 
