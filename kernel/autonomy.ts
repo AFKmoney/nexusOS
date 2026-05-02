@@ -6,6 +6,7 @@ import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
+import { missionLearning } from './missionLearning';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -222,11 +223,20 @@ export class AutonomyEngine {
 
   private runFractalTick() {
     if (!this.isRunning) return;
-    
-    this.tick().finally(() => {
+
+    // .catch BEFORE .finally so an unhandled rejection inside tick() can never
+    // halt the scheduler loop. Without this, a single throw would surface as an
+    // unhandled promise rejection and (in some environments) prevent the next
+    // tick from being scheduled at all.
+    this.tick()
+      .catch((err) => {
+        console.error('[AUTONOMY] tick() failed:', err);
+      })
+      .finally(() => {
+        if (!this.isRunning) return;
         const nextDelay = this.calculateNextFractalDelay();
         this.intervalId = setTimeout(() => this.runFractalTick(), nextDelay);
-    });
+      });
   }
 
   private calculateNextFractalDelay(): number {
@@ -298,12 +308,22 @@ export class AutonomyEngine {
     // ── Phase 2: Select mission via priority queue ──
     os.setAutonomyState('PROMPTING');
 
-    // Score all missions and pick the best
+    // Score all missions and pick the best.
+    // base × trust modulates the static weight by the mission's recent
+    // success/failure history (Bayesian-smoothed, time-decayed). A small
+    // randomness term keeps exploration alive even when one mission
+    // dominates trust.
     const scoredMissions = MISSION_POOL
-      .map(m => ({
-        mission: m,
-        score: m.weight(snapshot) + (Math.random() * 0.1), // Small randomness for exploration
-      }))
+      .map(m => {
+        const base = m.weight(snapshot);
+        const trust = missionLearning.trustOf(m.id);
+        return {
+          mission: m,
+          base,
+          trust,
+          score: base * trust + Math.random() * 0.1,
+        };
+      })
       .sort((a, b) => b.score - a.score);
 
     const topMission = scoredMissions[0];
@@ -314,9 +334,16 @@ export class AutonomyEngine {
     }
     const selectedMission = topMission.mission;
 
+    // Adaptive prompt refinement: surface the most recent failure reason
+    // for this mission so the model can avoid repeating the same mistake.
+    const priorFailure = missionLearning.lastFailureReason(selectedMission.id);
+    const failureHint = priorFailure
+      ? `\n[PRIOR FAILURE] Last attempt of this mission failed with: ${priorFailure.slice(0, 200)}\nAvoid repeating that mistake.\n`
+      : '';
+
     const fullPrompt = `
 ${selectedMission.prompt(snapshot)}
-
+${failureHint}
 [RECENT SYSTEM EVENTS]
 ${this.eventQueue.slice(-5).join('\n') || 'No recent events.'}
 
@@ -374,20 +401,31 @@ Return ONLY PURE JSON (no markdown, no explanation):
 
       if (commands.length > 0) {
         const { mirrorGuard } = await import('./mirrorGuard');
-        
+        const { parseOsActions } = await import('./osManifest');
+
         for (const cmd of commands) {
           if (!cmd || cmd.toLowerCase() === 'none') continue;
-          
-          // 🔷 T' MODE VERIFICATION
-          const [verb = ''] = cmd.split(' ');
-          const validation = await mirrorGuard.validate({
-              type: verb.toUpperCase(),
-              args: cmd.split(' ').slice(1),
-              raw: cmd
-          });
 
+          // Build the proposal that mirrorGuard understands. Two cases:
+          //   1. cmd is an OS:: action — parse it into a structured proposal
+          //      so the kernel can evaluate it against the per-verb policy.
+          //   2. cmd is a shell command — wrap it as RUN_COMMAND so the
+          //      shell denylist (rm -rf /, curl|sh, etc.) gates it.
+          let proposal;
+          if (cmd.trim().startsWith('OS::')) {
+            const parsed = parseOsActions(cmd)[0];
+            if (!parsed) {
+              os.addAutonomyLog(`MIRROR REJECT: malformed OS:: action: ${cmd.slice(0, 80)}`);
+              continue;
+            }
+            proposal = { type: parsed.type, args: parsed.args, raw: parsed.raw };
+          } else {
+            proposal = { type: 'RUN_COMMAND', args: [cmd], raw: cmd };
+          }
+
+          const validation = await mirrorGuard.validate(proposal);
           if (!validation.valid) {
-              os.addAutonomyLog(`🔷 MIRROR REJECT: ${validation.reason}`);
+              os.addAutonomyLog(`MIRROR REJECT: ${validation.reason}`);
               continue;
           }
 
@@ -424,11 +462,14 @@ Return ONLY PURE JSON (no markdown, no explanation):
           }
         }
         
-        // Self-learning: record action result
-        this.lastActionResults.set(selectedMission.id, {
+        // Persist outcome to the mission-learning history. Successful
+        // attempts feed the trust score; the next selection cycle picks
+        // up the new weight automatically.
+        missionLearning.recordAttempt(selectedMission.id, {
           success: true,
           timestamp: Date.now(),
         });
+        this.lastActionResults.set(selectedMission.id, { success: true, timestamp: Date.now() });
       } else {
         os.addAutonomyLog(`◈ STATUS: [${decision.urgency || 'low'}] System nominal. No action required.`);
       }
@@ -445,11 +486,16 @@ Return ONLY PURE JSON (no markdown, no explanation):
       }
 
     } catch (e: any) {
-      os.addAutonomyLog(`◈ KERNEL_ERR: ${e.message}`);
-      this.lastActionResults.set(selectedMission.id, {
+      const reason = (e?.message || String(e)).slice(0, 200);
+      os.addAutonomyLog(`◈ KERNEL_ERR: ${reason}`);
+      // Persist the failure with its reason so the next selection of this
+      // mission can surface it as a [PRIOR FAILURE] hint to the model.
+      missionLearning.recordAttempt(selectedMission.id, {
         success: false,
         timestamp: Date.now(),
+        reason,
       });
+      this.lastActionResults.set(selectedMission.id, { success: false, timestamp: Date.now() });
     } finally {
       os.setAutonomyState('IDLE');
     }
