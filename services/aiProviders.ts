@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // NEXUS AI PROVIDER GATEWAY — Universal Multi-Provider Engine
 // Supports: OpenAI, Anthropic, Google, Groq, Mistral, DeepSeek,
-//           OpenRouter, Together, Ollama, LM Studio, and any
+//           OpenRouter, Together, Zhipu (GLM), xAI (Grok), Cerebras,
+//           Perplexity, Fireworks, Ollama, LM Studio, and any
 //           OpenAI-compatible endpoint.
 // ═══════════════════════════════════════════════════════════════
 
@@ -97,8 +98,8 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'Zhipu AI (GLM)',
     type: 'openai-compatible',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    defaultModel: 'glm-4-flash',
-    models: ['glm-4-flash', 'glm-4', 'glm-4-air', 'glm-4-plus', 'glm-4v'],
+    defaultModel: 'glm-4-plus',
+    models: ['glm-4-plus', 'glm-4-air', 'glm-4-airx', 'glm-4-flash', 'glm-4-flashx', 'glm-4-long', 'glm-4', 'glm-4v-plus', 'glm-4v', 'codegeex-4'],
     maxTokens: 4096,
   },
   {
@@ -125,6 +126,48 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'http://127.0.0.1:1234/v1',
     defaultModel: 'local-model',
+    maxTokens: 4096,
+  },
+  {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.x.ai/v1',
+    defaultModel: 'grok-2-latest',
+    models: ['grok-2-latest', 'grok-2-1212', 'grok-2-vision-1212', 'grok-beta', 'grok-vision-beta'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    defaultModel: 'llama-3.3-70b',
+    models: ['llama-3.3-70b', 'llama3.1-70b', 'llama3.1-8b'],
+    maxTokens: 8192,
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.perplexity.ai',
+    defaultModel: 'llama-3.1-sonar-large-128k-online',
+    models: ['llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-small-128k-online', 'llama-3.1-sonar-huge-128k-online'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'fireworks',
+    name: 'Fireworks AI',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    defaultModel: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+    models: [
+      'accounts/fireworks/models/llama-v3p3-70b-instruct',
+      'accounts/fireworks/models/deepseek-v3',
+      'accounts/fireworks/models/deepseek-r1',
+      'accounts/fireworks/models/qwen2p5-coder-32b-instruct',
+      'accounts/fireworks/models/mixtral-8x22b-instruct',
+    ],
     maxTokens: 4096,
   },
   {
