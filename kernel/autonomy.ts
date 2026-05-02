@@ -6,6 +6,7 @@ import { memory } from './memory';
 import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
+import { missionLearning } from './missionLearning';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -307,12 +308,22 @@ export class AutonomyEngine {
     // ── Phase 2: Select mission via priority queue ──
     os.setAutonomyState('PROMPTING');
 
-    // Score all missions and pick the best
+    // Score all missions and pick the best.
+    // base × trust modulates the static weight by the mission's recent
+    // success/failure history (Bayesian-smoothed, time-decayed). A small
+    // randomness term keeps exploration alive even when one mission
+    // dominates trust.
     const scoredMissions = MISSION_POOL
-      .map(m => ({
-        mission: m,
-        score: m.weight(snapshot) + (Math.random() * 0.1), // Small randomness for exploration
-      }))
+      .map(m => {
+        const base = m.weight(snapshot);
+        const trust = missionLearning.trustOf(m.id);
+        return {
+          mission: m,
+          base,
+          trust,
+          score: base * trust + Math.random() * 0.1,
+        };
+      })
       .sort((a, b) => b.score - a.score);
 
     const topMission = scoredMissions[0];
@@ -323,9 +334,16 @@ export class AutonomyEngine {
     }
     const selectedMission = topMission.mission;
 
+    // Adaptive prompt refinement: surface the most recent failure reason
+    // for this mission so the model can avoid repeating the same mistake.
+    const priorFailure = missionLearning.lastFailureReason(selectedMission.id);
+    const failureHint = priorFailure
+      ? `\n[PRIOR FAILURE] Last attempt of this mission failed with: ${priorFailure.slice(0, 200)}\nAvoid repeating that mistake.\n`
+      : '';
+
     const fullPrompt = `
 ${selectedMission.prompt(snapshot)}
-
+${failureHint}
 [RECENT SYSTEM EVENTS]
 ${this.eventQueue.slice(-5).join('\n') || 'No recent events.'}
 
@@ -444,11 +462,14 @@ Return ONLY PURE JSON (no markdown, no explanation):
           }
         }
         
-        // Self-learning: record action result
-        this.lastActionResults.set(selectedMission.id, {
+        // Persist outcome to the mission-learning history. Successful
+        // attempts feed the trust score; the next selection cycle picks
+        // up the new weight automatically.
+        missionLearning.recordAttempt(selectedMission.id, {
           success: true,
           timestamp: Date.now(),
         });
+        this.lastActionResults.set(selectedMission.id, { success: true, timestamp: Date.now() });
       } else {
         os.addAutonomyLog(`◈ STATUS: [${decision.urgency || 'low'}] System nominal. No action required.`);
       }
@@ -465,11 +486,16 @@ Return ONLY PURE JSON (no markdown, no explanation):
       }
 
     } catch (e: any) {
-      os.addAutonomyLog(`◈ KERNEL_ERR: ${e.message}`);
-      this.lastActionResults.set(selectedMission.id, {
+      const reason = (e?.message || String(e)).slice(0, 200);
+      os.addAutonomyLog(`◈ KERNEL_ERR: ${reason}`);
+      // Persist the failure with its reason so the next selection of this
+      // mission can surface it as a [PRIOR FAILURE] hint to the model.
+      missionLearning.recordAttempt(selectedMission.id, {
         success: false,
         timestamp: Date.now(),
+        reason,
       });
+      this.lastActionResults.set(selectedMission.id, { success: false, timestamp: Date.now() });
     } finally {
       os.setAutonomyState('IDLE');
     }
