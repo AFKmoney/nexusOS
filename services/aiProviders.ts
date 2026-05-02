@@ -62,7 +62,7 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.mistral.ai/v1',
     defaultModel: 'mistral-large-latest',
-    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'codestral-latest'],
+    models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'codestral-latest', 'mistral-nemo-latest', 'pixtral-12b-2409'],
     maxTokens: 4096,
   },
   {
@@ -79,8 +79,17 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'OpenRouter',
     type: 'openai-compatible',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'anthropic/claude-sonnet-4',
-    models: ['anthropic/claude-sonnet-4', 'openai/gpt-4o', 'google/gemini-2.5-flash', 'meta-llama/llama-3.3-70b-instruct'],
+    defaultModel: 'anthropic/claude-3.5-sonnet',
+    models: ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3-opus', 'openai/gpt-4o', 'google/gemini-1.5-pro', 'meta-llama/llama-3.1-70b-instruct', 'meta-llama/llama-3.1-405b-instruct', 'mistralai/mistral-large'],
+    maxTokens: 4096,
+  },
+  {
+    id: 'zhipu',
+    name: 'Zhipu AI (GLM)',
+    type: 'openai-compatible',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    defaultModel: 'glm-4-flash',
+    models: ['glm-4-flash', 'glm-4', 'glm-4-air', 'glm-4-plus', 'glm-4v'],
     maxTokens: 4096,
   },
   {
