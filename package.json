@@ -40,7 +40,7 @@
     "dotenv": "^17.3.1",
     "electron": "^41.0.2",
     "electron-builder": "^26.8.1",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.13",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
