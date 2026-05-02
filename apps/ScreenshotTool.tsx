@@ -7,31 +7,41 @@ export default function ScreenshotTool() {
   const [screenshots, setScreenshots] = useState<{id: string, data: string, date: number}[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
 
-  const takeCapture = () => {
+  const takeCapture = async () => {
     setIsCapturing(true);
     addNotification({ title: 'Neural Capture', message: 'Scanning system visual buffer...', type: 'info' });
-    
-    // Simulate capture delay
-    setTimeout(() => {
-      // In a real Electron app, we'd use desktopCapturer. 
-      // Here we mock the result with a cool abstract system state image.
-      const canvas = document.createElement('canvas');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#050508';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+
+    try {
+      if ((window as any).electron && (window as any).electron.invoke) {
+        const result = await (window as any).electron.invoke('native-capture-screen');
+        if (result.success && result.dataUrl) {
+          setScreenshots(prev => [{id: Date.now().toString(), data: result.dataUrl, date: Date.now()}, ...prev]);
+          addNotification({ title: 'Frame Sequenced', message: 'Visual manifest stored in local repository.', type: 'success' });
+        } else {
+          addNotification({ title: 'Capture Failed', message: result.error || 'Failed to capture screen', type: 'error' });
+        }
+      } else {
+        // Fallback for non-electron web environment
+        const canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#050508';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+        }
+        const dataUrl = canvas.toDataURL();
+        setScreenshots(prev => [{id: Date.now().toString(), data: dataUrl, date: Date.now()}, ...prev]);
+        addNotification({ title: 'Frame Sequenced', message: 'Visual manifest stored in local repository (fallback).', type: 'success' });
       }
-      
-      const data = canvas.toDataURL();
-      setScreenshots(prev => [{id: Date.now().toString(), data, date: Date.now()}, ...prev]);
+    } catch (e: any) {
+      addNotification({ title: 'Capture Failed', message: e.message, type: 'error' });
+    } finally {
       setIsCapturing(false);
-      addNotification({ title: 'Frame Sequenced', message: 'Visual manifest stored in local repository.', type: 'success' });
-    }, 1000);
+    }
   };
 
   const deleteShot = (id: string) => setScreenshots(prev => prev.filter(s => s.id !== id));

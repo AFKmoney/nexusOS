@@ -11,9 +11,12 @@ global.localStorage = {
   key: (index: number) => null,
 } as any;
 
-global.navigator = {
-  hardwareConcurrency: 4,
-} as any;
+Object.defineProperty(global, 'navigator', {
+  value: {
+    hardwareConcurrency: 4,
+  },
+  writable: true
+});
 
 if (typeof global.fetch === 'undefined') {
   (global as any).fetch = async () => ({ ok: false, json: async () => ({}) });
@@ -141,6 +144,9 @@ test('generateOSManifest - empty state', () => {
   try {
     const manifest = generateOSManifest();
 
+    assert.match(manifest, /\[OS\] NexusOS\|ai:/);
+    assert.match(manifest, /apps:0/);
+    assert.match(manifest, /open:none/);
     // Core OS line is always present and reports no open windows.
     assert.match(manifest, /\[OS\] NexusOS\|ai:[^|]+\|apps:0\|open:none/);
     // Minimal tier (no query) always includes the example + protocol lines.
@@ -165,6 +171,7 @@ test('generateOSManifest - with active windows', () => {
   try {
     const manifest = generateOSManifest();
 
+    assert.match(manifest, /open:terminal,hyperide\(min\)/);
     // v3 emits open windows comma-separated on the [OS] line; minimized
     // windows are tagged with "(min)" right after the appId.
     assert.match(manifest, /\[OS\][^\n]*\|open:terminal,hyperide\(min\)/);
@@ -186,6 +193,8 @@ test('generateOSManifest - with VFS snapshot (full tier via query)', () => {
   };
 
   try {
+    const manifest = generateOSManifest(undefined, 'file'); // 'file' triggers full tier
+
     const manifest = generateOSManifest([], 'open the file docs');
     assert.match(manifest, /\[VFS\] docs,notes\.txt/);
   } finally {
@@ -205,6 +214,7 @@ test('generateOSManifest - with relevant memory', () => {
     ];
     const manifest = generateOSManifest(memory);
 
+    assert.match(manifest, /\[MEM\] User likes dark mode\. | Project is named "NexusOS"/);
     // Memory is pipe-delimited on a single [MEM] line, sorted by importance*recency.
     assert.match(manifest, /\[MEM\] /);
     assert.ok(manifest.includes('User likes dark mode.'));

@@ -11,9 +11,12 @@ global.localStorage = {
   key: (index: number) => null,
 } as any;
 
-global.navigator = {
-  hardwareConcurrency: 4,
-} as any;
+Object.defineProperty(global, 'navigator', {
+  value: {
+    hardwareConcurrency: 4,
+  },
+  writable: true
+});
 
 if (typeof global.window === 'undefined') {
   (global as any).window = {};
@@ -167,6 +170,7 @@ test('VirtualFileSystem - constructor handles invalid JSON by falling back to IN
   }
 });
 
+test('VirtualFileSystem - constructor loads saved valid state from localStorage', async () => {
 test('VirtualFileSystem - init() loads saved valid state from localStorage when IndexedDB is unavailable', async () => {
   // The constructor only loads INITIAL_FS synchronously so the OS can render
   // before storage is ready. Persisted state is rehydrated by init() via
