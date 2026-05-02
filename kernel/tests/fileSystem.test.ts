@@ -167,7 +167,12 @@ test('VirtualFileSystem - constructor handles invalid JSON by falling back to IN
   }
 });
 
-test('VirtualFileSystem - constructor loads saved valid state from localStorage', () => {
+test('VirtualFileSystem - init() loads saved valid state from localStorage when IndexedDB is unavailable', async () => {
+  // The constructor only loads INITIAL_FS synchronously so the OS can render
+  // before storage is ready. Persisted state is rehydrated by init() via
+  // IndexedDB first, falling back to localStorage. In this Node test
+  // environment indexedDB is undefined, so init() will hit the catch branch
+  // and load from the localStorage shim below.
   const originalGetItem = global.localStorage.getItem;
   try {
     const customState = {
@@ -194,6 +199,7 @@ test('VirtualFileSystem - constructor loads saved valid state from localStorage'
     };
 
     const vfs = new VirtualFileSystem();
+    await vfs.init();
     const content = vfs.readFile('/system/custom.log', SYSTEM_VFS_APP_ID);
     assert.strictEqual(content, 'custom loaded content', 'Should load and parse valid JSON state from localStorage');
   } finally {
