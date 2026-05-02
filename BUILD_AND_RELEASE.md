@@ -1,6 +1,6 @@
 # NexusOS — Build and Release Reference
 
-This document describes the build pipeline, the Electron packaging configuration, and the release-validation procedure as implemented in the repository at version 2.0.4. It does not describe a CI/CD service that does not exist; the current pipeline is manual.
+This document describes the build pipeline, the Electron packaging configuration, and the release-validation procedure as implemented in the repository at version 2.0.5. It does not describe a CI/CD service that does not exist; the current pipeline is manual.
 
 ---
 
@@ -110,7 +110,7 @@ nsis:
 1. `npm run build` — produces `dist/`.
 2. `electron-builder` — packages `dist/` plus `electron-main.cjs`, `preload.cjs`, `daemon-bridge-server.cjs`, and configured assets into an NSIS installer.
 
-The installer name is derived from `package.json` version: `NexusOS_Setup_2.0.4.exe`. The release readiness test (`kernel/tests/releaseReadiness.test.ts`) asserts that the version regex, the artifact name, and the README references are aligned.
+The installer name is derived from `package.json` version: `NexusOS_Setup_2.0.5.exe`. The release readiness test (`kernel/tests/releaseReadiness.test.ts`) asserts that the version regex, the artifact name, and the README references are aligned.
 
 ### 4.3 Code signing
 
