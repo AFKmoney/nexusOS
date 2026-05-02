@@ -251,11 +251,15 @@ const FAILOVER_COOLDOWN_MS = 60_000;       // 60 seconds in degraded state
 const FAILOVER_FAILURE_THRESHOLD = 2;      // # of failures before degrading
 const FAILOVER_TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-interface ProviderHealth {
+export interface ProviderHealth {
   failureCount: number;
   degradedUntil: number;
   lastError?: string;
 }
+
+/** Cooldown window after FAILOVER_FAILURE_THRESHOLD failures.
+ *  Exposed for the Dashboard to render a countdown. */
+export const FAILOVER_DEGRADED_WINDOW_MS = FAILOVER_COOLDOWN_MS;
 
 /** Test if an error is worth retrying on a different provider. */
 export function isTransientProviderError(err: unknown): boolean {
