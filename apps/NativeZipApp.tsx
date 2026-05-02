@@ -28,8 +28,31 @@ export default function NativeZipApp() {
         const result = await window.electron.invoke('native-unzip', { source: sourcePath, dest: destPath });
         if (result.success) {
             setStatus('success');
-            // Mock VFS sync - we don't naturally scan the host folder, but we can notify
-            addNotification({ title: 'Extraction Complete', message: `Extracted to ${destPath}`, type: 'success' });
+
+            // Sync with VFS
+            try {
+              const vfsDestPath = `/home/user/Downloads/Extracted_${Date.now()}`;
+              vfs.createDir(vfsDestPath, '__system__');
+
+              if (result.files && Array.isArray(result.files)) {
+                for (const file of result.files) {
+                  const relativePath = file.path.replace(destPath, '').replace(/\\/g, '/');
+                  const fullVfsPath = `${vfsDestPath}${relativePath}`;
+
+                  if (file.type === 'directory') {
+                    vfs.createDir(fullVfsPath, '__system__');
+                  } else {
+                    // For files, we just create a stub in VFS pointing to the external file
+                    vfs.writeFile(fullVfsPath, `[NATIVE FILE STUB]\nOriginal Path: ${file.path}\nSize: ${file.size} bytes`, '__system__');
+                  }
+                }
+              }
+
+              addNotification({ title: 'Extraction Complete', message: `Extracted natively and synced to VFS at ${vfsDestPath}`, type: 'success' });
+            } catch (vfsErr) {
+              console.error("VFS Sync Error", vfsErr);
+              addNotification({ title: 'Extraction Complete', message: `Extracted to ${destPath}, but VFS sync failed.`, type: 'success' });
+            }
         } else {
             setErrorMsg(result.error || 'Failed to extract archive.');
             setStatus('error');

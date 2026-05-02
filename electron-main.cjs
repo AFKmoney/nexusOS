@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain, protocol, net } = require('electron');
+const { app, BrowserWindow, session, ipcMain, protocol, net, desktopCapturer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { spawn, exec } = require('child_process');
@@ -125,15 +125,45 @@ ipcMain.handle('get-os-info', async () => {
 
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
   return new Promise((resolve, reject) => {
+    const listExtractedFiles = (dir) => {
+      let results = [];
+      const list = fs.readdirSync(dir);
+      list.forEach((file) => {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        if (stat && stat.isDirectory()) {
+          results.push({ name: file, type: 'directory', path: filePath });
+          results = results.concat(listExtractedFiles(filePath));
+        } else {
+          results.push({ name: file, type: 'file', path: filePath, size: stat.size });
+        }
+      });
+      return results;
+    };
+
     if (os.platform() === 'win32') {
       exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
+        else {
+          try {
+            const files = listExtractedFiles(dest);
+            resolve({ success: true, files });
+          } catch (e) {
+            resolve({ success: true, files: [] });
+          }
+        }
       });
     } else {
       exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
         if (err) resolve({ success: false, error: err.message });
-        else resolve({ success: true });
+        else {
+          try {
+            const files = listExtractedFiles(dest);
+            resolve({ success: true, files });
+          } catch (e) {
+            resolve({ success: true, files: [] });
+          }
+        }
       });
     }
   });
@@ -173,6 +203,18 @@ ipcMain.handle('native-exec', async (event, command) => {
       });
     });
   });
+});
+
+ipcMain.handle('native-capture-screen', async (event) => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1920, height: 1080 } });
+    if (sources.length > 0) {
+      return { success: true, dataUrl: sources[0].thumbnail.toDataURL() };
+    }
+    return { success: false, error: 'No screen sources found' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('native-download', async (event, { url, repoId, filename, onProgressId }) => {
