@@ -1,177 +1,229 @@
 # Contributing to NexusOS
 
-## The Vision
+Thank you for your interest in NexusOS. This document describes how to contribute changes to the codebase. Read it before opening your first pull request.
 
-NexusOS is building the first operating system where AI is not a feature — it is the kernel. Every contribution moves us closer to a self-evolving, self-healing, intelligent computing environment.
-
-We welcome contributions from developers, designers, researchers, and anyone who believes AI should serve users, not surveil them.
+NexusOS is an experimental operating environment with strong architectural commitments (see [README.md](README.md) and [ARCHITECTURE.md](ARCHITECTURE.md)). Contributions that respect those commitments are welcome regardless of size.
 
 ---
 
-## Code of Conduct
+## 1. Code of conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md). Be respectful, constructive, and collaborative.
-
----
-
-## How to Contribute
-
-### 🐛 Reporting Bugs
-
-- Use [GitHub Issues](https://github.com/AFKmoney/nexusOS/issues) with the `bug` label
-- Include steps to reproduce, expected vs actual behavior
-- Specify your OS, browser, and whether you're using Web or Electron mode
-- Attach screenshots, console logs, or error messages
-
-### 💡 Suggesting Features
-
-- Open an issue with the `feature request` label
-- Describe the problem you're solving
-- Explain your proposed solution
-- Consider how it fits with DAEMON's autonomy model
-
-### 📝 Improving Documentation
-
-- Fix typos, unclear explanations, or missing context
-- Add examples, tutorials, or workflow guides
-- Ensure technical docs match the current codebase
-- All documentation should be written in English
-
-### 🔧 Contributing Code
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make changes following existing patterns and style
-4. Validate your changes (see below)
-5. Submit a pull request with a clear description
+Participation in this project is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). Be respectful, constructive, and assume good faith.
 
 ---
 
-## Development Setup
+## 2. Channels
 
-### Prerequisites
+| Purpose | Channel |
+|---|---|
+| Bug reports | [GitHub Issues](https://github.com/AFKmoney/nexusOS/issues) with the `bug` label |
+| Feature proposals | GitHub Issues with the `feature request` label |
+| Architectural discussion | GitHub Issues with the `discussion` label |
+| Documentation corrections | Pull requests directly against the relevant `.md` file |
+| Security concerns | Open a private security advisory through GitHub |
 
-- Node.js 18+ and npm
-- Git
-- (Optional) Electron for desktop builds
+When reporting a bug, include:
 
-### Installation
+- The runtime mode (web or Electron) and version.
+- Browser or Electron version.
+- Steps to reproduce, expected behavior, observed behavior.
+- Console output, screenshots, or logs from the Dashboard's autonomy log if relevant.
 
-```bash
-git clone https://github.com/YOUR_USERNAME/nexusOS.git
+---
+
+## 3. Development environment
+
+### 3.1 Requirements
+
+- Node.js 18 or later (Node 20+ recommended).
+- npm 9 or later.
+- Git.
+- For desktop builds: a working Electron build toolchain (Visual Studio Build Tools on Windows, Xcode CLI on macOS, build-essential on Linux).
+
+### 3.2 Initial setup
+
+```
+git clone https://github.com/AFKmoney/nexusOS.git
 cd nexusOS
 npm install
 ```
 
-### Development Server
+### 3.3 Running locally
 
-```bash
-npm run dev
+```
+npm run dev              # Vite dev server on http://localhost:3000
+npm run electron:dev     # Vite + Electron in parallel (desktop)
 ```
 
-Open `http://localhost:5173` in your browser.
-
-### Validation
-
-Before submitting any PR, run all three validation steps:
-
-```bash
-# 1. Type safety
-npm run typecheck
-
-# 2. Kernel tests
-npm test
-
-# 3. Production build
-npm run build
-```
-
-All three must pass. If you're modifying Electron behavior:
-
-```bash
-# 4. Electron packaging
-npm run electron:build
-```
+The dev server supports hot module replacement. The Electron variant additionally rebuilds the native bridge whenever `electron-main.cjs`, `preload.cjs`, or `daemon-bridge-server.cjs` change.
 
 ---
 
-## Architecture Awareness
+## 4. Validation
 
-Before writing code, understand the layer your change affects:
+Every pull request must pass the three mandatory validation steps:
 
-| Layer | Directory | Key Files |
+```
+npm run typecheck        # tsc --noEmit, strict mode
+npm test                 # node:test runner — 39 tests
+npm run build            # Vite production bundle
+```
+
+If your change touches Electron or the native bridge, additionally run:
+
+```
+npm run electron:build   # Vite build + electron-builder NSIS package
+```
+
+A pull request that fails any of the three mandatory steps will not be reviewed until the failure is addressed. Failures introduced by an unrelated regression on `main` are an exception; flag them in the PR description.
+
+---
+
+## 5. Architectural awareness
+
+Before modifying code, identify which layer the change belongs in. The architecture is layered (see [ARCHITECTURE.md](ARCHITECTURE.md)) and changes should remain local to a layer where possible.
+
+| Layer | Directory | Strategic files |
 |---|---|---|
-| Shell UI | `components/`, `App.tsx` | Taskbar, StartMenu, WindowManager |
-| State | `store/` | `osStore.ts` — all global state |
-| Kernel | `kernel/` | VFS, permissions, autonomy, commands, events |
-| Services | `services/` | AI inference, DAEMON logic, cloud fallback |
-| Apps | `apps/` | 52 built-in applications |
-| Native | Root | `electron-main.cjs`, `preload.cjs` |
+| Shell UI | `App.tsx`, `components/`, `apps/` | `App.tsx`, `components/Taskbar.tsx`, `components/StartMenu.tsx` |
+| State | `store/` | `osStore.ts`, `osStoreSlices.ts` |
+| Kernel | `kernel/` | `fileSystem.ts`, `permissions.ts`, `autonomy.ts`, `commander.ts`, `osManifest.ts`, `eventBus.ts` |
+| Services | `services/` | `localBrain.ts`, `aiProviders.ts` |
+| Native | repo root | `electron-main.cjs`, `preload.cjs`, `daemon-bridge-server.cjs` |
 
-> Read [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes.
-
----
-
-## Coding Standards
-
-- **TypeScript**: All new code must be TypeScript. Minimize use of `any`.
-- **Permissions**: Any VFS or kernel operation must use a valid `appId` and respect the permission model.
-- **Events**: Use the `eventBus` for cross-layer communication, not direct function calls.
-- **State**: All shared state goes through `osStore`. No component-local state for OS-level concerns.
-- **Tests**: Add tests for kernel-level changes. Place them in `kernel/tests/` with `.test.ts` suffix.
-- **Comments**: Preserve all existing comments and docstrings unrelated to your changes.
+A change that crosses layer boundaries should explain its reasoning in the PR description.
 
 ---
 
-## Pull Request Process
+## 6. Coding standards
 
-1. Ensure all validation steps pass (`typecheck`, `test`, `build`)
-2. Update documentation if your change affects APIs, architecture, or user-facing behavior
-3. Write a clear PR title: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`
-4. Link related issues
-5. Describe what changed, why, and any tradeoffs
-6. One PR per logical change — avoid combining unrelated modifications
+### 6.1 Language and types
 
----
+- All new code is TypeScript. JavaScript is allowed only in the Electron main process where the runtime expects CommonJS.
+- The TypeScript configuration is strict (`strict`, `noImplicitAny`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`). New code must compile without lowering these flags.
+- `any` is permitted only with a comment explaining why. Prefer `unknown` with a narrowing guard.
+- `@ts-ignore` and `@ts-expect-error` should be the last resort and must include a comment with a tracking link or rationale.
 
-## Contribution Areas
+### 6.2 Permissions and capabilities
 
-### High Impact
+- Every VFS or kernel operation must use a valid `appId`. Operations originating in built-in applications must use the application's own id; system-internal operations may use `SYSTEM_VFS_APP_ID = '__system__'` and must justify the use.
+- Application manifests in `appRegistry.ts` must declare every capability they require. Do not bypass the permission system through runtime overrides except through `permissions.grant()` with a corresponding `revoke()`.
 
-- Kernel hardening (permissions, VFS safety)
-- Autonomy governance (policy engine, approval gates)
-- Test coverage (kernel, store, shell)
-- Architecture decomposition (App.tsx, osStore.ts)
+### 6.3 Cross-layer communication
 
-### Medium Impact
+- Use the event bus (`kernel/eventBus.ts`) for cross-layer notifications. Do not import shell components from kernel modules.
+- Shared state lives in the Zustand store (`store/osStore.ts`). Component-local state is appropriate for purely visual concerns; OS-level state is not.
+- Avoid circular imports between `kernel/` and `services/`. The dependency direction is `services → kernel`, not the reverse.
 
-- New built-in applications
-- Terminal commands
-- Theme engine improvements
-- Documentation
+### 6.4 Comments
 
-### Exploratory
+- Default to writing no comment. Add one only when the *why* is non-obvious: a hidden constraint, a workaround, a security-relevant invariant.
+- Do not write comments that describe what the code does; well-named identifiers suffice.
+- Do not reference the current PR, ticket, or contributor in code comments.
 
-- Self-evolution pipeline (propose → validate → stage → deploy → rollback)
-- Anomaly detection and health metrics
-- Advanced memory architecture
+### 6.5 Tests
 
----
+- Add a test for any kernel-level change. Place tests under `kernel/tests/` with a `.test.ts` suffix; the runner discovers them automatically.
+- Tests must be deterministic. They must not depend on real network calls, real timers (use fakes), or the real filesystem outside the VFS abstraction.
+- Tests must close any resources they open. The runner force-exits after a 3-second grace window, but a leaking test still pollutes other tests' state.
 
-## Getting Help
+### 6.6 Style
 
-- Check [existing issues](https://github.com/AFKmoney/nexusOS/issues) for similar problems
-- Read the [Architecture docs](ARCHITECTURE.md) for context
-- Open a discussion issue if you need guidance
+- The repository does not currently enforce a code style through CI. New code should match surrounding style: two-space indentation, single quotes for strings, trailing commas in multi-line literals, no semicolon-leading lines.
+- Imports are grouped: third-party, then internal absolute, then internal relative.
 
 ---
 
-## Recognition
+## 7. Pull request process
 
-All contributors are recognized in our project documentation. Your contributions help build a more intelligent, open future for computing.
+1. Fork the repository and create a feature branch:
+   ```
+   git checkout -b feature/<short-name>
+   ```
+   Branch name conventions: `feature/`, `fix/`, `docs/`, `refactor/`, `test/`, `perf/`, `chore/`.
+
+2. Make your changes. One PR addresses one logical change. If you find unrelated improvements while working, open a separate PR.
+
+3. Run validation locally:
+   ```
+   npm run typecheck && npm test && npm run build
+   ```
+
+4. Update documentation when the change affects behavior, APIs, or user-visible features. Documentation drift is a regression.
+
+5. Commit with a conventional message:
+   ```
+   feat: add per-agent capability scope to permissions module
+   fix: prevent autonomy scheduler from halting on a single tick rejection
+   docs: realign VFS specification with IndexedDB persistence
+   refactor: extract window slice from monolithic osStore
+   ```
+
+6. Push and open a pull request. The PR description should include:
+   - **What** changed.
+   - **Why** the change is needed.
+   - **How** the change was validated (which tests, manual scenarios).
+   - **Trade-offs** or known limitations introduced.
+
+7. Respond to review feedback. Maintainers may request architectural changes if a PR conflicts with the autonomy-roadmap commitments; in that case the PR description should clarify the intent so the discussion can converge.
 
 ---
 
-<div align="center">
-  <em>"Every line of code is a step toward open-source computing."</em>
-</div>
+## 8. Documentation contributions
+
+Documentation is treated as code. The same review standards apply:
+
+- Documentation must reflect the implementation, not aspiration. Aspirational claims belong in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md).
+- Numerical claims (file counts, application counts, action counts) must be verifiable from the source. If you change one of these counts, update every document that references it.
+- Avoid marketing tone. Describe what the system does, not what is exciting about it.
+
+---
+
+## 9. Contribution areas
+
+### 9.1 High-impact
+
+- **Kernel hardening** — extending the permission set with `shell.exec`, `agent.spawn`, `model.swap`, `vfs.delete`, `network.fetch.<host>`, `process.kill`; per-agent capability scopes; signed agent manifests.
+- **Autonomy governance** — strengthening `mirrorGuard` policy enforcement; AI-supervisor pattern (a second model auditing autonomy decisions before dispatch); structured proposal step before destructive actions.
+- **Reversibility** — VFS snapshot-before-mutation; git auto-commit hooks for AI-generated changes; auto-revert when `errorGuard` flags a regression.
+- **Test coverage** — kernel modules without dedicated test files (autonomy, commander, mirrorGuard, eventBus, processManager); store-slice tests; Electron main-process tests.
+- **Architecture decomposition** — thinning `App.tsx` into smaller coordinators; splitting the monolithic store into per-domain slices.
+
+### 9.2 Medium-impact
+
+- New built-in applications.
+- Additional terminal commands.
+- Theme presets and theme-engine improvements.
+- Performance optimization (token streaming UI, window-focus re-render storms).
+- CI/CD pipeline configuration (GitHub Actions running the validation triplet on every PR).
+
+### 9.3 Exploratory
+
+- Self-evolution pipeline (propose → validate → stage → deploy → rollback).
+- Anomaly detection and runtime health metrics.
+- Advanced memory architecture (vector compression, hierarchical recall, cross-session memory).
+- Mobile PWA shell sharing the kernel.
+
+---
+
+## 10. Release versioning
+
+NexusOS uses semantic versioning at the major and minor levels. Patch versions are bumped on every published Electron build.
+
+- Major version: backward-incompatible kernel or VFS changes.
+- Minor version: new capabilities or new applications.
+- Patch version: bug fixes, security hardening, dependency bumps.
+
+Versions are reflected in `package.json`, `package-lock.json`, the README badge, and the installer artifact name (`NexusOS_Setup_<version>.exe`). When bumping, update all four together; the test suite validates the regex.
+
+---
+
+## 11. Recognition
+
+Contributors are recognized in pull-request history and (with their consent) in the project's published release notes. Significant architectural contributions are acknowledged in the relevant document under a `## Acknowledgements` section.
+
+---
+
+## 12. License
+
+By submitting a contribution you agree that it will be licensed under the project's [MIT License](LICENSE).
