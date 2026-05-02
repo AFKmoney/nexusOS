@@ -66,6 +66,15 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     maxTokens: 4096,
   },
   {
+    id: 'codestral',
+    name: 'Codestral',
+    type: 'openai-compatible',
+    baseUrl: 'https://codestral.mistral.ai/v1',
+    defaultModel: 'codestral-latest',
+    models: ['codestral-latest', 'codestral-mamba-latest'],
+    maxTokens: 4096,
+  },
+  {
     id: 'deepseek',
     name: 'DeepSeek',
     type: 'openai-compatible',
@@ -418,6 +427,56 @@ export class AIProviderGateway {
       const data = await res.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
+  }
+
+  // ─── FIM: Fill-In-The-Middle Completion ────────────────────
+  public async fimCompletion(
+    prompt: string,
+    suffix: string,
+    model?: string,
+    maxTokens?: number
+  ): Promise<string> {
+    const provider = this.getActiveProvider();
+    if (!provider) throw new Error('No AI provider configured.');
+
+    // Only Mistral/Codestral officially support this specific FIM endpoint
+    if (provider.id === 'mistral' || provider.id === 'codestral') {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(provider.apiKey ? { 'Authorization': `Bearer ${provider.apiKey}` } : {}),
+      };
+
+      const res = await fetch(`${provider.baseUrl}/fim/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: model || provider.defaultModel,
+          prompt,
+          suffix,
+          temperature: 0.2,
+          max_tokens: maxTokens || provider.maxTokens || 4096,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`${provider.name} FIM API Error ${res.status}: ${errBody.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || '';
+    }
+
+    // Fallback for other providers: normal generation
+    const fallbackPrompt = `Complete the following code. Return ONLY the code that should go between the PREFIX and SUFFIX.
+
+PREFIX:
+${prompt}
+
+SUFFIX:
+${suffix}`;
+
+    return this.generate('', fallbackPrompt, model, maxTokens);
   }
 
   // ─── Unified Interface ─────────────────────────────────────
