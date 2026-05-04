@@ -193,9 +193,9 @@ test('generateOSManifest - with VFS snapshot (full tier via query)', () => {
   };
 
   try {
-    const manifest = generateOSManifest(undefined, 'file'); // 'file' triggers full tier
+    let manifest = generateOSManifest(undefined, 'file'); // 'file' triggers full tier
 
-    const manifest = generateOSManifest([], 'open the file docs');
+    manifest = generateOSManifest([], 'open the file docs');
     assert.match(manifest, /\[VFS\] docs,notes\.txt/);
   } finally {
     vfs.listDir = originalListDir;
