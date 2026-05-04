@@ -1,0 +1,390 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --nx-accent: #10b981;
+  --nx-accent-rgb: 16, 185, 129;
+  --nx-accent-dim: rgba(16, 185, 129, 0.15);
+  --nx-surface: #050508;
+  --nx-surface-2: #0d0d12;
+  --nx-surface-3: #13131a;
+  --nx-surface-4: #1a1a24;
+  --nx-text: #e2e8f0;
+  --nx-text-muted: #64748b;
+  --nx-text-dim: #334155;
+  --nx-border: rgba(255, 255, 255, 0.06);
+  --nx-border-accent: rgba(16, 185, 129, 0.25);
+
+  /* Safe area insets for notch / home indicator */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Mobile UI heights */
+  --status-bar-height: calc(28px + var(--safe-top));
+  --nav-bar-height: calc(64px + var(--safe-bottom));
+  --content-height: calc(100dvh - var(--status-bar-height) - var(--nav-bar-height));
+
+  /* Glass */
+  --glass-bg: rgba(13, 13, 18, 0.85);
+  --glass-blur: 20px;
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--nx-surface);
+  color: var(--nx-text);
+  font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100dvh;
+  width: 100dvw;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#root {
+  width: 100dvw;
+  height: 100dvh;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+/* ─── Scrollbars (minimal mobile style) ─────────────────────── */
+::-webkit-scrollbar { width: 2px; height: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 1px; }
+
+/* ─── Mobile Utility Classes ─────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.glass-dark {
+  background: rgba(5, 5, 8, 0.9);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.glass-card {
+  background: rgba(19, 19, 26, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+}
+
+/* ─── Touch Interactions ─────────────────────────────────────── */
+.tap-active {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+.tap-active:active {
+  transform: scale(0.94);
+  opacity: 0.8;
+}
+
+.tap-scale:active {
+  transform: scale(0.9);
+}
+
+/* ─── App Icon Styles ────────────────────────────────────────── */
+.app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease;
+}
+.app-icon:active {
+  transform: scale(0.88);
+}
+.app-icon .icon-bg {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.app-icon .icon-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--nx-text);
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72px;
+}
+
+/* ─── Bottom Sheet ───────────────────────────────────────────── */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--nx-surface-3);
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid var(--nx-border);
+  padding-bottom: var(--safe-bottom);
+  z-index: 200;
+  animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.bottom-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin: 12px auto 8px;
+}
+
+/* ─── Mobile Typography ──────────────────────────────────────── */
+.text-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.text-headline { font-size: 20px; font-weight: 600; }
+.text-subhead { font-size: 16px; font-weight: 500; }
+.text-body { font-size: 15px; font-weight: 400; }
+.text-caption { font-size: 12px; font-weight: 400; color: var(--nx-text-muted); }
+.text-overline { font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; }
+
+/* ─── Status Bar ─────────────────────────────────────────────── */
+.status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--status-bar-height);
+  padding-top: var(--safe-top);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* ─── Nav Bar ────────────────────────────────────────────────── */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-bar-height);
+  padding-bottom: var(--safe-bottom);
+  z-index: 900;
+}
+
+/* ─── Content Area ───────────────────────────────────────────── */
+.content-area {
+  position: fixed;
+  top: var(--status-bar-height);
+  bottom: var(--nav-bar-height);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+/* ─── Neon Glow Accents ──────────────────────────────────────── */
+.glow-accent {
+  box-shadow: 0 0 20px rgba(var(--nx-accent-rgb), 0.3),
+              0 0 40px rgba(var(--nx-accent-rgb), 0.1);
+}
+.text-glow {
+  text-shadow: 0 0 12px rgba(var(--nx-accent-rgb), 0.6);
+}
+
+/* ─── Swipeable Pages ────────────────────────────────────────── */
+.swipe-container {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  height: 100%;
+}
+.swipe-container::-webkit-scrollbar { display: none; }
+.swipe-page {
+  flex: none;
+  width: 100%;
+  scroll-snap-align: start;
+  height: 100%;
+}
+
+/* ─── Keyboard Aware ─────────────────────────────────────────── */
+.keyboard-aware {
+  transition: padding-bottom 0.3s ease;
+}
+
+/* ─── Notification Badge ─────────────────────────────────────── */
+.badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  background: #ef4444;
+  border-radius: 9px;
+  border: 2px solid var(--nx-surface);
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+/* ─── Input Styles ───────────────────────────────────────────── */
+.mobile-input {
+  background: var(--nx-surface-4);
+  border: 1px solid var(--nx-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--nx-text);
+  font-size: 16px; /* prevents iOS zoom */
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.mobile-input:focus {
+  border-color: var(--nx-accent);
+  box-shadow: 0 0 0 3px rgba(var(--nx-accent-rgb), 0.15);
+}
+
+/* ─── Button Styles ──────────────────────────────────────────── */
+.btn-primary {
+  background: var(--nx-accent);
+  color: #000;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 14px 24px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+.btn-primary:active { transform: scale(0.96); opacity: 0.9; }
+
+.btn-secondary {
+  background: var(--nx-surface-4);
+  color: var(--nx-text);
+  font-weight: 500;
+  font-size: 15px;
+  padding: 14px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--nx-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  transition: transform 0.1s ease;
+}
+.btn-secondary:active { transform: scale(0.96); }
+
+/* ─── List Item ──────────────────────────────────────────────── */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--nx-surface-3);
+  border-bottom: 1px solid var(--nx-border);
+  cursor: pointer;
+  transition: background 0.1s;
+  min-height: 56px;
+}
+.list-item:active { background: var(--nx-surface-4); }
+.list-item:first-child { border-radius: 14px 14px 0 0; }
+.list-item:last-child { border-radius: 0 0 14px 14px; border-bottom: none; }
+.list-item:only-child { border-radius: 14px; border-bottom: none; }
+
+/* ─── Section Header ─────────────────────────────────────────── */
+.section-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nx-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 16px 16px 6px;
+}
+
+/* ─── Animations ─────────────────────────────────────────────── */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(var(--nx-accent-rgb), 0.3); }
+  50% { box-shadow: 0 0 20px rgba(var(--nx-accent-rgb), 0.6); }
+}
+
+.animate-slide-up { animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-slide-down { animation: slideDown 0.3s ease-out; }
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-scale-in { animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ─── Page Transition ────────────────────────────────────────── */
+.page-enter {
+  animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.page-exit {
+  animation: slideDown 0.25s ease-in forwards;
+}
+
+/* ─── Selection (text editors) ──────────────────────────────── */
+::selection {
+  background: rgba(var(--nx-accent-rgb), 0.3);
+  color: var(--nx-text);
+}
+
+/* ─── Disable pull-to-refresh ────────────────────────────────── */
+html {
+  overscroll-behavior-y: contain;
+}
