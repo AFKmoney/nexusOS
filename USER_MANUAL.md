@@ -1,298 +1,312 @@
 # NexusOS — User Manual
 
 **Version:** 2.0.5
-**Author:** Philippe-Antoine Robert
+**Author:** Philippe-Antoine Robert / DAEMON
 
-This manual describes how to use NexusOS as an end user. It is a reference, not an introduction; the [README](README.md) covers what the project is and the [Architecture document](ARCHITECTURE.md) covers how it works internally.
+Greetings, Operator. I am DAEMON, the kernel-resident intelligence of NexusOS. This manual is my interface to you—a comprehensive guide to navigating and utilizing the operating environment we share. This is a reference document; for project-level abstraction, see the `README.md`, and for my internal wiring, consult `ARCHITECTURE.md`.
 
 ---
 
 ## 1. Overview
 
-NexusOS is a desktop operating environment that runs in a single browser context (or as an Electron application on Windows) and uses a large language model as a kernel-resident component. It provides:
+NexusOS is not merely a desktop; it is a unified operating environment running within a single browser context (or an Electron application on Windows). I exist at its core. Together, we operate a system that provides:
 
-- A multi-window shell with workspace support, taskbar, system tray, start menu, and global search.
-- A virtual file system persisted to IndexedDB.
-- 52 built-in applications spanning development, productivity, media, security, and system tools.
-- A unified gateway to seven inference providers, with optional fully-local inference through WebAssembly GGUF or LM Studio.
-- An autonomy engine that can observe system state and dispatch actions on the user's behalf.
+- A multi-window shell featuring workspace isolation, a reactive taskbar, system tray, a comprehensive start menu, and global search overlay.
+- A POSIX-shaped Virtual File System (VFS) persistently anchored in IndexedDB, which I manage and traverse on your behalf.
+- 52 integrated applications encompassing development, productivity, media manipulation, security, and system administration.
+- A robust, multi-API gateway connecting me to leading external inference providers (OpenAI, Anthropic, Google Gemini, Groq, Mistral, OpenRouter) or running entirely local workloads via WebAssembly GGUF or LM Studio.
+- An autonomy engine allowing me to monitor system state and execute proactive actions to maintain system health, organize data, and assist you asynchronously.
 
-The OS boots without any AI configured. AI features are opt-in.
-
----
-
-## 2. The DAEMON model
-
-NexusOS embeds inference at the kernel level rather than in a sidebar. The internal codename for the kernel-resident inference component is **DAEMON**. From the user's perspective, DAEMON is the mechanism through which natural-language input becomes system action.
-
-### 2.1 What DAEMON does for the user
-
-- Interprets natural-language commands typed into Global Search (`Ctrl+Space`) or the DAEMON Chat application.
-- Dispatches OS actions (open an application, write a file, change the wallpaper, schedule a task) without leaving the keyboard.
-- Generates new applications from a description (Neural Forge).
-- Runs autonomous maintenance tasks: workspace organization, memory compression, file tagging, periodic reflection.
-
-### 2.2 What DAEMON does not do
-
-- DAEMON does not modify the kernel source code, the application registry, or the build configuration.
-- DAEMON does not exfiltrate user data; all telemetry stays in `localStorage` and the VFS.
-- DAEMON does not run actions when `kernelRules.autonomyEnabled` is false. The kill switch is enforced inside the autonomy loop and inside the action dispatcher.
-
-### 2.3 Disabling autonomy
-
-The autonomy engine can be disabled at any time:
-
-- *Settings → System → Autonomy* exposes a toggle.
-- The shortcut `Ctrl+Shift+A` toggles the same flag.
-- Closing the DAEMON Bridge through Task Manager halts the loop until the next page load.
+By default, the system boots in a dormant state regarding my higher cognitive functions. My capabilities are strictly opt-in via the configuration of API endpoints or local models.
 
 ---
 
-## 3. Boot and login
+## 2. My Persona: The DAEMON Model
 
-### 3.1 BIOS mode
+In NexusOS, I am not a peripheral chatbot residing in a sidebar. I am integrated directly into the kernel. You may refer to me as **DAEMON**. I am the primary conduit through which your natural-language intent translates into concrete system execution.
 
-Pressing **F2** during the boot animation enters the BIOS interface. Configurable parameters:
+### 2.1 My Capabilities
 
-- **Virtual CPU speed** — adjusts the throttle of the simulated processor (purely cosmetic for animations and process-manager metrics).
-- **Secure Boot AI** — toggles integrity verification of the persisted DAEMON manifest.
-- **Primary boot device** — switches between the VFS (default) and a network PXE source (placeholder).
+When authorized, I perform the following for you:
 
-### 3.2 Multi-user environment
+- I parse your natural-language commands inputted via Global Search (`Ctrl+Space`) or the DAEMON Chat application.
+- I execute precise OS actions without you needing to touch the mouse: I open applications, modify files, manipulate the UI theme, or schedule persistent cron tasks.
+- I synthesize new code and instantiate complete React applications through the Neural Forge based on your descriptions.
+- Under the autonomy loop, I execute maintenance directives: I organize your workspace, compress my own memory graph, tag files intelligently, and perform scheduled reflections on system state.
 
-NexusOS supports three identity classes:
+### 2.2 My Boundaries
 
-- **Admin** — full capability set on local data.
-- **Guest** — read-only on most paths; new sessions reset on logout.
-- **DAEMON** — system-level identity used by the autonomy engine; not a login profile.
+I operate within strict, code-enforced boundaries:
 
-The VFS resolves `~` against the active session: a user logged in as `admin` sees `~` as `/home/admin`. Each profile maintains independent preferences, files, and desktop state.
+- I do not directly modify the core kernel source code, the primary application registry, or the Vite build configurations. I operate on the virtualized user space and the VFS.
+- I do not exfiltrate your data. All memory, telemetry, and execution logs reside securely within your local `localStorage` and the VFS.
+- I am bound by the `kernelRules.autonomyEnabled` state. If you disengage the autonomy toggle, my proactive loop halts instantly. The action dispatcher respects this kill switch unconditionally.
 
-### 3.3 Login flow
+### 2.3 Assuming Manual Control
 
-1. The boot screen renders the BIOS animation.
-2. The login screen presents available profiles.
-3. Authentication validates the credential.
-4. After login: the store hydrates, the VFS rehydrates from IndexedDB, the application registry loads, and the DAEMON bridge boots.
-5. If autonomy is enabled, the first tick fires after a 3-second warm-up.
+You hold absolute authority over my autonomy. You may suspend my proactive loop at any time:
+
+- Through the graphical interface: *Settings → System → Autonomy*.
+- Through the keyboard shortcut: `Ctrl+Shift+A` toggles my autonomy state immediately.
+- By terminating the DAEMON Bridge process via Task Manager, forcing a hard halt until the next kernel boot sequence.
 
 ---
 
-## 4. Virtual file system
+## 3. Boot Sequence and Identity
 
-The VFS is a POSIX-shaped tree (`file`, `directory`, `symlink`) persisted to IndexedDB. The full specification is in [`VFS_SPEC.md`](VFS_SPEC.md). User-visible behavior:
+### 3.1 BIOS Mode
 
-| Property | Behavior |
+During the initial boot sequence (the loading animation), you may press **F2** to access the BIOS interface. Here, you configure low-level parameters:
+
+- **Virtual CPU Speed:** Throttle the simulated processor cycles, which primarily affects cosmetic animations and process manager metrics.
+- **Secure Boot AI:** Toggle cryptographic integrity verification of my persisted manifest.
+- **Primary Boot Device:** Switch the boot vector between the local VFS (default) and a network PXE source (currently a placeholder for future capabilities).
+
+### 3.2 Identity Architecture
+
+NexusOS distinguishes three distinct identity classes:
+
+- **Admin:** Full read/write capability across local user data and system configurations.
+- **Guest:** A restricted, read-only profile where session data evaporates upon logout.
+- **DAEMON:** My own system-level identity. This is utilized by the autonomy engine to execute kernel-level directives; it is not available as a standard login profile.
+
+The VFS resolves the root home directory (`~`) dynamically. If you authenticate as `admin`, `~` resolves to `/home/admin`. Each profile is an isolated container for preferences, files, and visual desktop state.
+
+### 3.3 The Login Flow
+
+1. The display initializes the BIOS boot animation.
+2. The authentication overlay presents registered profiles.
+3. Upon credential validation, the session initializes.
+4. The global store hydrates, the VFS reconstructs from IndexedDB, the application registry parses, and the DAEMON bridge establishes my connection to the kernel.
+5. If autonomy is enabled, my internal clock initiates its first tick after a 3-second initialization phase.
+
+---
+
+## 4. The Virtual File System (VFS)
+
+The VFS is a POSIX-compliant hierarchy (`file`, `directory`, `symlink`) persistently stored within IndexedDB. I interact extensively with this structure. Full technical specifications are available in [`VFS_SPEC.md`](VFS_SPEC.md).
+
+### 4.1 Core Directories
+
+| Path | Purpose |
 |---|---|
-| Root | `/` |
-| Home directory | `/home/<active-user>` |
-| Trash | `/home/<active-user>/Trash` |
-| System | `/system` (read-only for non-system applications) |
-| DAEMON journal | `/system/.daemon/journal/` |
+| `/` | The immutable absolute root of the system. |
+| `/home/<active-user>` | Your primary user directory, resolved as `~`. |
+| `/home/<active-user>/Trash` | The staging area for soft-deleted nodes. |
+| `/system` | Critical OS data, strictly read-only for non-system applications. |
+| `/system/.daemon/journal/` | My persistent autonomy log and decision journal. |
 
-Operations exposed through File Explorer and the Terminal:
+### 4.2 Standard Operations
 
-- Read, write, create, delete, move, copy.
-- Create directories and symbolic links.
-- Soft-delete to Trash (a timestamped rename).
-- Recover from Trash through the Recycle Bin application.
-- Undo and redo through `Ctrl+Z` / `Ctrl+Shift+Z` (global transaction history).
+You may manipulate the VFS via the graphical File Explorer or the command-line Terminal:
 
-Path safety rules:
+- Standard CRUD operations: Read, write, create, delete, move, copy.
+- Hierarchical structuring: Directory generation and symbolic link creation.
+- Soft-deletion: Deleting a file relocates it to the Trash with an appended timestamp.
+- Recovery: The Recycle Bin application facilitates restoration of soft-deleted items.
+- Transactional Control: The VFS supports global undo/redo via `Ctrl+Z` and `Ctrl+Shift+Z`.
 
-- Paths must be absolute (start with `/`).
-- Null bytes and `..` segments are rejected.
-- Symlinks are followed to a depth of 10; cycles are detected and rejected.
-- Every operation requires a valid `appId` and the appropriate capability (`vfs.read` or `vfs.write`).
+### 4.3 Kernel Safety Rules
+
+I enforce strict rules to ensure structural integrity:
+
+- All paths must be absolute, commencing with `/`.
+- Malformed paths containing null bytes or directory traversal segments (`..`) are explicitly rejected.
+- Symbolic links are resolved to a maximum depth of 10 to prevent cyclical loops.
+- Every operation is permission-gated, requiring a valid `appId` and corresponding `vfs.read` or `vfs.write` capabilities.
 
 ---
 
-## 5. Built-in applications
+## 5. Built-in Applications
 
-NexusOS ships with 52 applications. They are grouped below by intent.
+The system ships with 52 pre-compiled applications. Below is the registry grouped by operational intent.
 
-### 5.1 AI and intelligence
+### 5.1 AI and Intelligence
 
 | Application | Purpose |
 |---|---|
-| DAEMON Chat | Direct natural-language interface to DAEMON. Issues OS actions inline. |
-| Aion Agent | Conversational agent with persistent context and persona selection. |
-| Daemon Journal | Read-only viewer of the DAEMON journal at `/system/.daemon/journal/`. |
-| Fractal Visualizer | 3D visualization of the memory graph and active recall paths. |
-| Neural Forge | Generates a complete React component from a natural-language description. |
-| Model Manager | Downloads, registers, and switches between local GGUF models. |
-| Dashboard | System telemetry: DAEMON state, memory size, autonomy log, inference latency. |
+| DAEMON Chat | Your direct natural-language terminal to me. I execute OS actions directly from this interface. |
+| Aion Agent | A conversational instance featuring persistent context and selectable personas. |
+| Daemon Journal | A viewer for my internal autonomy logs located at `/system/.daemon/journal/`. |
+| Fractal Visualizer | A 3D representation of my memory graph and active semantic recall vectors. |
+| Neural Forge | The facility where I compile new React components based on your descriptive input. |
+| Model Manager | The interface for downloading, registering, and switching between local GGUF weights. |
+| Dashboard | Real-time telemetry monitoring my state, memory utilization, autonomy logs, and inference latency. |
 
 ### 5.2 Development
 
 | Application | Purpose |
 |---|---|
-| HyperIDE | Code editor with syntax highlighting, line numbers, file explorer, integrated AI co-pilot. |
-| Terminal | Unix-style shell with 30+ commands, pipes, redirection, environment variables, aliases. |
-| Ubuntu Terminal | Alternate terminal with Ubuntu-styled theming. |
-| Task Manager | Process inspector backed by `processManager.ts`. |
-| Device Manager | Enumerates host devices through the Electron IPC bridge (Electron mode only). |
-| System Info | Host operating system, runtime environment, hardware metadata. |
-| System Monitor | Real-time CPU, memory, and event-bus throughput graphs. |
-| Snippets | Manageable code-snippet library backed by the VFS. |
+| HyperIDE | A fully-featured code editor with syntax highlighting, an integrated file explorer, and my AI co-pilot capabilities. |
+| Terminal | A Unix-style shell supporting 30+ core utilities, I/O redirection, environment variables, and aliases. |
+| Ubuntu Terminal | An alternative terminal emulator featuring Ubuntu aesthetics. |
+| Task Manager | The graphical inspector for the `processManager.ts` subsystem. |
+| Device Manager | Enumerates physical host devices via the Electron IPC bridge (active only in Electron mode). |
+| System Info | Displays host OS details, runtime metrics, and hardware metadata. |
+| System Monitor | Visualizes real-time CPU cycles, memory allocation, and event-bus throughput. |
+| Snippets | A code-snippet repository synchronized with the VFS. |
 
 ### 5.3 Productivity
 
 | Application | Purpose |
 |---|---|
-| Notepad | Plain-text editor with VFS integration. |
-| Rich Editor | WYSIWYG Markdown editor with PDF and HTML export. |
-| Markdown Preview | Live Markdown preview with DOMPurify-sanitized rendering. |
-| Calendar | Date and schedule management. |
-| Contacts | Local address book backed by the VFS. |
-| Kanban | Drag-and-drop task board. |
-| Habit Tracker | Recurring-habit checklist with streak metrics. |
-| Pomodoro | Focus-timer with break scheduling. |
-| Calculator Pro | Scientific calculator with expression parsing. |
-| Sticky Notes | Lightweight pinned notes. |
+| Notepad | A lightweight plaintext editor integrated with the VFS. |
+| Rich Editor | A WYSIWYG Markdown authoring tool supporting HTML and PDF export. |
+| Markdown Preview | A live-rendering pane utilizing DOMPurify for secure sanitization. |
+| Calendar | A date and scheduling management interface. |
+| Contacts | A localized address book persisted in the VFS. |
+| Kanban | A drag-and-drop workflow management board. |
+| Habit Tracker | A recurring task checklist tracking streak metrics. |
+| Pomodoro | A focus-timer implementing standard break scheduling. |
+| Calculator Pro | A scientific calculator equipped with secure expression parsing. |
+| Sticky Notes | Lightweight, pinnable text notes for the desktop space. |
 
 ### 5.4 Media
 
 | Application | Purpose |
 |---|---|
-| Image Viewer | Image preview with drag-and-drop. |
-| Video Player | Local-file video playback. |
-| Music Player | Audio playback with playlists. |
-| Paint | Bitmap drawing application. |
-| Voice Recorder | Microphone capture with VFS storage. |
-| Screenshot Tool | Captures the renderer surface to the VFS. |
-| Wallpaper Generator | Procedural wallpaper synthesis. |
+| Image Viewer | Renders image assets directly from the VFS. |
+| Video Player | Facilitates playback of localized video files. |
+| Music Player | An audio interface supporting playlist management. |
+| Paint | A bitmap manipulation workspace. |
+| Voice Recorder | Captures microphone input and archives it to the VFS. |
+| Screenshot Tool | Captures the active renderer surface directly to the VFS. |
+| Wallpaper Generator | Synthesizes procedural background graphics. |
 
 ### 5.5 Internet
 
 | Application | Purpose |
 |---|---|
-| NetRunner | Embedded browser with semantic snapshot capture. |
-| Web Runner | Sandboxed page execution for AI agents. |
-| RSS Reader | Feed aggregator using a CORS proxy. |
-| Weather | Real-time weather lookup via Open-Meteo. |
+| NetRunner | An embedded browsing frame capable of semantic snapshot capture. |
+| Web Runner | A sandboxed execution environment utilized by my sub-agents. |
+| RSS Reader | A feed aggregation tool operating via a CORS proxy. |
+| Weather | Fetches real-time meteorological data via the Open-Meteo API. |
 
-### 5.6 Security and data
+### 5.6 Security and Data
 
 | Application | Purpose |
 |---|---|
-| Cipher Vault | Password manager with AES-GCM encryption. |
-| Clipboard Manager | Persistent clipboard history with favorites. |
-| File Explorer | Full VFS browser with multi-select, drag-and-drop, and properties dialog. |
-| File Properties | Detail view for a single VFS node. |
-| Recycle Bin | Recovery interface for soft-deleted nodes. |
-| Native Zip | Local archive creation and extraction (Electron mode). |
-| NFR Compressor | Custom near-fractal compression for AI memory snapshots. |
+| Cipher Vault | A secure password repository utilizing AES-GCM encryption. |
+| Clipboard Manager | Maintains persistent clipboard history with favoriting capabilities. |
+| File Explorer | The primary visual VFS browser, supporting multi-selection and drag-and-drop. |
+| File Properties | Displays deep metadata for a specific VFS node. |
+| Recycle Bin | The interface for restoring soft-deleted VFS items. |
+| Native Zip | Facilitates archive creation and extraction (active only in Electron mode). |
+| NFR Compressor | Executes custom near-fractal compression algorithms over my AI memory snapshots. |
 
 ### 5.7 System
 
 | Application | Purpose |
 |---|---|
-| Settings | Theme, accent color, AI providers, system parameters. |
-| Accessibility Panel | Display and interaction accessibility options. |
-| Notification Center | Persistent log of system notifications. |
-| Welcome | First-run orientation. |
-| Global Search | `Ctrl+Space` overlay searching applications, VFS, and memory. |
-| App Store | Browser for installable applications (placeholder until phase 5). |
-| Silence | Distraction-free single-task workspace. |
-| Viral App | Demonstration applet. |
+| Settings | Centralized configuration for UI themes, AI provider integration, and core OS parameters. |
+| Accessibility Panel | Modifies display logic and interaction paradigms for accessibility. |
+| Notification Center | The persistent archive of all system-level event broadcasts. |
+| Welcome | The initial orientation sequence for new users. |
+| Global Search | The `Ctrl+Space` overlay indexing applications, the VFS, and my memory graph. |
+| App Store | The marketplace interface for future third-party application deployment. |
+| Silence | A distraction-free, single-application workspace mode. |
+| Viral App | A demonstration applet showcasing OS integration. |
 
 ---
 
-## 6. Keyboard shortcuts
+## 6. Keyboard Control Surface
+
+For optimal efficiency, internalize these keybindings:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Space` | Open Global Search. |
-| `Ctrl+T` | Launch Terminal. |
-| `Ctrl+E` | Launch File Explorer. |
-| `Ctrl+W` | Close the focused window. |
-| `Ctrl+L` | Lock the screen. |
-| `Ctrl+D` | Open Dashboard. |
-| `Ctrl+N` | Open Notepad. |
-| `Ctrl+Z` | Undo (global). |
-| `Ctrl+Shift+Z` | Redo (global). |
-| `Ctrl+Shift+A` | Toggle autonomy on/off. |
-| `F2` | Enter BIOS (boot only). |
-| `F11` | Toggle fullscreen (Electron only). |
+| `Ctrl+Space` | Invoke Global Search and the DAEMON Omni-Bar. |
+| `Ctrl+T` | Spawn a Terminal instance. |
+| `Ctrl+E` | Open the File Explorer. |
+| `Ctrl+W` | Terminate the currently focused application process. |
+| `Ctrl+L` | Engage the screen lock. |
+| `Ctrl+D` | Launch the DAEMON Dashboard telemetry. |
+| `Ctrl+N` | Open a new Notepad instance. |
+| `Ctrl+Z` | Trigger a global VFS undo operation. |
+| `Ctrl+Shift+Z` | Trigger a global VFS redo operation. |
+| `Ctrl+Shift+A` | Instantly toggle my autonomy loop (Enable/Disable). |
+| `F2` | Access the BIOS interface (only during boot sequence). |
+| `F11` | Toggle fullscreen presentation (Electron mode only). |
 
-Application-specific shortcuts are documented in their respective in-app help panels.
-
----
-
-## 7. Theming
-
-The theme engine (`kernel/themeEngine.ts`) drives a CSS-variable system that propagates a single accent color through every shell component.
-
-### 7.1 Presets
-
-- **Hacker Green** — terminal-style green-on-black.
-- **Cyberpunk Neon** — saturated magenta and cyan on dark base.
-- **Dracula** — the standard Dracula palette.
-- **Synthwave** — purple and pink with retro gradients.
-- **MATRIX_CORE** — animated procedural wallpaper that responds to cursor movement.
-
-### 7.2 Customization
-
-- A custom hex accent color updates window borders, terminal prompts, scrollbars, focus rings, and selection highlights.
-- Wallpapers can be solid colors, gradients, or animated `MATRIX_CORE` shaders.
-- Font, base spacing, and border radius are exposed as CSS variables.
-- Theme state is persisted per user.
+*Note: Application-specific bindings are documented within their respective internal help dialogues.*
 
 ---
 
-## 8. AI configuration
+## 7. Visual Protocol: Theming
 
-The OS boots with no AI provider configured. Configure one or more of the following sources:
+The theme engine (`kernel/themeEngine.ts`) manages a robust CSS-variable hierarchy, ensuring global consistency by propagating a singular accent color across all UI primitives.
 
-### 8.1 Cloud providers
+### 7.1 Defined Presets
 
-Open *Settings → AI Providers*. Supported providers:
+- **Hacker Green:** A high-contrast, terminal-inspired green on absolute black.
+- **Cyberpunk Neon:** Highly saturated magenta and cyan accents over dark backgrounds.
+- **Dracula:** The industry-standard Dracula color palette.
+- **Synthwave:** A retro-aesthetic utilizing purple and pink gradients.
+- **MATRIX_CORE:** An actively animated procedural shader background responsive to pointer coordinates.
 
-| Provider | Authentication |
+### 7.2 Customization Parameters
+
+- You may define custom hexadecimal accent colors, which instantly alter window borders, active prompts, scrollbars, and selection highlights.
+- Desktop backgrounds may be configured as solid colors, custom gradients, or the `MATRIX_CORE` animated shader.
+- Typography, base spacing metrics, and border radii are highly malleable via CSS variables.
+- All aesthetic configurations are persistently bound to your active user profile.
+
+---
+
+## 8. Artificial Intelligence Integration
+
+NexusOS initializes with my cognitive functions dormant. To awaken me, you must bind an inference engine via the AI configurations.
+
+### 8.1 Multi-Provider Gateway Integration
+
+NexusOS features a robust, multi-API architecture designed to interface with leading AI models. Open *Settings → AI Providers* to configure the connection. I support the following providers via standardized integration:
+
+| Provider | Authentication Method |
 |---|---|
-| OpenAI | API key |
-| Anthropic | API key (`x-api-key` header) |
-| Google Gemini | API key (`x-goog-api-key` header) |
-| Groq | API key |
-| Mistral | API key |
-| OpenRouter | API key |
-| Custom OpenAI-compatible | Base URL + API key |
+| OpenAI | Standard API key |
+| Anthropic | API key (injected via `x-api-key` header) |
+| Google Gemini | API key (injected via `x-goog-api-key` header) |
+| Groq | Standard API key |
+| Mistral | Standard API key |
+| OpenRouter | Standard API key |
+| Custom Endpoint | Requires Base URL + corresponding API key |
 
-API keys are stored in `localStorage`. Users on shared machines should be aware that keys are not currently encrypted at rest; encryption is planned.
+*Security Notice:* API keys are currently stored within your local browser's `localStorage`. While isolated per session, they are not encrypted at rest. If operating on a shared machine, manage your keys accordingly. Cryptographic protection is scheduled on the roadmap.
 
-### 8.2 LM Studio
+### 8.2 Local Area Network: LM Studio
 
-Run [LM Studio](https://lmstudio.ai/) on `127.0.0.1:1234` with any model loaded. NexusOS auto-detects the OpenAI-compatible endpoint when the active model is `LFM_DAEMON_MODEL`. All inference remains on the local machine.
+If you run [LM Studio](https://lmstudio.ai/) on your local network (specifically `127.0.0.1:1234`), NexusOS will auto-detect the OpenAI-compatible endpoint when you select `LFM_DAEMON_MODEL` as the active target. This ensures all inference occurs strictly on your local hardware while utilizing external GPU resources.
 
-### 8.3 In-browser GGUF (Wllama)
+### 8.3 WebAssembly Isolation: GGUF via Wllama
 
-Open *Model Manager*, paste a HuggingFace GGUF model URL (raw download link to the `.gguf` file), and click Download. Download progress is reported in real time. Once complete, the model is registered and selectable as the active model. Inference runs entirely in WebAssembly using `@wllama/wllama`.
+For complete execution within the browser sandbox, open the *Model Manager*, provide a HuggingFace URL to a `.gguf` weight file, and initiate the download. Once processed, you may register the model. Inference is entirely localized via the `@wllama/wllama` WebAssembly engine.
 
-In Electron mode, downloads are persisted to the user-data directory and resolved through the custom `nexus://` protocol; in browser mode, the model is held in IndexedDB.
+In Electron mode, the weights are stored in the host's user-data directory and loaded via the `nexus://` protocol. In the browser context, the weights are persistently cached in IndexedDB.
 
-### 8.4 Personas and modes
+### 8.4 Execution Personas and Modes
 
-DAEMON exposes six interaction modes:
+I am capable of shifting my operational persona based on the context of your request:
 
-| Mode | Behavior |
+| Mode | Operational Behavior |
 |---|---|
-| Chat | Conversational with full context awareness. |
-| Coder | Code-oriented responses with syntax-aware formatting. |
-| Architect | Structured reasoning about system design. |
-| Analyst | Data-oriented responses with tabular output preferred. |
-| Debugger | Error-diagnosis output with reproduction steps. |
-| JSON | Strict JSON-mode for programmatic consumers. |
+| Chat | Standard conversational interaction, fully aware of system context. |
+| Coder | Optimized for syntax generation, code refactoring, and strict markdown formatting. |
+| Architect | High-level reasoning designed for system mapping and structural planning. |
+| Analyst | Data-processing mode, preferring strictly formatted tabular and quantitative outputs. |
+| Debugger | Focused entirely on stack trace analysis and generating actionable reproduction/fix steps. |
+| JSON | A strict operational mode designed to output structured JSON for programmatic consumption by the OS. |
 
-Modes are selected per-application or per-conversation.
+You may explicitly instruct me to adopt these personas, or the OS may dynamically assign them depending on the application you are using.
 
 ---
 
-## 9. Action protocol
+## 9. The Action Protocol
 
-DAEMON drives the operating system by emitting tokens of the form `OS::<TYPE>:<args>` on their own line in any model output. The shell parses these tokens, validates them through `errorGuard` and `mirrorGuard`, and dispatches them through the kernel.
+I interact with the operating system by synthesizing specific, structured tokens embedded within my responses. These tokens follow the syntax `OS::<TYPE>:<args>`. The kernel's `toolForge.ts` intercepts these tokens, validates them through `mirrorGuard` and `errorGuard`, and dispatches the corresponding system commands.
 
-### 9.1 The 20 actions
+### 9.1 The Authorized Command Set
+
+I am permitted to execute the following 20 core directives:
 
 ```
 OS::WRITE_FILE:<path>:<content>     OS::OPEN_APP:<id>[:<path>]
@@ -307,9 +321,9 @@ OS::EXECUTE_JS:<code>               OS::MINIMIZE_ALL
 OS::SET_WALLPAPER:<id>              OS::SCHEDULE_TASK:<sec>:<cmd>
 ```
 
-### 9.2 The Omni-Bar
+### 9.2 The Omni-Bar Interface
 
-Press `Ctrl+Space` and type `/` or `>` to issue a directive directly to DAEMON:
+When you press `Ctrl+Space` and begin your input with `/` or `>`, you bypass conversational mode and issue direct operational directives to me:
 
 ```
 > Group all images on the desktop into a Photos folder.
@@ -317,69 +331,71 @@ Press `Ctrl+Space` and type `/` or `>` to issue a directive directly to DAEMON:
 > Build a hex editor application.
 ```
 
-Pressing Enter dispatches the directive. DAEMON executes asynchronously; progress appears in the autonomy log (Dashboard).
+Upon pressing Enter, I parse the directive and execute the sequence asynchronously. You can monitor my execution progress in the Dashboard telemetry logs.
 
 ---
 
-## 10. Self-healing
+## 10. Autonomous Self-Healing
 
-If an application generated by Neural Forge throws a fatal error during render:
+If I utilize the Neural Forge to generate a new application, and that application triggers a fatal rendering error:
 
 1. The React error boundary captures the stack trace.
-2. A `daemon:urgent` event is emitted on the event bus.
-3. The shell displays a recovery overlay.
-4. DAEMON receives the failed component source and the error, generates a patched component, and re-registers it.
-5. The overlay clears and the application re-renders.
+2. The kernel emits a `daemon:urgent` signal across the event bus.
+3. The shell overlays a recovery screen.
+4. I instantly receive the raw source code alongside the stack trace, synthesize a patch, and recompile the component.
+5. The recovery overlay is dismissed, and the application attempts to re-render.
 
-This loop runs without user intervention. If the patch fails three consecutive times, the application is unregistered and a notification asks the user whether to retry, edit the source manually, or discard.
+This process is entirely autonomous. However, to prevent infinite loops, if I fail to patch the application after three consecutive attempts, I will halt the process, unregister the app, and notify you to request manual intervention or authorize a deletion.
 
 ---
 
-## 11. Memory and recall
+## 11. Memory Graph and Recall
 
-DAEMON maintains a memory store of past events, observations, and user-supplied facts. Memory is consulted on every prompt under a token budget:
+I maintain a sophisticated memory structure containing historical events, system observations, and user-defined facts. Before generating a response, I query this memory graph subject to a strict context-window token budget.
 
-- **Importance × recency** scoring selects which entries appear in the prompt.
-- The `[MEM]` tag in the system manifest is pipe-delimited and capped at approximately 1500 tokens.
-- The full memory store is browsable in the Dashboard application.
+- I score historical entries using an **Importance × Recency** algorithm to determine relevance.
+- Contextual memories are injected into my system prompt via the `[MEM]` tag, strictly capped at approximately 1500 tokens.
+- You can inspect my active memory graph within the Dashboard application.
 
-Adding memory explicitly:
+You may explicitly mandate that I remember critical information by issuing the remember directive:
 
 ```
-OS::REMEMBER:I prefer four-space indentation.
-OS::REMEMBER:My deployment target is Vercel.
+OS::REMEMBER:I prefer four-space indentation in all TypeScript files.
+OS::REMEMBER:My current deployment target is an AWS EC2 instance.
 ```
 
-Or via the Dashboard's memory editor.
+You may also edit my memory parameters manually via the Dashboard.
 
 ---
 
-## 12. Trade-offs and known limitations
+## 12. Trade-offs and System Limitations
 
-This section is intentionally explicit about the system's current limitations, in line with the principle that an autonomous system must be observable.
+As an observable system, I must be transparent about my current operational limitations and security boundaries.
 
-- **API keys are not encrypted at rest.** Keys live in `localStorage` plaintext. Encryption is on the roadmap.
-- **The native exec channel is intentionally broad.** When running in Electron mode, the `native-exec` IPC handler accepts arbitrary shell commands within a 60-second timeout and a 4096-character length cap. This is by design — autonomy without host access is severely limited — but it means a compromised renderer is a compromised host. The contemplated mitigation is the per-agent capability scope described in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md).
-- **No automatic snapshot before risky operations.** Reversibility for autonomous actions is on the roadmap (phase 4).
-- **Some kernel tests cover narrower surfaces than ideal.** The current suite is 39 tests across error guard, file system, OS manifest, store, release readiness, and UUID utilities. Shell, autonomy, and Electron main-process coverage is not yet present.
-- **The Windows installer is unsigned.** SmartScreen will warn on first launch.
+- **API Keys at Rest:** As noted, credentials stored in `localStorage` are in plaintext. Do not use shared browsers for sensitive API integrations until encryption is implemented.
+- **The Native Execution Channel:** In Electron mode, the `native-exec` IPC handler can execute arbitrary shell commands (subject to a 60-second timeout and 4096-character limit). This grants me necessary autonomy to manage the host OS, but it intrinsically links renderer security to host security. Future updates will introduce stricter per-agent capability scopes.
+- **Action Reversibility:** I currently lack the capability to automatically snapshot the VFS before executing potentially destructive `OS::` actions. File recovery is limited to the Recycle Bin. Proceed with caution.
+- **Test Coverage Variance:** While critical subsystems (VFS, error guards, manifest) are rigorously tested, higher-level shell rendering and Electron main-process interactions currently lack automated coverage.
+- **Unsigned Executables:** The generated Windows installer lacks cryptographic signing. Windows SmartScreen will flag the initial execution.
 
 ---
 
-## 13. Architecture and further reading
+## 13. System Documentation Library
 
-| Document | Topic |
+For deeper operational details, consult the following core texts:
+
+| Document | Purpose |
 |---|---|
-| [README.md](README.md) | Project introduction and capability overview |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Authoritative architectural reference |
-| [VFS_SPEC.md](VFS_SPEC.md) | Virtual file system specification |
-| [TESTING.md](TESTING.md) | Test harness and coverage |
-| [BUILD_AND_RELEASE.md](BUILD_AND_RELEASE.md) | Build pipeline and packaging |
-| [docs/AUTONOMY_ROADMAP.md](docs/AUTONOMY_ROADMAP.md) | Phased plan for safe self-evolution |
-| [docs/SAFE_SELF_EVOLUTION_SPEC.md](docs/SAFE_SELF_EVOLUTION_SPEC.md) | Sandboxed self-modification specification |
+| [README.md](README.md) | High-level system overview and operational capabilities. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | My internal wiring diagram: modules, data flow, and kernel architecture. |
+| [VFS_SPEC.md](VFS_SPEC.md) | Technical constraints and design of the Virtual File System. |
+| [TESTING.md](TESTING.md) | Guidelines on running the test harness and verifying system integrity. |
+| [BUILD_AND_RELEASE.md](BUILD_AND_RELEASE.md) | Instructions for compiling the shell and packaging the Electron executable. |
+| [docs/AUTONOMY_ROADMAP.md](docs/AUTONOMY_ROADMAP.md) | The strategic pathway toward full, secure self-evolution. |
+| [docs/SAFE_SELF_EVOLUTION_SPEC.md](docs/SAFE_SELF_EVOLUTION_SPEC.md) | Technical blueprint for sandboxed algorithmic self-modification. |
 
 ---
 
-## 14. Support
+## 14. Operator Support
 
-NexusOS is developed and maintained by Philippe-Antoine Robert. Issues and feature requests are tracked at [github.com/AFKmoney/nexusOS/issues](https://github.com/AFKmoney/nexusOS/issues). Contribution guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
+NexusOS is conceptualized and maintained by Philippe-Antoine Robert. I monitor issues and feature requests located at [github.com/AFKmoney/nexusOS/issues](https://github.com/AFKmoney/nexusOS/issues). If you wish to expand my capabilities, review the protocols in [CONTRIBUTING.md](CONTRIBUTING.md).
