@@ -3,13 +3,15 @@
 </div>
 
 <h1 align="center">NexusOS</h1>
-<h3 align="center">An AI-native operating environment for the browser and Electron</h3>
+<h3 align="center">An AI-native operating environment for the browser, Electron, and Android</h3>
 
 <div align="center">
-  <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-windows%20installer-10b981?style=flat-square" alt="Download" /></a>
-  <img src="https://img.shields.io/badge/version-2.0.5-10b981?style=flat-square" alt="Version" />
+  <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-windows%20installer-10b981?style=flat-square" alt="Download Windows" /></a>
+  <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-android%20APK-6366f1?style=flat-square" alt="Download Android APK" /></a>
+  <img src="https://img.shields.io/badge/version-2.0.6-10b981?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/typescript-strict-3178c6?style=flat-square" alt="TypeScript strict" />
+  <img src="https://img.shields.io/badge/PWA-ready-f59e0b?style=flat-square" alt="PWA Ready" />
 </div>
 
 ---
@@ -28,15 +30,16 @@ This repository contains the full source: the React 19 shell, the TypeScript ker
 
 | Metric | Value |
 |---|---|
-| Version | 2.0.5 |
-| Source files (TypeScript / TSX) | 134 |
-| Lines of TypeScript | ~26,000 |
+| Version | 2.0.6 |
+| Source files (TypeScript / TSX) | 178 |
+| Lines of TypeScript | ~32,000 |
 | Kernel modules | 27 |
-| Built-in applications | 52 |
+| Built-in applications (desktop) | 52 |
+| Mobile applications (NexusPortable) | 27 |
 | AI service modules | 4 |
 | OS action protocols | 20 |
 | Test files | 5 (kernel + utils) |
-| Production build | passes (Vite 6.4) |
+| Production build | passes (Vite 6.4, both targets) |
 | Type check | passes (TypeScript strict) |
 | Test suite | 39/39 passing |
 
@@ -162,7 +165,20 @@ nexusOS/
 ├── apps/                         52 built-in applications (.tsx)
 ├── components/                   Shell UI primitives
 ├── utils/                        UUID, sanitization, helpers
-└── docs/                         Long-form design documents
+├── docs/                         Long-form design documents
+│
+└── NexusPortable/                Mobile PWA + Android APK (standalone build)
+    ├── App.tsx                   Mobile shell (full-screen stack navigator)
+    ├── appRegistry.ts            27 mobile app registry
+    ├── types.ts                  Aligned with desktop types.ts
+    ├── capacitor.config.ts       Capacitor (Android packaging) config
+    ├── manifest.json             PWA manifest (standalone, portrait)
+    ├── index.html                Mobile-optimized HTML with safe-area meta tags
+    ├── index.css                 Touch-first CSS design system
+    ├── store/mobileStore.ts      Zustand store (aligned with osStoreConstants)
+    ├── apps/                     27 touch-native app components
+    ├── components/               Mobile shell primitives
+    └── android/                  Capacitor Android project (Gradle + WebView)
 ```
 
 ---
@@ -194,6 +210,47 @@ npm run electron:build
 ```
 
 The packaged output is written to `dist_electron/`.
+
+### Mobile / Android (NexusPortable)
+
+NexusPortable is the complete mobile-first edition of NexusOS, built as a standalone React 19 + Vite PWA and packaged as a native Android APK via Capacitor.
+
+#### Option A — Install as a PWA (no app store required)
+
+Open the hosted URL in Chrome on Android or Safari on iOS and tap *Add to Home Screen*. The app installs with `display: standalone`, respects safe-area insets, and persists all state in `localStorage`.
+
+#### Option B — Install the Android APK
+
+Download `NexusOS-<version>-debug.apk` from the [Releases](https://github.com/AFKmoney/nexusOS/releases) page. On your device, enable *Install unknown apps* for your browser, then open the APK to install.
+
+#### Option C — Build the APK locally
+
+Requires Android Studio and the Android SDK (API 36, min API 24).
+
+```bash
+cd NexusPortable
+npm install
+npm run build          # produces dist/
+npx cap sync android   # copies dist/ into android/app/src/main/assets/public
+cd android
+./gradlew assembleDebug
+# APK → android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+For a signed release APK, see [`NexusPortable/README.md`](NexusPortable/README.md).
+
+#### NexusPortable feature parity
+
+| Category | Apps |
+|---|---|
+| Core | Terminal, DAEMON Chat, Files, Settings, Dashboard |
+| Productivity | Notes, Markdown, Sticky Notes, Kanban, Habits, Pomodoro, Calendar, Contacts |
+| AI | DAEMON Chat, NeuralForge (app builder), NEXUS.PRIME (agent), Model Manager |
+| Utilities | Calculator, Clipboard, Cipher Vault, System Info, Voice Recorder, App Store |
+| Media / Web | Browser, Weather, Music |
+| System | Welcome, HyperIDE (code editor) |
+
+Full architecture and store alignment notes are in [`NexusPortable/README.md`](NexusPortable/README.md).
 
 ### AI configuration (optional)
 
@@ -270,7 +327,7 @@ NexusOS is structured as a phased migration from an AI-assisted desktop shell to
 | 4 — Sandboxed execution | planned | Isolated runtime for AI-generated code with snapshot + auto-revert |
 | 5 — Plugin marketplace | planned | Community applications installable from the App Store with manifest-declared scopes |
 | 6 — Collaborative workspaces | planned | Multi-user sessions with per-user capability projection |
-| 7 — Mobile PWA | planned | Mobile-first shell with the same kernel |
+| 7 — Mobile PWA | complete | NexusPortable: 27-app touch-native PWA + Android APK via Capacitor |
 
 The phase ordering is governed by the principle that **every increment of autonomy is preceded by an increment of containment**. Sandboxing precedes autonomous code generation; capability scoping precedes multi-agent orchestration; rollback precedes self-modification.
 
