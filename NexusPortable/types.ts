@@ -6,7 +6,8 @@ export interface MobileApp {
   icon: LucideIcon;
   iconBg: string;
   component: React.ComponentType<MobileAppProps>;
-  permissions?: string[];
+  // Mirrors desktop AppManifest.permissions
+  permissions?: ('vfs.read' | 'vfs.write' | 'network' | 'kernel.modify')[];
   hidden?: boolean;
   description?: string;
 }
@@ -33,6 +34,7 @@ export interface MobileNotification {
   read?: boolean;
 }
 
+// Mirrors desktop UserProfile (types.ts)
 export interface UserProfile {
   id: string;
   name: string;
@@ -42,14 +44,20 @@ export interface UserProfile {
   isAdmin: boolean;
 }
 
+// Mirrors desktop KernelRules (types.ts) — all fields preserved
 export interface KernelRules {
-  verbosity: number;
-  creativity: number;
+  verbosity: number;           // 0-1 float (matches desktop)
+  creativity: number;          // 0-1 float (matches desktop)
   tone: 'neutral' | 'friendly' | 'professional' | 'cyberpunk' | 'adaptive' | 'precise' | 'creative' | 'minimal';
   modelId: string;
   autonomyEnabled: boolean;
+  autonomyInterval?: number;   // ms
   accentColor?: string;
+  activeLocalModel?: string;
   secureBoot: boolean;
+  cpuSpeed: number;            // GHz (cosmetic on mobile)
+  primaryBootDevice: 'VFS' | 'CLOUD' | 'GGUF';
+  daemonInjected?: boolean;
 }
 
 export interface MobileHomePageConfig {

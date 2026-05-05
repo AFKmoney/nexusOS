@@ -2,33 +2,53 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MobileNotification, UserProfile, KernelRules, MobileHomePageConfig, OpenApp } from '../types';
 
+// Aligned with desktop osStoreConstants.ts
+export const STORE_PERSIST_KEY = 'nexus-portable-state-v1';
+
+// Mirrors desktop DEFAULT_KERNEL_RULES (same field names, mobile-adapted values)
 const DEFAULT_KERNEL_RULES: KernelRules = {
-  verbosity: 5,
-  creativity: 7,
+  verbosity: 0.7,
+  creativity: 0.8,
   tone: 'adaptive',
   modelId: 'claude-sonnet-4-6',
   autonomyEnabled: false,
+  autonomyInterval: 30000,
   secureBoot: true,
-  accentColor: '#10b981',
+  cpuSpeed: 3.4,
+  primaryBootDevice: 'VFS',
 };
 
+// Mirrors desktop DEFAULT_PROFILES (same DAEMON Core profile)
 const DEFAULT_PROFILES: UserProfile[] = [
-  {
-    id: 'user',
-    name: 'User',
-    themeColor: '#10b981',
-    isAdmin: true,
-  },
+  { id: 'daemon', name: 'DAEMON Core', themeColor: '#10b981', isAdmin: true },
+  { id: 'user',   name: 'User',        themeColor: '#6366f1', isAdmin: false },
 ];
 
+// Mirrors desktop DEFAULT_PINNED_APPS order on home page 1
 const DEFAULT_HOME: MobileHomePageConfig = {
   pages: [
-    ['terminal', 'notepad', 'explorer', 'daemon_chat', 'settings', 'dashboard'],
-    ['calculator', 'calendar', 'weather', 'browser', 'music', 'camera'],
-    ['kanban', 'voice', 'contacts', 'pomodoro', 'markdown', 'appstore'],
+    // Page 1: Core apps matching desktop DEFAULT_PINNED_APPS + essentials
+    ['welcome', 'explorer', 'hyperide', 'terminal', 'netrunner', 'dashboard',
+     'daemon_chat', 'aion_agent', 'forge', 'settings', 'appstore', 'model_manager'],
+    // Page 2: Productivity
+    ['notepad', 'rich_editor', 'sticky_notes', 'kanban', 'habits', 'pomodoro',
+     'calendar', 'contacts', 'clipboard', 'silence', 'daemon_journal', 'rss'],
+    // Page 3: Media & Utilities
+    ['calculator', 'weather', 'music', 'image_viewer', 'voice_recorder', 'markdown',
+     'sysinfo', 'fractal', 'nfr', 'accessibility', 'native_zip', 'recycle_bin'],
   ],
-  dock: ['daemon_chat', 'browser', 'terminal', 'settings'],
+  dock: ['daemon_chat', 'netrunner', 'terminal', 'settings'],
 };
+
+export const WALLPAPER_PRESETS = [
+  { id: 'NEURAL',   label: 'Neural',   description: 'Animated particle network' },
+  { id: 'NEBULA',   label: 'Nebula',   description: 'Deep space nebula gradient' },
+  { id: 'AURORA',   label: 'Aurora',   description: 'Aurora borealis waves' },
+  { id: 'GRID',     label: 'Grid',     description: 'Cyberpunk grid lines' },
+  { id: 'MINIMAL',  label: 'Minimal',  description: 'Clean dark gradient' },
+] as const;
+
+export type WallpaperPreset = typeof WALLPAPER_PRESETS[number]['id'];
 
 interface MobileState {
   // Boot / Auth
@@ -37,13 +57,14 @@ interface MobileState {
   currentUser: UserProfile | null;
   profiles: UserProfile[];
 
-  // App Stack (navigation)
+  // App Stack (navigation — mobile full-screen model)
   appStack: OpenApp[];
   activeAppId: string | null;
 
   // Home
   homeConfig: MobileHomePageConfig;
   currentHomePage: number;
+  pinnedApps: string[]; // mirrors desktop DEFAULT_PINNED_APPS
 
   // Overlays
   isAppDrawerOpen: boolean;
@@ -56,15 +77,21 @@ interface MobileState {
   notifications: MobileNotification[];
   unreadCount: number;
 
-  // System
+  // System / Kernel
   kernelRules: KernelRules;
   accentColor: string;
-  wallpaper: string;
+  wallpaper: WallpaperPreset;
+  wallpaperMotionStrength: number;
   isForging: boolean;
 
-  // AI
+  // Clipboard (mirrors desktop)
+  clipboard: { text: string; ts: number } | null;
+  clipboardHistory: Array<{ text: string; ts: number }>;
+
+  // AI / Autonomy
   autonomyLog: string[];
   currentObjective: string;
+  autonomyState: 'IDLE' | 'RUNNING' | 'PAUSED';
 
   // Actions: Boot/Auth
   setBooted: (v: boolean) => void;
@@ -94,11 +121,22 @@ interface MobileState {
   setCurrentHomePage: (page: number) => void;
   updateHomeConfig: (config: Partial<MobileHomePageConfig>) => void;
 
-  // Actions: System
+  // Actions: System (mirrors desktop updateKernelRules)
   updateKernelRules: (updates: Partial<KernelRules>) => void;
   setAccentColor: (color: string) => void;
-  setWallpaper: (wallpaper: string) => void;
+  setWallpaper: (wallpaper: WallpaperPreset) => void;
+  setWallpaperMotionStrength: (v: number) => void;
+  setForging: (v: boolean) => void;
+  systemReset: (wipe: boolean) => void;
+
+  // Actions: Clipboard
+  setClipboard: (text: string) => void;
+  clearClipboard: () => void;
+
+  // Actions: Autonomy
   addAutonomyLog: (entry: string) => void;
+  setCurrentObjective: (obj: string) => void;
+  setAutonomyState: (s: 'IDLE' | 'RUNNING' | 'PAUSED') => void;
 }
 
 function uuid() {
@@ -116,6 +154,7 @@ export const useMobile = create<MobileState>()(
       activeAppId: null,
       homeConfig: DEFAULT_HOME,
       currentHomePage: 0,
+      pinnedApps: ['welcome', 'explorer', 'hyperide', 'terminal', 'netrunner'],
       isAppDrawerOpen: false,
       isNotificationPanelOpen: false,
       isControlCenterOpen: false,
@@ -126,20 +165,30 @@ export const useMobile = create<MobileState>()(
       kernelRules: DEFAULT_KERNEL_RULES,
       accentColor: '#10b981',
       wallpaper: 'NEURAL',
+      wallpaperMotionStrength: 0.6,
       isForging: false,
+      clipboard: null,
+      clipboardHistory: [],
       autonomyLog: [],
-      currentObjective: 'System Ready',
+      currentObjective: 'System Monitoring',
+      autonomyState: 'IDLE',
 
       setBooted: (v) => set({ booted: v }),
 
       login: (profileId) => {
         const profile = get().profiles.find(p => p.id === profileId) ?? get().profiles[0] ?? null;
         set({ isLoggedIn: true, currentUser: profile });
+        // Apply theme color from profile
+        if (profile) {
+          document.documentElement.style.setProperty('--nx-accent', profile.themeColor);
+          set({ accentColor: profile.themeColor });
+        }
       },
 
       logout: () => set({ isLoggedIn: false, currentUser: null, appStack: [], activeAppId: null }),
 
       openApp: (appId) => {
+        // Singleton: if already open, bring to front (same as desktop DEFAULT_SINGLETON_APPS)
         const existing = get().appStack.find(a => a.appId === appId);
         if (existing) {
           set({ activeAppId: existing.id });
@@ -151,13 +200,12 @@ export const useMobile = create<MobileState>()(
           activeAppId: entry.id,
           isAppDrawerOpen: false,
           isRecentAppsOpen: false,
+          isSearchOpen: false,
         }));
       },
 
       closeApp: (appId) => {
         const stack = get().appStack;
-        const idx = stack.findIndex(a => a.appId === appId);
-        if (idx === -1) return;
         const next = stack.filter(a => a.appId !== appId);
         const lastApp = next[next.length - 1];
         set({ appStack: next, activeAppId: lastApp?.id ?? null });
@@ -198,29 +246,61 @@ export const useMobile = create<MobileState>()(
       })),
 
       setCurrentHomePage: (page) => set({ currentHomePage: page }),
-
       updateHomeConfig: (config) =>
         set(state => ({ homeConfig: { ...state.homeConfig, ...config } })),
 
       updateKernelRules: (updates) =>
         set(state => ({ kernelRules: { ...state.kernelRules, ...updates } })),
 
-      setAccentColor: (color) => set({ accentColor: color }),
+      setAccentColor: (color) => {
+        document.documentElement.style.setProperty('--nx-accent', color);
+        set({ accentColor: color });
+      },
+
       setWallpaper: (wallpaper) => set({ wallpaper }),
+      setWallpaperMotionStrength: (v) => set({ wallpaperMotionStrength: v }),
+      setForging: (v) => set({ isForging: v }),
+
+      systemReset: (wipe) => {
+        set({
+          appStack: [],
+          activeAppId: null,
+          notifications: [],
+          unreadCount: 0,
+          autonomyLog: [],
+          autonomyState: 'IDLE',
+          currentObjective: 'System Monitoring',
+        });
+        if (wipe) {
+          localStorage.removeItem(STORE_PERSIST_KEY);
+          window.location.reload();
+        }
+      },
+
+      setClipboard: (text) => set(state => ({
+        clipboard: { text, ts: Date.now() },
+        clipboardHistory: [{ text, ts: Date.now() }, ...state.clipboardHistory].slice(0, 20),
+      })),
+
+      clearClipboard: () => set({ clipboard: null }),
 
       addAutonomyLog: (entry) =>
-        set(state => ({
-          autonomyLog: [...state.autonomyLog.slice(-49), entry],
-        })),
+        set(state => ({ autonomyLog: [...state.autonomyLog.slice(-49), entry] })),
+
+      setCurrentObjective: (obj) => set({ currentObjective: obj }),
+      setAutonomyState: (s) => set({ autonomyState: s }),
     }),
     {
-      name: 'nexus-portable-store',
+      name: STORE_PERSIST_KEY,
       partialize: (state) => ({
         kernelRules: state.kernelRules,
         accentColor: state.accentColor,
         wallpaper: state.wallpaper,
+        wallpaperMotionStrength: state.wallpaperMotionStrength,
         homeConfig: state.homeConfig,
+        pinnedApps: state.pinnedApps,
         profiles: state.profiles,
+        clipboardHistory: state.clipboardHistory,
       }),
     }
   )
