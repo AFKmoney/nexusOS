@@ -1,0 +1,109 @@
+name: Build NexusPortable Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v2.0.6)'
+        required: false
+        default: 'dev'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: NexusPortable/package-lock.json
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NexusPortable dependencies
+        working-directory: NexusPortable
+        run: npm ci
+
+      - name: Build web app (Vite)
+        working-directory: NexusPortable
+        run: npm run build
+
+      - name: Sync Capacitor assets to Android
+        working-directory: NexusPortable
+        run: npx cap sync android
+
+      - name: Make Gradle wrapper executable
+        working-directory: NexusPortable/android
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: NexusPortable/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: |
+          VERSION="${{ github.ref_name || github.event.inputs.version }}"
+          cp NexusPortable/android/app/build/outputs/apk/debug/app-debug.apk \
+             NexusPortable/android/app/build/outputs/apk/debug/NexusOS-${VERSION}-debug.apk
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexusOS-debug-apk
+          path: NexusPortable/android/app/build/outputs/apk/debug/NexusOS-*-debug.apk
+          retention-days: 30
+
+      # Release APK (signed) — only when signing secrets are configured
+      - name: Build release APK (signed)
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        working-directory: NexusPortable/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/release.keystore \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            --no-daemon
+          rm -f release.keystore
+
+      - name: Upload signed release APK to GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.KEYSTORE_BASE64 != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: NexusPortable/android/app/build/outputs/apk/release/app-release.apk
+          name: NexusOS ${{ github.ref_name }}
+          body: |
+            ## NexusOS ${{ github.ref_name }}
+
+            ### Downloads
+            | Package | Platform | Description |
+            |---|---|---|
+            | `NexusOS_Setup_*.exe` | Windows | Electron desktop installer |
+            | `app-release.apk` | Android | Native APK via Capacitor |
+
+            ### NexusPortable (PWA)
+            Can also be installed directly from any mobile browser as a Progressive Web App.
+
+            See [NexusPortable/README.md](NexusPortable/README.md) for mobile setup instructions.

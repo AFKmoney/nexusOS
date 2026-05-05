@@ -17,12 +17,22 @@ import MobileContacts from './apps/MobileContacts';
 import MobilePomodoro from './apps/MobilePomodoro';
 import MobileMarkdown from './apps/MobileMarkdown';
 import MobileAppStore from './apps/MobileAppStore';
+import MobileWelcome from './apps/MobileWelcome';
+import MobileHyperIDE from './apps/MobileHyperIDE';
+import MobileStickyNotes from './apps/MobileStickyNotes';
+import MobileHabitTracker from './apps/MobileHabitTracker';
+import MobileSystemInfo from './apps/MobileSystemInfo';
+import MobileClipboardManager from './apps/MobileClipboardManager';
+import MobilePasswordManager from './apps/MobilePasswordManager';
+import MobileModelManager from './apps/MobileModelManager';
+import MobileAionAgent from './apps/MobileAionAgent';
+import MobileNeuralForge from './apps/MobileNeuralForge';
 
 import {
   Terminal, Cpu, FileText, FolderOpen, Settings, BarChart2,
   Calculator, Calendar, Globe, Cloud, Music, LayoutGrid, Mic,
-  Users, Timer, FileCode, ShoppingBag, Shield, Bell, Palette,
-  Camera, Zap, BookOpen, Clock,
+  Users, Timer, FileCode, ShoppingBag, Shield, Zap,
+  Sparkles, Code2, Pencil, Activity, Monitor, Clipboard, Brain, Bot,
 } from 'lucide-react';
 
 export const MOBILE_APPS: MobileApp[] = [
@@ -161,6 +171,86 @@ export const MOBILE_APPS: MobileApp[] = [
     iconBg: 'linear-gradient(135deg, #0891b2 0%, #10b981 100%)',
     component: MobileAppStore,
     description: 'Discover and install apps',
+  },
+  {
+    id: 'welcome',
+    name: 'Welcome',
+    icon: Sparkles,
+    iconBg: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+    component: MobileWelcome,
+    description: 'NexusOS onboarding and introduction',
+  },
+  {
+    id: 'hyperide',
+    name: 'HyperIDE',
+    icon: Code2,
+    iconBg: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
+    component: MobileHyperIDE,
+    description: 'Mobile code editor and runner',
+  },
+  {
+    id: 'sticky_notes',
+    name: 'Sticky Notes',
+    icon: Pencil,
+    iconBg: 'linear-gradient(135deg, #a16207 0%, #ca8a04 100%)',
+    component: MobileStickyNotes,
+    description: 'Quick sticky notes',
+  },
+  {
+    id: 'habits',
+    name: 'Habits',
+    icon: Activity,
+    iconBg: 'linear-gradient(135deg, #0e7490 0%, #0891b2 100%)',
+    component: MobileHabitTracker,
+    description: 'Habit tracker with streaks',
+  },
+  {
+    id: 'sysinfo',
+    name: 'System Info',
+    icon: Monitor,
+    iconBg: 'linear-gradient(135deg, #374151 0%, #4b5563 100%)',
+    component: MobileSystemInfo,
+    description: 'Device and browser system info',
+  },
+  {
+    id: 'clipboard',
+    name: 'Clipboard',
+    icon: Clipboard,
+    iconBg: 'linear-gradient(135deg, #065f46 0%, #059669 100%)',
+    component: MobileClipboardManager,
+    description: 'Clipboard history manager',
+  },
+  {
+    id: 'silence',
+    name: 'Cipher Vault',
+    icon: Shield,
+    iconBg: 'linear-gradient(135deg, #3730a3 0%, #6366f1 100%)',
+    component: MobilePasswordManager,
+    description: 'Encrypted password manager',
+  },
+  {
+    id: 'model_manager',
+    name: 'Models',
+    icon: Brain,
+    iconBg: 'linear-gradient(135deg, #92400e 0%, #d97706 100%)',
+    component: MobileModelManager,
+    description: 'AI model selection and management',
+  },
+  {
+    id: 'aion_agent',
+    name: 'NEXUS.PRIME',
+    icon: Bot,
+    iconBg: 'linear-gradient(135deg, #064e3b 0%, #059669 100%)',
+    component: MobileAionAgent,
+    description: 'Autonomous AI agent executor',
+  },
+  {
+    id: 'forge',
+    name: 'NeuralForge',
+    icon: Zap,
+    iconBg: 'linear-gradient(135deg, #065f46 0%, #10b981 100%)',
+    component: MobileNeuralForge,
+    description: 'AI-powered app builder',
   },
 ];
 
