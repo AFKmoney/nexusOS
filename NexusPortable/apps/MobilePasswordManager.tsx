@@ -104,7 +104,7 @@ export default function MobilePasswordManager({ onBack }: MobileAppProps) {
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {adding && (
           <div className="p-4 rounded-2xl space-y-3" style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-            {[['site','Website / App','text'],['username','Username / Email','email'],['password','Password','password'],['note','Note (optional)','text']].map(([k,p,t]) => (
+            {[['site','Website / App','text'],['username','Username / Email','email'],['password','Password','password'],['note','Note (optional)','text']].map(([k='',p='',t='']) => (
               <input key={k} className="mobile-input" type={t} placeholder={p}
                 value={(form as any)[k]} onChange={e => setForm(f => ({...f, [k]: e.target.value}))}
                 style={{ fontSize: '14px', padding: '10px 14px' }} />

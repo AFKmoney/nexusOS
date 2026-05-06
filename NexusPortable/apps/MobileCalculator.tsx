@@ -15,7 +15,7 @@ export default function MobileCalculator({ onBack }: MobileAppProps) {
     setJustCalc(false);
     if (val === '.') {
       const parts = display.split(/[\+\-\×\÷]/);
-      if (parts[parts.length - 1].includes('.')) return;
+      if (parts[parts.length - 1]?.includes('.')) return;
     }
     setDisplay(d => d === '0' && /\d/.test(val) ? val : d + val);
     setExpr(e => e === '' && /[\+\-\×\÷]/.test(val) ? result ?? display + val : e + val);

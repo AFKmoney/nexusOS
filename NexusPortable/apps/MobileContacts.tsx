@@ -23,7 +23,7 @@ export default function MobileContacts({ onBack }: MobileAppProps) {
 
   const grouped: Record<string, typeof CONTACTS> = {};
   filtered.forEach(c => {
-    const l = c.name[0].toUpperCase();
+    const l = c.name[0]!.toUpperCase();
     if (!grouped[l]) grouped[l] = [];
     grouped[l].push(c);
   });
@@ -104,7 +104,7 @@ export default function MobileContacts({ onBack }: MobileAppProps) {
         {Object.keys(grouped).sort().map(letter => (
           <div key={letter}>
             <p className="text-white/40 text-[12px] font-semibold uppercase tracking-wider py-2 mt-2">{letter}</p>
-            {grouped[letter].map(contact => (
+            {grouped[letter]!.map(contact => (
               <div key={contact.id} className="flex items-center gap-3 p-3 rounded-2xl mb-1 cursor-pointer active:bg-white/5 transition-all"
                 onClick={() => setSelected(contact)}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
