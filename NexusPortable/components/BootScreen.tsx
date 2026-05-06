@@ -24,7 +24,7 @@ export default function BootScreen({ onDone }: { onDone: () => void }) {
       }
       setProgress(Math.min(p, 100));
       const phaseIdx = Math.min(Math.floor((p / 100) * phases.length), phases.length - 1);
-      setPhase(phases[phaseIdx]);
+      setPhase(phases[phaseIdx]!);
     }, 180);
     return () => clearInterval(interval);
   }, [onDone]);

@@ -37,11 +37,11 @@ export default function MobileNeuralForge({ onBack }: MobileAppProps) {
 
     // Animate through stages
     let i = 0;
-    setStage(STAGES[0]);
+    setStage(STAGES[0]!);
     progressRef.current = setInterval(() => {
       i++;
       if (i < STAGES.length - 1) {
-        setStage(STAGES[i]);
+        setStage(STAGES[i]!);
         setStageIdx(i);
       } else {
         clearInterval(progressRef.current);

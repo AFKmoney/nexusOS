@@ -27,10 +27,10 @@ export default function MobileSystemInfo({ onBack }: MobileAppProps) {
   const rows: Record<string, [string, string][]> = {
     'NexusOS': [
       ['Name', 'NexusOS Mobile'],
-      ['Version', '2.0.5'],
+      ['Version', '2.0.6'],
       ['Edition', 'Mobile / PWA'],
       ['Neural Engine', 'DAEMON v2.0'],
-      ['Build', import.meta.env.MODE ?? 'production'],
+      ['Build', (import.meta as any).env?.MODE ?? 'production'],
     ],
     'Runtime': [
       ['Platform', navigator.platform || 'Unknown'],

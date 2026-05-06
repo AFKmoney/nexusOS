@@ -12,7 +12,7 @@ interface Habit {
 }
 
 const STORAGE_KEY = 'nx_habits';
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => new Date().toISOString().split('T')[0]!;
 const load = (): Habit[] => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); } catch { return []; } };
 const save = (h: Habit[]) => localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
 
@@ -53,7 +53,7 @@ export default function MobileHabitTracker({ onBack }: MobileAppProps) {
   // Last 7 days for mini calendar
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split('T')[0]!;
   });
 
   return (
