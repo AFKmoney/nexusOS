@@ -24,7 +24,7 @@ export default function MobileMusic({ onBack }: MobileAppProps) {
   const [repeat, setRepeat] = useState(false);
   const [volume, setVolume] = useState(75);
 
-  const track = TRACKS[trackIdx];
+  const track = TRACKS[trackIdx]!;
 
   useEffect(() => {
     if (!playing) return;

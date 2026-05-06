@@ -27,7 +27,7 @@ export default function MobileAppDrawer() {
 
   const grouped: Record<string, typeof apps> = {};
   filtered.forEach(app => {
-    const letter = app.name[0].toUpperCase();
+    const letter = app.name[0]!.toUpperCase();
     if (!grouped[letter]) grouped[letter] = [];
     grouped[letter].push(app);
   });
@@ -96,7 +96,7 @@ export default function MobileAppDrawer() {
           letters.map(letter => (
             <div key={letter}>
               <div className="section-header pl-0 pt-4 pb-2">{letter}</div>
-              {grouped[letter].map(app => {
+              {grouped[letter]!.map(app => {
                 const Icon = app.icon;
                 return (
                   <div

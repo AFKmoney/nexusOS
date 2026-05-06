@@ -44,13 +44,13 @@ function AppScreen({
 
   // Edge swipe-back gesture
   const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0]!.clientX;
+    touchStartY.current = e.touches[0]!.clientY;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    const dx = e.changedTouches[0]!.clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0]!.clientY - touchStartY.current);
     if (touchStartX.current < 24 && dx > 60 && dy < 80) {
       onBack();
     }
