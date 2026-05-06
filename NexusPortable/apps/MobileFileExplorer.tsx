@@ -65,7 +65,7 @@ export default function MobileFileExplorer({ onBack }: MobileAppProps) {
 
   const goBack = () => {
     if (breadcrumbs.length <= 1) { onBack(); return; }
-    const prev = breadcrumbs[breadcrumbs.length - 2];
+    const prev = breadcrumbs[breadcrumbs.length - 2]!;
     setPath(prev);
     setBreadcrumbs(b => b.slice(0, -1));
   };

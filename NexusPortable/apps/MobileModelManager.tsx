@@ -87,7 +87,7 @@ export default function MobileModelManager({ onBack }: MobileAppProps) {
             {/* Models */}
             {expandedProvider === provider.id && provider.models.map((model, i) => {
               const isActive = kernelRules.modelId === model.id;
-              const badge = TIER_BADGE[model.tier];
+              const badge = TIER_BADGE[model.tier]!;
               return (
                 <button
                   key={model.id}

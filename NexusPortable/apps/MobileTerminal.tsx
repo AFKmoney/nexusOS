@@ -80,7 +80,7 @@ export default function MobileTerminal({ onBack }: MobileAppProps) {
       return;
     }
 
-    const [name, ...args] = trimmed.split(' ');
+    const [name = '', ...args] = trimmed.split(' ');
     const fn = COMMANDS[name];
     if (fn) {
       const out = fn(args);
@@ -103,7 +103,7 @@ export default function MobileTerminal({ onBack }: MobileAppProps) {
     } else if (e.key === 'ArrowDown') {
       const idx = Math.max(histIdx - 1, -1);
       setHistIdx(idx);
-      setInput(idx === -1 ? '' : history[idx]);
+      setInput(idx === -1 ? '' : history[idx] ?? '');
     }
   };
 

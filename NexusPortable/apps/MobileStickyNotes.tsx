@@ -20,7 +20,7 @@ export default function MobileStickyNotes({ onBack }: MobileAppProps) {
     const note: StickyNote = {
       id: Date.now().toString(),
       text: '',
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
       x: Math.random() * 30,
       y: Math.random() * 30,
     };
