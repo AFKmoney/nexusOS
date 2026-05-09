@@ -24,7 +24,18 @@ export type AutonomyEventKind =
   | 'health-degraded'
   | 'health-recovered'
   | 'safe-mode-entered'
-  | 'safe-mode-exited';
+  | 'safe-mode-exited'
+  // Phase 5 — staging events
+  | 'staging-artifact-added'
+  | 'staging-artifact-sealed'
+  | 'staging-deploy-started'
+  | 'staging-deploy-complete'
+  | 'staging-deploy-failed'
+  | 'staging-revert-started'
+  | 'staging-revert-complete'
+  | 'staging-revert-failed'
+  // Phase 8 — trust tier events
+  | 'trust-tier-override';
 
 export type AutonomySubsystem =
   | 'policy-engine'
@@ -35,7 +46,9 @@ export type AutonomySubsystem =
   | 'health-monitor'
   | 'autonomy-loop'
   | 'commander'
-  | 'ai-pipeline';
+  | 'ai-pipeline'
+  | 'staging-manager'
+  | 'trust-tier-engine';
 
 export interface AutonomyEvent {
   id: string;
