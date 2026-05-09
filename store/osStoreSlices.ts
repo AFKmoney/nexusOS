@@ -13,6 +13,11 @@ export interface GovernanceState {
   pendingApprovals: number;
   totalProposals: number;
   totalRollbacks: number;
+  // Phase 5 — staging
+  stagedArtifactCount: number;
+  lastDeployStatus: 'none' | 'pending' | 'partial' | 'complete' | 'failed' | 'reverted';
+  // Phase 8 — trust tiers
+  activeTrustTierOverride: string | null;
 }
 
 export interface OSStateShape {
