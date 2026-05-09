@@ -2,6 +2,18 @@ import { Box } from 'lucide-react';
 import { uuid } from '../utils/uuid';
 import { AppManifest, ContextMenuState, KernelRules, Notification, UserProfile, WindowState } from '../types.ts';
 import { DEFAULT_SINGLETON_APPS } from './osStoreConstants';
+import type { OverrideMode } from '../kernel/humanOverride';
+import type { HealthStatus } from '../kernel/autonomyHealthMonitor';
+
+export interface GovernanceState {
+  overrideMode: OverrideMode;
+  overrideReason?: string;
+  healthStatus: HealthStatus;
+  confidenceScore: number;
+  pendingApprovals: number;
+  totalProposals: number;
+  totalRollbacks: number;
+}
 
 export interface OSStateShape {
   windows: WindowState[];
@@ -18,6 +30,7 @@ export interface OSStateShape {
   autonomyLog: string[];
   currentObjective: string;
   currentSelfPrompt: string | undefined;
+  governance: GovernanceState;
   clipboard: { path: string; operation: 'copy' | 'cut' } | null;
   wallpaper: string;
   accentColor: string;
@@ -71,6 +84,7 @@ export interface OSStateShape {
   setAutonomyState: (s: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING') => void;
   addAutonomyLog: (log: string) => void;
   setCurrentObjective: (obj: string) => void;
+  updateGovernance: (patch: Partial<GovernanceState>) => void;
 }
 
 export const createUIActions = (
@@ -104,6 +118,8 @@ export const createNotificationAndAutonomyActions = (
   addAutonomyLog: (log: string) =>
     set(state => ({ autonomyLog: [...state.autonomyLog.slice(-50), log] })),
   setCurrentObjective: (currentObjective: string) => set({ currentObjective }),
+  updateGovernance: (patch: Partial<GovernanceState>) =>
+    set(state => ({ governance: { ...state.governance, ...patch } })),
 });
 
 export const createRegistryActions = (

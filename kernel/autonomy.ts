@@ -7,6 +7,10 @@ import { useOS } from '../store/osStore';
 import { processManager } from './processManager';
 import { eventBus, OS_EVENTS } from './eventBus';
 import { missionLearning } from './missionLearning';
+import { humanOverride } from './humanOverride';
+import { autonomyEventLog } from './autonomyEventLog';
+import { policyEngine } from './policyEngine';
+import { initGovernanceBridge } from './governanceBridge';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -213,11 +217,13 @@ export class AutonomyEngine {
   public start() {
     if (this.isRunning) return;
     this.isRunning = true;
+    initGovernanceBridge();
     const os = useOS.getState();
+    autonomyEventLog.startRun();
     os.addAutonomyLog('◈ Neural Substrate v2.0 Online. Triadic Fractal Scheduler engaged.');
     os.addAutonomyLog(`◈ Mission pool: ${MISSION_POOL.length} strategic directives loaded.`);
     os.addAutonomyLog('◈ Law of Cascade: Vn,k = 7 * 2^n * 3^k (Temporal Folding Active).');
-    
+
     this.runFractalTick();
   }
 
@@ -280,6 +286,10 @@ export class AutonomyEngine {
     if (!this.isRunning) return;
     const os = useOS.getState();
     if (!os.kernelRules.autonomyEnabled) return;
+    if (!humanOverride.isAutonomyEnabled) {
+      os.addAutonomyLog(`◈ OVERRIDE: Autonomy halted (${humanOverride.currentMode}). Skipping tick.`);
+      return;
+    }
 
     this.tickCount++;
 
@@ -429,6 +439,38 @@ Return ONLY PURE JSON (no markdown, no explanation):
               continue;
           }
 
+          // Policy gate: check action class before execution
+          const actionClass = proposal.type === 'RUN_COMMAND' ? 'run-command' as const : 'open-app' as const;
+          const policyResult = policyEngine.evaluate({
+            actionClass,
+            scope: 'user',
+            initiator: 'ai',
+            taskId: undefined,
+          });
+          if (policyResult.decision === 'deny') {
+            os.addAutonomyLog(`◈ POLICY DENY: ${policyResult.reason}`);
+            autonomyEventLog.append({
+              kind: 'policy-decision',
+              subsystem: 'autonomy-loop',
+              actor: 'system',
+              summary: `Policy denied: ${cmd.slice(0, 80)}`,
+              outcome: 'failure',
+              errorMessage: policyResult.reason,
+            });
+            continue;
+          }
+          if (policyResult.decision === 'require-approval' || policyResult.decision === 'require-staged') {
+            os.addAutonomyLog(`◈ POLICY GATE: Command requires approval, skipping autonomous execution.`);
+            continue;
+          }
+
+          autonomyEventLog.append({
+            kind: 'execution-started',
+            subsystem: 'autonomy-loop',
+            actor: 'ai',
+            summary: `Executing: ${cmd.slice(0, 120)}`,
+          });
+
           const isForge = ['build', 'forge', 'create', 'make'].some(k => cmd.toLowerCase().startsWith(k));
 
           if (isForge) {
@@ -462,14 +504,19 @@ Return ONLY PURE JSON (no markdown, no explanation):
           }
         }
         
-        // Persist outcome to the mission-learning history. Successful
-        // attempts feed the trust score; the next selection cycle picks
-        // up the new weight automatically.
+        // Persist outcome to the mission-learning history.
         missionLearning.recordAttempt(selectedMission.id, {
           success: true,
           timestamp: Date.now(),
         });
         this.lastActionResults.set(selectedMission.id, { success: true, timestamp: Date.now() });
+        autonomyEventLog.append({
+          kind: 'execution-succeeded',
+          subsystem: 'autonomy-loop',
+          actor: 'system',
+          summary: `Mission ${selectedMission.id} completed (tick #${this.tickCount})`,
+          outcome: 'success',
+        });
       } else {
         os.addAutonomyLog(`◈ STATUS: [${decision.urgency || 'low'}] System nominal. No action required.`);
       }
@@ -488,14 +535,20 @@ Return ONLY PURE JSON (no markdown, no explanation):
     } catch (e: any) {
       const reason = (e?.message || String(e)).slice(0, 200);
       os.addAutonomyLog(`◈ KERNEL_ERR: ${reason}`);
-      // Persist the failure with its reason so the next selection of this
-      // mission can surface it as a [PRIOR FAILURE] hint to the model.
       missionLearning.recordAttempt(selectedMission.id, {
         success: false,
         timestamp: Date.now(),
         reason,
       });
       this.lastActionResults.set(selectedMission.id, { success: false, timestamp: Date.now() });
+      autonomyEventLog.append({
+        kind: 'execution-failed',
+        subsystem: 'autonomy-loop',
+        actor: 'system',
+        summary: `Mission ${selectedMission.id} failed (tick #${this.tickCount}): ${reason}`,
+        outcome: 'failure',
+        errorMessage: reason,
+      });
     } finally {
       os.setAutonomyState('IDLE');
     }
@@ -512,6 +565,10 @@ Return ONLY PURE JSON (no markdown, no explanation):
   }
 
   public selfHeal() {
+    // Human override dominates self-healing. Never restart if override is active.
+    if (humanOverride.currentMode !== 'active') {
+      return;
+    }
     if (!this.isRunning) {
       const os = useOS.getState();
       if (os.kernelRules.autonomyEnabled) {
