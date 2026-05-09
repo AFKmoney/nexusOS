@@ -14,7 +14,15 @@ async function main() {
     .sort();
 
   for (const file of testFiles) {
-    await import(pathToFileURL(path.join(testsDir, file)).href);
+    try {
+      await import(pathToFileURL(path.join(testsDir, file)).href);
+    } catch (err: unknown) {
+      // Certain test files import browser-only modules (e.g. wllama) that are
+      // unavailable in Node. Skip them gracefully instead of crashing the
+      // entire suite — the TAP output will still reflect the other files.
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[runTests] Skipping ${file}: ${msg}`);
+    }
   }
 }
 

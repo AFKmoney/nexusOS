@@ -529,10 +529,10 @@ export default function GovernanceDashboard() {
   const pendingCount = proposals.filter(p => p.status === 'pending-approval').length;
 
   const TAB_META: Array<{ id: typeof tab; label: string; badge?: number }> = [
-    { id: 'proposals', label: 'Proposals', badge: pendingCount || undefined },
-    { id: 'log',       label: 'Audit Log', badge: undefined },
-    { id: 'health',    label: 'Health',    badge: undefined },
-    { id: 'staging',   label: 'Staging',   badge: artifacts.filter(a => a.status === 'staged' || a.status === 'sealed').length || undefined },
+    { id: 'proposals', label: 'Proposals',  badge: pendingCount || undefined },
+    { id: 'log',       label: 'Audit Log',  badge: undefined },
+    { id: 'health',    label: 'Metrics',    badge: undefined },
+    { id: 'staging',   label: 'Staging',    badge: artifacts.filter(a => a.status === 'staged' || a.status === 'sealed').length || undefined },
     { id: 'tiers',     label: 'Trust Tiers', badge: undefined },
   ];
 
