@@ -50,11 +50,9 @@ export function initGovernanceBridge(): void {
       });
     });
 
-    // Phase 8 — reflect global trust tier override into store
-    const syncTierOverride = () => {
-      const override = trustTierEngine.getGlobalTierOverride();
-      useOS.getState().updateGovernance({ activeTrustTierOverride: override });
-    };
-    syncTierOverride();
+    // Phase 8 — reflect global trust tier override into store reactively
+    trustTierEngine.subscribeOverride(tier => {
+      useOS.getState().updateGovernance({ activeTrustTierOverride: tier });
+    });
   }).catch(e => console.warn('[GovernanceBridge] Store import failed:', e));
 }
