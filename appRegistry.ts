@@ -55,6 +55,7 @@ import CalendarApp from './apps/CalendarApp';
 import ImageViewerApp from './apps/ImageViewer';
 import MusicPlayerApp from './apps/MusicPlayer';
 import RichEditorApp from './apps/RichEditor';
+import GovernanceDashboardApp from './apps/GovernanceDashboard';
 
 import {
   Terminal, FileText, Activity, Grid, Image, Cpu, FolderOpen, Globe,
@@ -135,6 +136,15 @@ export const SYSTEM_APPS: AppManifest[] = [
     permissions: ['network', 'kernel.modify'],
     defaultSize: { width: 760, height: 620 },
     description: 'Direct neural link to DAEMON AI. Strategic analysis and coding.'
+  },
+  {
+    id: 'governance',
+    name: 'Governance',
+    icon: Lock,
+    component: GovernanceDashboardApp,
+    permissions: ['kernel.modify'],
+    defaultSize: { width: 780, height: 640 },
+    description: 'Inspect pending proposals, audit logs, health metrics, staged artifacts, and trust tiers. Activate the kill switch.'
   },
   {
     id: 'aion_agent',
