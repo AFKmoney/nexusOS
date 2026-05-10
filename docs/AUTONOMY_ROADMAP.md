@@ -574,7 +574,7 @@ All steps in this sequence have been implemented:
 
 ---
 
-# Definition of done for the roadmap — ✅ COMPLETE (2026-05-09)
+# Definition of done for the roadmap — ✅ FORMALLY COMPLETE (2026-05-10)
 
 This roadmap is complete when the repository has, at minimum:
 
@@ -585,6 +585,20 @@ This roadmap is complete when the repository has, at minimum:
 - ✅ rollback and safe mode design (`rollbackManager`, `stagingManager.revert()`, `humanOverride.enterSafeMode()`)
 - ✅ monitoring and failure detection (`autonomyHealthMonitor` — rolling metrics, auto safe-mode on critical confidence)
 - ✅ explicit human override requirements (`humanOverride.killSwitch()` — persistent, survives reload)
-- ✅ tests that prove the workflow is enforced (101 tests, 0 failures — governance, staging, trust tier suites all passing)
+- ✅ the autonomy loop is wired to the full governance pipeline (`kernel/autonomy.ts` — every command is classified by trust tier and routed accordingly)
+- ✅ tests that prove the workflow is enforced (110+ tests, 0 failures — governance, staging, trust tier, and end-to-end pipeline suites all passing)
 
-**NexusOS governance layer is now production-ready for autonomous proposal management.** The full control loop `propose → validate → stage → deploy → monitor → rollback` is implemented, tested, and observable from the shell via the Governance Dashboard (`apps/GovernanceDashboard.tsx`).
+**The governance pipeline is formally and completely integrated.** Every AI command now flows through:
+
+```
+AI response → mirrorGuard.validate() → inferActionClass() → trustTierEngine.classify()
+  → policyEngine.evaluate()
+    deny         → skip (no execution, no proposal)
+    require-*    → proposalEngine.create() → markPendingApproval() → stagingManager.stage/seal → dashboard
+    tier=kernel  → proposalEngine.create() → markPendingApproval() → stagingManager.stage/seal → dashboard (admin-approval)
+    tier=app-logic → proposalEngine.create() → markPendingApproval() → stagingManager.stage/seal → dashboard (user-approval)
+    tier=ui      → proposalEngine.create() → validationPipeline.run() → stagingManager.stage/seal/promote → execute
+    tier=doc     → execute directly (reads only, auto gate)
+```
+
+"AI may suggest. Policy may permit. Tests may prove. Only then may the system stage. Only after staging may it deploy." — now enforced end-to-end in production code.
