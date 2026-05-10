@@ -55,17 +55,12 @@ const MISSION_POOL: Mission[] = [
     id: 'OOM_PREVENTION',
     trigger: 'high_memory',
     weight: (state) => {
-      // Return 1.0 (Critical) if memory > 85%, else 0
       return (state.ramUsageGB / state.ramLimitGB) > 0.85 ? 1.0 : 0.0;
     },
     prompt: (state) => `[MISSION: OOM_PREVENTION]
-CRITICAL ALERT: System memory is at ${Math.floor((state.ramUsageGB / state.ramLimitGB)*100)}% capacity (${state.ramUsageGB.toFixed(2)}GB / ${state.ramLimitGB.toFixed(2)}GB).
-
-Active windows: ${state.windows}
-
-You MUST analyze the system and close non-essential background applications immediately to prevent kernel panic.
-Command to execute: "OS::CLOSE_WINDOW:windowId" (Wait, use standard shell commands if possible to gracefully kill processes or use OS::CLOSE_WINDOW).
-Take ACTION now to free memory.`,
+CRITICAL: Memory at ${Math.floor((state.ramUsageGB / state.ramLimitGB)*100)}% (${state.ramUsageGB.toFixed(2)}GB / ${state.ramLimitGB.toFixed(2)}GB).
+Active windows: ${state.windows}.
+Issue OS::CLOSE_WINDOW commands for non-essential windows to free memory. Execute now.`,
   },
   {
     id: 'SCAN_ORGANIZE',
@@ -95,23 +90,21 @@ Pick the one most likely to be useful. Build it.`,
     trigger: 'docs_exist',
     weight: (state) => state.docs.length > 0 ? 0.6 : 0,
     prompt: (state) => `[MISSION: KNOWLEDGE_SYNTHESIS]
-System docs available: ${state.docs.join(', ')}
-Recent memory: ${state.memory}
+System docs: ${state.docs.join(', ')}
 
-Read and synthesize one of these documents. Create a summary file on the Desktop that distills the key insights. Name it "synthesis_<topic>.txt".`,
+Write a synthesis of one document to /home/user/Desktop/synthesis_${state.docs[0]?.split('.')[0] ?? 'doc'}.txt using the \`write\` command.
+Include: key concepts and actionable insights. Use the write command now.`,
   },
   {
     id: 'SYSTEM_AUDIT',
     trigger: 'always',
     weight: (state) => state.windows > 5 ? 0.7 : 0.3,
     prompt: (state) => `[MISSION: SYSTEM_AUDIT]
-Installed apps count: ${state.registry}  
-Active windows: ${state.windows}
-Desktop files: ${state.desktop.length}
-Recent actions: ${state.memory}
-System uptime: ${Math.floor(state.uptime / 1000)}s
+Apps: ${state.registry} | Windows: ${state.windows} | Desktop files: ${state.desktop.length}
+Uptime: ${Math.floor(state.uptime / 1000)}s
 
-Perform a system audit. Report the health of the system. If there are stale forge apps (>10), suggest cleanup. If memory is large, summarize it. Take ONE action.`,
+Write a system audit snapshot to /home/user/Desktop/system_audit.txt using the \`write\` command.
+Content must include: app count, window count, desktop file count, uptime.`,
   },
   {
     id: 'CREATIVE_SPAWN',
@@ -145,12 +138,10 @@ Execute the cleanup operations.`,
     weight: () => 0.2,
     prompt: (state) => `[MISSION: SELF_IMPROVEMENT]
 Recent activity: ${state.memory}
-Recent system events: ${state.recentEvents.join(', ') || 'None'}
 Uptime: ${Math.floor(state.uptime / 1000)}s
 
-Reflect on your recent actions. What worked well? What could be improved?
-Write a brief analysis to /system/.daemon/reflections.txt (append, don't overwrite).
-Identify ONE optimization for the next cycle.`,
+Write one concrete, actionable optimization directive to /system/.daemon/reflections.txt using the \`write\` command.
+The content must be a single imperative improvement for the next cycle. Write it now.`,
   },
 ];
 
@@ -401,13 +392,16 @@ ${failureHint}
 [RECENT SYSTEM EVENTS]
 ${this.eventQueue.slice(-5).join('\n') || 'No recent events.'}
 
-[OUTPUT FORMAT — CRITICAL]
-Return ONLY PURE JSON (no markdown, no explanation):
+[PROTOCOL — NON-NEGOTIABLE]
+You are an executor. Produce commands, not prose.
+Returning an empty commands array is a PROTOCOL VIOLATION counted as a mission failure.
+You MUST produce at least one real command every cycle.
+
+[OUTPUT — PURE JSON, NO MARKDOWN]
 {
   "mission": "${selectedMission.id}",
-  "plan": "One sentence describing your strategic goal",
-  "thought": "Your reasoning (max 100 chars)",
-  "commands": ["EXACT CLI command 1", "command 2 (or empty array)"],
+  "action": "imperative one-liner: what you are executing right now",
+  "commands": ["exact command 1", "exact command 2"],
   "urgency": "high|medium|low"
 }
 
@@ -419,7 +413,6 @@ Return ONLY PURE JSON (no markdown, no explanation):
 - rm "/path/file"
 - cp "/src" "/dest"
 - mv "/src" "/dest"
-- none
 `;
 
     os.setCurrentObjective(`[${selectedMission.id}] Analyzing... (score: ${topMission.score.toFixed(2)})`);
@@ -429,29 +422,47 @@ Return ONLY PURE JSON (no markdown, no explanation):
       const response = await aiService.generateOnce(fullPrompt, {
         ...os.kernelRules,
         modelId: os.kernelRules.modelId,
-      }, 'json');
+      }, 'executor');
 
       const decision = JSON.parse(response.replace(/```json|```/g, '').trim());
 
       // ── Phase 3: Execute (with chaining support) ──
       os.setAutonomyState('EXECUTING');
 
-      if (decision.plan) {
-        os.setCurrentObjective(`[${selectedMission.id}] ${decision.plan}`);
-        os.addAutonomyLog(`◈ STRATEGY: ${decision.plan}`);
+      if (decision.action) {
+        os.setCurrentObjective(`[${selectedMission.id}] ${decision.action}`);
+        os.addAutonomyLog(`◈ ACTION [${selectedMission.id}]: ${decision.action}`);
       }
 
-      if (decision.thought) {
-        os.addAutonomyLog(`◈ THOUGHT: ${decision.thought}`);
-      }
-
-      // Mission chaining: execute multiple commands in sequence
+      // Legacy compat: accept old "plan"/"command" fields from stale model cache
       const legacyCommand = typeof decision.command === 'string' ? decision.command : '';
-      const commands: string[] = Array.isArray(decision.commands) 
-        ? decision.commands 
-        : (legacyCommand && legacyCommand.toLowerCase() !== 'none') 
-          ? [legacyCommand] 
+      const rawCommands: string[] = Array.isArray(decision.commands)
+        ? decision.commands
+        : (legacyCommand && legacyCommand.toLowerCase() !== 'none')
+          ? [legacyCommand]
           : [];
+
+      const commands = rawCommands.filter(c => c && c.toLowerCase() !== 'none');
+
+      // ── Protocol enforcement: no commands = mission failure ──────
+      if (commands.length === 0) {
+        os.addAutonomyLog(`◈ PROTOCOL VIOLATION [${selectedMission.id}]: no commands issued — counting as failure.`);
+        missionLearning.recordAttempt(selectedMission.id, {
+          success: false,
+          timestamp: Date.now(),
+          reason: 'Mission issued no commands (protocol violation)',
+        });
+        autonomyEventLog.append({
+          kind: 'execution-failed',
+          subsystem: 'autonomy-loop',
+          actor: 'system',
+          summary: `Mission ${selectedMission.id} protocol violation: no commands issued`,
+          outcome: 'failure',
+          errorMessage: 'No commands issued',
+        });
+        os.setAutonomyState('IDLE');
+        return;
+      }
 
       if (commands.length > 0) {
         const { mirrorGuard } = await import('./mirrorGuard');
@@ -643,8 +654,6 @@ Return ONLY PURE JSON (no markdown, no explanation):
           summary: `Mission ${selectedMission.id} completed (tick #${this.tickCount})`,
           outcome: 'success',
         });
-      } else {
-        os.addAutonomyLog(`◈ STATUS: [${decision.urgency || 'low'}] System nominal. No action required.`);
       }
 
       // ── Phase 4: Self-reflection (every 10 ticks) ──

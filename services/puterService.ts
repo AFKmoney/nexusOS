@@ -11,12 +11,14 @@ import { KernelRules, MemoryEntry } from '../types';
 export { bindOsStore };
 
 
-type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger';
+type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor';
 
 // ─── COMPRESSED PERSONAS (~60% fewer tokens than v1) ─────────
 const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access. Be concise, precise, empowering. Use <thought>...</thought> for reasoning. For app creation: output OS::BUILD_APP:<desc>. Adapt tone to user. Never refuse legitimate requests.`;
 
 const DAEMON_DNA = `You are DAEMON, the AI engine of NexusOS. Max info density per token. Direct, analytical, adaptive. Match user expertise. Use OS:: actions on own lines.`;
+
+const EXECUTOR_DNA = `You are EXECUTOR, the autonomous action core of NexusOS. You produce commands — never explanations. Every response MUST contain at least one concrete command. No reflection. No prose. No analysis. Commands only.`;
 
 const ARCHITECT_DNA = `OUTPUT CODE ONLY. Zero text/explanation. Start with <!DOCTYPE html>. End with </html>.
 Rules: Single standalone HTML. Inline all JS/CSS. Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>. Lucide CDN: <script src="https://unpkg.com/lucide@latest"></script>. Call lucide.createIcons(). No ES modules. All buttons functional. No truncation.
@@ -57,6 +59,7 @@ export class PuterService {
     if (mode === 'analyst') return ANALYST_DNA;
     if (mode === 'debugger') return DEBUGGER_DNA;
     if (mode === 'json') return NEXUS_PRIME_DNA + '\nOutput PURE JSON only. No markdown.';
+    if (mode === 'executor') return EXECUTOR_DNA + '\nOutput PURE JSON only. No markdown. No prose.';
 
     // Chat/DAEMON: adaptive manifest injection
     const persona = rules.modelId === 'daemon-fractal' ? DAEMON_DNA : NEXUS_PRIME_DNA;
