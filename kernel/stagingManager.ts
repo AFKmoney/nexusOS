@@ -83,7 +83,7 @@ class StagingManager {
       status: 'staged',
       version,
       createdAt: Date.now(),
-      metadata,
+      ...(metadata !== undefined ? { metadata } : {}),
     };
 
     this.evictIfFull();
