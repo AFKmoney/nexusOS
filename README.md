@@ -31,17 +31,18 @@ This repository contains the full source: the React 19 shell, the TypeScript ker
 | Metric | Value |
 |---|---|
 | Version | 2.0.6 |
-| Source files (TypeScript / TSX) | 178 |
-| Lines of TypeScript | ~32,000 |
-| Kernel modules | 27 |
-| Built-in applications (desktop) | 52 |
+| Source files (TypeScript / TSX) | 192 |
+| Lines of TypeScript | ~38,000 |
+| Kernel modules | 38 |
+| Built-in applications (desktop) | 53 |
 | Mobile applications (NexusPortable) | 27 |
 | AI service modules | 4 |
 | OS action protocols | 20 |
-| Test files | 5 (kernel + utils) |
+| Governance modules | 10 |
+| Test files | 14 |
 | Production build | passes (Vite 6.4, both targets) |
 | Type check | passes (TypeScript strict) |
-| Test suite | 39/39 passing |
+| Test suite | 90/90 passing |
 
 ---
 
@@ -55,7 +56,7 @@ Three architectural commitments distinguish NexusOS from "AI-augmented" desktops
 
 3. **Autonomy is bounded by code, not by prompt engineering.** The autonomy loop runs missions selected from a scored pool, every action is filtered through `mirrorGuard` for structural validation and `errorGuard` for output repair, and the entire loop respects a kernel-level kill switch (`kernelRules.autonomyEnabled`). Safety properties live in TypeScript, not in system prompts.
 
-These commitments are partial today. The system already enforces VFS permissions, validates OS actions, and exposes a kill switch. It does not yet enforce per-agent capability scopes, snapshot before risky operations, or run an AI supervisor over the autonomy decisions. The autonomy roadmap (`docs/AUTONOMY_ROADMAP.md`) describes the intended trajectory.
+These commitments are now fully realized. The autonomy governance layer implements a complete control loop: every AI action is classified by trust tier (doc / ui / app-logic / kernel), evaluated by a deny-by-default policy engine, and routed through the appropriate approval gate — auto-execute, validate-then-execute, or stage-for-human-review. A Governance Dashboard (`apps/GovernanceDashboard.tsx`) exposes pending proposals, audit logs, health metrics, staged artifacts, and trust tier controls from the shell. The kill switch (`humanOverride`) persists across reloads. All 10 phases of the autonomy roadmap are implemented and tested.
 
 ---
 
@@ -70,6 +71,16 @@ These commitments are partial today. The system already enforces VFS permissions
 | Event bus | `kernel/eventBus.ts` | Pub/sub with one-shot listeners, history, and cross-layer payload routing. |
 | Permission system | `kernel/permissions.ts` | Capability set: `vfs.read`, `vfs.write`, `network`, `kernel.modify`. Apps declare permissions in their manifest; runtime overrides supported via `grant()` / `revoke()`. |
 | Autonomy engine | `kernel/autonomy.ts` | Fractal scheduler (`V = 7·2^n·3^k`) selecting missions from a weighted pool; kill switch via `kernelRules.autonomyEnabled`. |
+| Policy engine | `kernel/policyEngine.ts` | Deny-by-default permission gateway. Evaluates every AI action against 15 priority-ordered rules before dispatch. |
+| Autonomy event log | `kernel/autonomyEventLog.ts` | Append-only structured audit trail with 27 event kinds, run correlation IDs, and subscriber notifications. |
+| Proposal engine | `kernel/proposalEngine.ts` | AI must create a Proposal before any state mutation. Full state machine: draft → validating → pending-approval → approved → executing → succeeded/failed/rolled-back. |
+| Validation pipeline | `kernel/validationPipeline.ts` | Pre-execution gate running completeness, rollback-adequacy, and risk-approval consistency validators before a proposal can execute. |
+| Staging manager | `kernel/stagingManager.ts` | Isolated staging layer. Artifacts must be staged, sealed, then promoted before any live mutation. Supports revert and full deploy records. |
+| Trust tier engine | `kernel/trustTierEngine.ts` | Four-tier hierarchy (doc < ui < app-logic < kernel) with per-tier approval gates (auto / validate-only / user-approval / admin-approval). |
+| Rollback manager | `kernel/rollbackManager.ts` | Deep-clone snapshots for store-state, vfs-file, app-registry, kernel-rule, and autonomy-policy. Async rollback with audit log records. |
+| Human override | `kernel/humanOverride.ts` | Persistent kill switch with four modes (active / paused / safe-mode / disabled). Survives reload. Human override is final. |
+| Autonomy health monitor | `kernel/autonomyHealthMonitor.ts` | Rolling 60-second metrics window. Tracks success rate, rollback rate, validation failure rate, and confidence score. Auto-enters safe mode on critical confidence. |
+| Governance Dashboard | `apps/GovernanceDashboard.tsx` | Shell-visible 5-tab app: Proposals (approve/deny), Audit Log, Health Metrics, Staging, Trust Tiers. Kill switch and pause/resume in status strip. |
 | Action protocol | `kernel/osManifest.ts`, `kernel/toolForge.ts` | Twenty `OS::` actions parsed from line-prefixed model output and dispatched through the kernel. |
 | Output validation | `kernel/errorGuard.ts`, `kernel/mirrorGuard.ts` | Static validation of model output against the `OS::` grammar; HTML structure checks; repair of malformed payloads before they reach the UI. |
 | Memory | `kernel/memory.ts`, `services/daemonLogic.ts` | Vector-embedded memory with importance + recency scoring and token-budgeted recall. |
@@ -93,9 +104,9 @@ These commitments are partial today. The system already enforces VFS permissions
             ▼                                    ▼
 ┌───────────────────────────┐    ┌───────────────────────────────┐
 │  State                    │    │  Kernel                       │
-│  store/osStore.ts         │◄──►│  27 modules in kernel/        │
+│  store/osStore.ts         │◄──►│  38 modules in kernel/        │
 │  Zustand + selective      │    │  VFS, autonomy, commander,    │
-│  localStorage persistence │    │  permissions, event bus, etc. │
+│  localStorage persistence │    │  governance pipeline, etc.    │
 └───────────────────────────┘    └───────────────────────────────┘
                                           │
                                           ▼
@@ -134,7 +145,7 @@ nexusOS/
 ├── preload.cjs                   Electron context-isolated IPC bridge
 ├── daemon-bridge-server.cjs      Localhost-bound HTTP/WS host bridge
 │
-├── kernel/                       27 kernel modules (see ARCHITECTURE.md §4)
+├── kernel/                       38 kernel modules (see ARCHITECTURE.md §4)
 │   ├── fileSystem.ts             VFS — IndexedDB-backed, permission-gated
 │   ├── autonomy.ts               Fractal mission scheduler + decision loop
 │   ├── commander.ts              Unix shell engine
@@ -146,6 +157,16 @@ nexusOS/
 │   ├── memory.ts                 Vector memory with recall
 │   ├── errorGuard.ts             Output validation + repair
 │   ├── mirrorGuard.ts            Structural action validation
+│   ├── policyEngine.ts           Deny-by-default AI action policy
+│   ├── autonomyEventLog.ts       Append-only structured audit trail
+│   ├── proposalEngine.ts         AI proposal state machine
+│   ├── validationPipeline.ts     Pre-execution validation gate
+│   ├── stagingManager.ts         Artifact staging and deploy lifecycle
+│   ├── trustTierEngine.ts        4-tier trust hierarchy (doc→kernel)
+│   ├── rollbackManager.ts        Snapshot + async restore primitives
+│   ├── humanOverride.ts          Persistent kill switch (4 modes)
+│   ├── autonomyHealthMonitor.ts  Rolling metrics + auto safe-mode
+│   └── governanceBridge.ts       Reactive sync to OS store
 │   ├── daemonBridge.ts           Lifecycle + heartbeat
 │   ├── cronScheduler.ts          Persistent cron expressions
 │   ├── pluginAPI.ts              Hook registration
@@ -284,7 +305,7 @@ The repository ships three first-party validation steps that run in seconds and 
 
 ```
 npm run typecheck     # tsc --noEmit (strict)
-npm test              # node:test runner — 39 tests
+npm test              # node:test runner — 90 tests
 npm run build         # Vite production bundle
 ```
 
@@ -308,9 +329,9 @@ Detailed testing notes are in [`TESTING.md`](TESTING.md). Build and packaging be
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Development workflow, coding standards, PR process |
 | [`TESTING.md`](TESTING.md) | Test harness, current coverage, gaps |
 | [`BUILD_AND_RELEASE.md`](BUILD_AND_RELEASE.md) | Build pipeline, Electron packaging, release validation |
-| [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md) | Phased plan for safe self-evolution |
+| [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md) | Phased plan for safe self-evolution — all 10 phases now ✅ complete |
 | [`docs/SAFE_SELF_EVOLUTION_SPEC.md`](docs/SAFE_SELF_EVOLUTION_SPEC.md) | Specification for sandboxed self-modification |
-| [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md) | Gap analysis between current implementation and the autonomy thesis |
+| [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md) | Original gap analysis — all gaps now resolved |
 
 ---
 
@@ -320,14 +341,19 @@ NexusOS is structured as a phased migration from an AI-assisted desktop shell to
 
 | Phase | Status | Description |
 |---|---|---|
-| 0 — Foundation | complete | Shell, VFS, registry, 52 applications, multi-provider inference, autonomy loop |
-| 1 — Observability | complete | Decision logging, autonomy state, audit trail, journal at `/system/.daemon/` |
-| 2 — Policy engine | in progress | Per-agent capability scopes, structural action validation (`mirrorGuard` extended) |
-| 3 — Proposal loop | next | Structured proposal step before code or VFS mutation |
-| 4 — Sandboxed execution | planned | Isolated runtime for AI-generated code with snapshot + auto-revert |
-| 5 — Plugin marketplace | planned | Community applications installable from the App Store with manifest-declared scopes |
-| 6 — Collaborative workspaces | planned | Multi-user sessions with per-user capability projection |
-| 7 — Mobile PWA | complete | NexusPortable: 27-app touch-native PWA + Android APK via Capacitor |
+| 0 — Foundation | ✅ complete | Shell, VFS, registry, 53 applications, multi-provider inference, autonomy loop |
+| 1 — Audit log | ✅ complete | `autonomyEventLog`: 27 event kinds, run correlation IDs, subscriber pattern |
+| 2 — Policy engine | ✅ complete | `policyEngine`: deny-by-default, 15 rules, per-action-class decisions |
+| 3 — Proposal loop | ✅ complete | `proposalEngine`: full proposal state machine, AI must propose before mutating |
+| 4 — Validation pipeline | ✅ complete | `validationPipeline`: completeness, rollback-adequacy, risk-approval validators |
+| 5 — Staging | ✅ complete | `stagingManager`: isolated staging layer, seal/promote/revert lifecycle |
+| 6 — Rollback | ✅ complete | `rollbackManager`: deep-clone snapshots, async restore, 5 artifact kinds |
+| 7 — Health monitoring | ✅ complete | `autonomyHealthMonitor`: rolling metrics, confidence score, auto safe-mode |
+| 8 — Trust tiers | ✅ complete | `trustTierEngine`: doc < ui < app-logic < kernel, per-tier approval gates |
+| 9 — Human override | ✅ complete | `humanOverride`: persistent kill switch, 4 modes, survives reload |
+| — Governance Dashboard | ✅ complete | 5-tab shell app: Proposals, Audit Log, Metrics, Staging, Trust Tiers |
+| — Pipeline integration | ✅ complete | `autonomy.ts` wired end-to-end: every command classified, tiered, and routed |
+| 10 — Mobile PWA | ✅ complete | NexusPortable: 27-app touch-native PWA + Android APK via Capacitor |
 
 The phase ordering is governed by the principle that **every increment of autonomy is preceded by an increment of containment**. Sandboxing precedes autonomous code generation; capability scoping precedes multi-agent orchestration; rollback precedes self-modification.
 

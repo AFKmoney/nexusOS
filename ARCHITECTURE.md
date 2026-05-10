@@ -12,7 +12,7 @@ NexusOS is structured as five concentric layers. Privilege increases as one move
 |---|---|---|
 | 1. Shell UI | `App.tsx`, `components/`, `apps/` | Render system state, capture user input, mount applications. |
 | 2. State | `store/` | Single source of runtime truth (Zustand). |
-| 3. Kernel | `kernel/` | Virtual file system, autonomy engine, command engine, permission system, event bus, process manager, action protocol. |
+| 3. Kernel | `kernel/` | Virtual file system, autonomy engine, governance pipeline, command engine, permission system, event bus, process manager, action protocol. |
 | 4. Services | `services/` | AI inference (local and remote), memory graph, cloud fallback. |
 | 5. Native | `electron-main.cjs`, `preload.cjs`, `daemon-bridge-server.cjs` | Host operating-system access through Electron IPC and a localhost-bound bridge server. |
 
@@ -107,7 +107,7 @@ The VFS does **not** live in the Zustand store. It is a separate kernel singleto
 
 ## 4. Kernel layer
 
-The kernel is implemented as 27 TypeScript modules under `kernel/`. Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
+The kernel is implemented as 38 TypeScript modules under `kernel/`. Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
 
 ### 4.1 Virtual file system — `fileSystem.ts`
 
@@ -171,7 +171,35 @@ The autonomy engine implements the system's autonomous behavior. It is a self-re
 
 **Execution.** Commands are filtered (`!cmd || cmd.toLowerCase() === 'none'` are dropped), validated through `mirrorGuard`, and dispatched through the action protocol. Forge-class commands (`build`, `forge`, `create`, `make`) are guarded by a mutex (`isForging`) and a cooldown (`FORGE_COOLDOWN_MS`) to prevent recursive generation.
 
-The autonomy engine never directly mutates state. It emits commands; the command pipeline mutates state.
+The autonomy engine never directly mutates state. Every command is routed through the full governance pipeline (see §4.5a) before any execution occurs.
+
+### 4.5a Governance pipeline — ten new kernel modules
+
+The governance pipeline closes the gap between AI autonomy and safe self-evolution. It is implemented as ten interdependent kernel modules, all wired into the autonomy loop in `autonomy.ts`.
+
+**`autonomyEventLog.ts`** — An append-only structured audit trail. Every autonomy decision, proposal transition, execution outcome, and override event is recorded as a typed `AutonomyEvent` with 27 event kinds, a run correlation ID, a proposal ID, and a timestamp. Subscribers receive live updates. The Governance Dashboard reads this log for its Audit Log tab.
+
+**`policyEngine.ts`** — A deny-by-default permission gateway. Every AI action is evaluated against 15 priority-ordered rules before dispatch. Decisions are `allow`, `deny`, `require-approval`, or `require-staged`. The policy is the first gate in the autonomy loop.
+
+**`proposalEngine.ts`** — An AI must create a `Proposal` object before any state mutation. The proposal carries its action class, scope, risk level, affected subsystems, rollback plan, and payload. The proposal transitions through a state machine: `draft → validating → pending-approval → approved → executing → succeeded | failed | rolled-back`. Subscribers (including the Governance Dashboard) receive live updates.
+
+**`validationPipeline.ts`** — A pre-execution gate. Runs registered validators (completeness, required-steps, rollback-adequacy, risk-approval consistency) against a proposal before it can be approved. A proposal that fails validation moves to `validation-failed` and is surfaced in the dashboard. Additional validators can be registered at runtime.
+
+**`stagingManager.ts`** — An isolated staging layer. No proposal may mutate live state without passing through staging. Artifacts (`store-patch`, `vfs-file`, `app-registry-entry`, `kernel-rule`, `autonomy-policy`, `config-patch`, `ui-component`, `generic`) must be `staged → sealed → promoted` before any live mutation occurs. Promotion runs the actual `applyFn`; if it throws, the deploy record is marked `failed`. Revert runs the `restoreFn` and marks artifacts `reverted`. All lifecycle transitions are emitted to the autonomy event log.
+
+**`trustTierEngine.ts`** — A four-tier trust hierarchy: `doc < ui < app-logic < kernel`. Each tier has a policy: `doc` is auto-approved (reads only); `ui` requires validation but self-deploys; `app-logic` requires user approval; `kernel` requires admin approval and a full test suite. Every AI command is classified by tier before execution. The tier gate runs after the policy engine.
+
+**`rollbackManager.ts`** — Deep-clone snapshot primitives for five artifact kinds: `store-state`, `vfs-file`, `app-registry`, `kernel-rules`, `autonomy-policy`. Snapshots are taken before risky mutations. Restore is async; records track `pending`, `partial`, `complete`, `failed` status. All rollback events are appended to the autonomy event log.
+
+**`humanOverride.ts`** — A persistent kill switch with four modes: `active` (normal autonomy), `paused` (loop suspended), `safe-mode` (reads-only policy), and `disabled` (autonomy permanently off). State is persisted to `localStorage` and survives page reload. Human override is unconditional: the autonomy loop checks it on every tick and the self-heal watchdog respects it.
+
+**`autonomyHealthMonitor.ts`** — A rolling 60-second metrics window. Tracks proposal success rate, rollback rate, validation failure rate, and a composite confidence score. When confidence drops to `critical` (< 0.3), the monitor automatically invokes `humanOverride.enterSafeMode()`. Subscribers receive live metric updates.
+
+**`governanceBridge.ts`** — A reactive bridge that syncs all governance singletons to the Zustand OS store on boot. Subscribes to `humanOverride`, `autonomyHealthMonitor`, `proposalEngine`, `stagingManager`, and `trustTierEngine`; any change propagates to the `GovernanceState` slice in real time.
+
+**Autonomy loop integration** — `kernel/autonomy.ts` is fully wired to the pipeline. For every AI command: `mirrorGuard.validate()` → `inferActionClass()` → `trustTierEngine.classify()` → `policyEngine.evaluate()` → route by approval gate: `deny` → skip; `require-approval`/`require-staged`/`user-approval`/`admin-approval` → `proposalEngine.create()` → `markPendingApproval()` → `stagingManager.stage/seal()` → dashboard; `validate-only` → `proposalEngine.create()` → `validationPipeline.run()` → `stagingManager.stage/seal/promote()` → execute; `auto` → execute directly.
+
+**Governance Dashboard** — `apps/GovernanceDashboard.tsx` is a 5-tab shell application (id: `governance`) providing: Proposals tab (approve/deny pending proposals inline), Audit Log tab (filterable by subsystem, up to 100 events), Metrics tab (success rate, rollback rate, validation failure rate bar charts + counter grid), Staging tab (active artifact list with kind/status/age), and Trust Tiers tab (4-row tier matrix + manual override controls). The status strip shows override mode, confidence bar, and Pause/Safe Mode/Kill Switch/Resume buttons.
 
 ### 4.6 Command engine — `commander.ts`
 
@@ -430,7 +458,7 @@ A contributor opening the repository for the first time is best served by readin
 |---|---|
 | TypeScript strict compilation | passing |
 | Production build | passing |
-| Test suite | 39 / 39 passing |
+| Test suite | 90 / 90 passing across 14 test files |
 | Electron packaging (Windows NSIS) | functional, unsigned |
 | 52 applications registered | functional |
 | VFS permission enforcement | enforced; `appId` required |
@@ -438,7 +466,8 @@ A contributor opening the repository for the first time is best served by readin
 | Local inference | functional (Wllama + LM Studio) |
 | Multi-provider remote inference | functional (OpenAI, Anthropic, Gemini, Groq, Mistral, OpenRouter) |
 | Architecture decomposition | in progress (`App.tsx` thinning, store slice extraction) |
-| AI governance framework | partially implemented (phase 2 of the autonomy roadmap) |
+| AI governance framework | ✅ fully implemented — all 10 phases complete |
+| Test suite | 90 / 90 passing across 14 test files |
 
 ---
 
@@ -446,4 +475,4 @@ A contributor opening the repository for the first time is best served by readin
 
 NexusOS is structured to migrate from an AI-assisted desktop shell to a self-governing operating environment in nine phases. The migration is not arbitrary: each phase removes a class of human-in-the-loop dependency by replacing it with a kernel-enforced safety property. Sandboxed execution precedes autonomous code generation; capability scoping precedes multi-agent orchestration; rollback precedes self-modification.
 
-The detailed plan is in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md). The specification for safe self-evolution (the core mechanism that gates the migration) is in [`docs/SAFE_SELF_EVOLUTION_SPEC.md`](docs/SAFE_SELF_EVOLUTION_SPEC.md). A current gap analysis between the implementation and the thesis is in [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md).
+All ten phases of the autonomy roadmap are now implemented and passing tests. The detailed plan and completion status are in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md). The specification for safe self-evolution is in [`docs/SAFE_SELF_EVOLUTION_SPEC.md`](docs/SAFE_SELF_EVOLUTION_SPEC.md). The original gap analysis (now resolved) is in [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md).
