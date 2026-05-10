@@ -10,6 +10,7 @@ import { missionLearning } from './missionLearning';
 import { humanOverride } from './humanOverride';
 import { autonomyEventLog } from './autonomyEventLog';
 import { policyEngine } from './policyEngine';
+import type { ActionClass, ActionScope } from './policyEngine';
 import { initGovernanceBridge } from './governanceBridge';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -152,6 +153,49 @@ Write a brief analysis to /system/.daemon/reflections.txt (append, don't overwri
 Identify ONE optimization for the next cycle.`,
   },
 ];
+
+// ─── Action Class Inference ───────────────────────────────────────────────────
+// Maps a shell command string + proposal type to an ActionClass + ActionScope
+// so the trust tier engine and policy engine get the right inputs.
+function inferActionClass(
+  cmd: string,
+  proposalType: string
+): { actionClass: ActionClass; scope: ActionScope } {
+  const lower = cmd.toLowerCase().trimStart();
+
+  if (proposalType === 'READ_FILE' || lower.startsWith('cat ') || lower.startsWith('ls ') ||
+      lower.startsWith('inspect ') || lower.startsWith('head ') || lower.startsWith('tail ') ||
+      lower.startsWith('grep ') || lower.startsWith('find ') || lower.startsWith('tree ') ||
+      lower.startsWith('wc ') || lower.startsWith('diff ')) {
+    return { actionClass: 'read-file', scope: 'user' };
+  }
+  if (proposalType === 'DELETE_FILE' || lower.startsWith('rm ')) {
+    return { actionClass: 'delete-file', scope: 'user' };
+  }
+  if (proposalType === 'WRITE_FILE' || lower.startsWith('write ') || lower.startsWith('touch ')) {
+    return { actionClass: 'write-file', scope: 'user' };
+  }
+  if (proposalType === 'OPEN_APP' || lower.startsWith('open ') ||
+      ['build ', 'forge ', 'create ', 'make '].some(k => lower.startsWith(k))) {
+    return { actionClass: 'open-app', scope: 'user' };
+  }
+  if (proposalType === 'CLOSE_APP' || lower.startsWith('close ')) {
+    return { actionClass: 'close-app', scope: 'user' };
+  }
+  if (proposalType === 'INSTALL_APP') {
+    return { actionClass: 'install-app', scope: 'system' };
+  }
+  if (proposalType === 'UNINSTALL_APP') {
+    return { actionClass: 'uninstall-app', scope: 'system' };
+  }
+  if (proposalType === 'NETWORK_REQUEST') {
+    return { actionClass: 'network-request', scope: 'user' };
+  }
+  if (proposalType === 'MODIFY_KERNEL_RULES' || proposalType === 'MODIFY_AUTONOMY_POLICY') {
+    return { actionClass: 'modify-kernel-rules', scope: 'kernel' };
+  }
+  return { actionClass: 'run-command', scope: 'user' };
+}
 
 // ─── Autonomy Engine ──────────────────────────────────────────────────────────
 
@@ -412,43 +456,48 @@ Return ONLY PURE JSON (no markdown, no explanation):
       if (commands.length > 0) {
         const { mirrorGuard } = await import('./mirrorGuard');
         const { parseOsActions } = await import('./osManifest');
+        // Lazy-import governance modules to avoid circular deps at parse time
+        const { trustTierEngine: tte } = await import('./trustTierEngine');
+        const { proposalEngine: pe } = await import('./proposalEngine');
+        const { validationPipeline: vp } = await import('./validationPipeline');
+        const { stagingManager: sm } = await import('./stagingManager');
 
         for (const cmd of commands) {
           if (!cmd || cmd.toLowerCase() === 'none') continue;
 
-          // Build the proposal that mirrorGuard understands. Two cases:
-          //   1. cmd is an OS:: action — parse it into a structured proposal
-          //      so the kernel can evaluate it against the per-verb policy.
-          //   2. cmd is a shell command — wrap it as RUN_COMMAND so the
-          //      shell denylist (rm -rf /, curl|sh, etc.) gates it.
-          let proposal;
+          // Build the mirror proposal. OS:: actions get structured parse;
+          // shell commands are wrapped as RUN_COMMAND for denylist gating.
+          let mirrorProposal;
           if (cmd.trim().startsWith('OS::')) {
             const parsed = parseOsActions(cmd)[0];
             if (!parsed) {
               os.addAutonomyLog(`MIRROR REJECT: malformed OS:: action: ${cmd.slice(0, 80)}`);
               continue;
             }
-            proposal = { type: parsed.type, args: parsed.args, raw: parsed.raw };
+            mirrorProposal = { type: parsed.type, args: parsed.args, raw: parsed.raw };
           } else {
-            proposal = { type: 'RUN_COMMAND', args: [cmd], raw: cmd };
+            mirrorProposal = { type: 'RUN_COMMAND', args: [cmd], raw: cmd };
           }
 
-          const validation = await mirrorGuard.validate(proposal);
-          if (!validation.valid) {
-              os.addAutonomyLog(`MIRROR REJECT: ${validation.reason}`);
-              continue;
+          const mirrorResult = await mirrorGuard.validate(mirrorProposal);
+          if (!mirrorResult.valid) {
+            os.addAutonomyLog(`MIRROR REJECT: ${mirrorResult.reason}`);
+            continue;
           }
 
-          // Policy gate: check action class before execution
-          const actionClass = proposal.type === 'RUN_COMMAND' ? 'run-command' as const : 'open-app' as const;
+          // ── Trust Tier + Policy Classification ──────────────────
+          const { actionClass, scope } = inferActionClass(cmd, mirrorProposal.type);
+          const classification = tte.classify(actionClass, scope);
+          const { tier, policy: tierPolicy } = classification;
+
           const policyResult = policyEngine.evaluate({
             actionClass,
-            scope: 'user',
+            scope,
             initiator: 'ai',
-            taskId: undefined,
           });
+
           if (policyResult.decision === 'deny') {
-            os.addAutonomyLog(`◈ POLICY DENY: ${policyResult.reason}`);
+            os.addAutonomyLog(`◈ POLICY DENY [${tier}]: ${policyResult.reason}`);
             autonomyEventLog.append({
               kind: 'policy-decision',
               subsystem: 'autonomy-loop',
@@ -459,51 +508,128 @@ Return ONLY PURE JSON (no markdown, no explanation):
             });
             continue;
           }
-          if (policyResult.decision === 'require-approval' || policyResult.decision === 'require-staged') {
-            os.addAutonomyLog(`◈ POLICY GATE: Command requires approval, skipping autonomous execution.`);
+
+          // ── Route by approval gate ───────────────────────────────
+          // Commands needing human review (policy gate OR trust tier gate)
+          // are staged into the Governance Dashboard instead of executing.
+          const needsHumanApproval =
+            policyResult.decision === 'require-approval' ||
+            policyResult.decision === 'require-staged' ||
+            tierPolicy.approvalGate === 'user-approval' ||
+            tierPolicy.approvalGate === 'admin-approval';
+
+          if (needsHumanApproval) {
+            const riskLevel = tier === 'kernel' ? 'critical' as const : 'medium' as const;
+            const govProposal = pe.create({
+              title: `[${selectedMission.id}] ${cmd.slice(0, 60)}`,
+              description: `Autonomous command from mission ${selectedMission.id}: ${cmd}`,
+              actionClass,
+              scope,
+              riskLevel,
+              affectedSubsystems: ['autonomy-loop', selectedMission.id],
+              validationSteps: [],
+              rollbackPlan: 'No live state changed — artifact not yet promoted.',
+              payload: { cmd, missionId: selectedMission.id, tier },
+            });
+
+            if (govProposal.status !== 'denied') {
+              pe.markPendingApproval(govProposal.id);
+              const artifact = sm.stage(
+                govProposal.id, 'generic', cmd, cmd, null,
+                { tier, approvalGate: tierPolicy.approvalGate, missionId: selectedMission.id }
+              );
+              sm.seal(artifact.id);
+              os.addAutonomyLog(
+                `◈ STAGED [${tier}]: "${cmd.slice(0, 60)}" requires ${tierPolicy.approvalGate}. Queued in Governance Dashboard.`
+              );
+              autonomyEventLog.append({
+                kind: 'policy-decision',
+                subsystem: 'autonomy-loop',
+                actor: 'system',
+                summary: `Staged for ${tierPolicy.approvalGate}: ${cmd.slice(0, 80)}`,
+                proposalId: govProposal.id,
+              });
+            }
             continue;
           }
 
+          // ── validate-only tier: propose → validate → execute ─────
+          let govProposalId: string | null = null;
+          if (tierPolicy.approvalGate === 'validate-only') {
+            const govProposal = pe.create({
+              title: `[${selectedMission.id}] ${cmd.slice(0, 60)}`,
+              description: `Autonomous command from mission ${selectedMission.id}: ${cmd}`,
+              actionClass,
+              scope,
+              riskLevel: 'low',
+              affectedSubsystems: ['autonomy-loop', selectedMission.id],
+              validationSteps: [],
+              rollbackPlan: 'Revert via staging manager if needed.',
+              payload: { cmd, missionId: selectedMission.id, tier },
+            });
+            const valRun = await vp.run(govProposal.id);
+            if (valRun.status !== 'passed') {
+              os.addAutonomyLog(
+                `◈ VALIDATE FAIL [${tier}]: "${cmd.slice(0, 60)}" — ${valRun.failureReason}`
+              );
+              continue;
+            }
+            govProposalId = govProposal.id;
+            pe.markExecuting(govProposal.id);
+          }
+
+          // ── Execute (auto tier or post-validation) ───────────────
           autonomyEventLog.append({
             kind: 'execution-started',
             subsystem: 'autonomy-loop',
             actor: 'ai',
-            summary: `Executing: ${cmd.slice(0, 120)}`,
+            summary: `Executing [${tier}]: ${cmd.slice(0, 120)}`,
           });
 
           const isForge = ['build', 'forge', 'create', 'make'].some(k => cmd.toLowerCase().startsWith(k));
 
-          if (isForge) {
-            const now = Date.now();
-            const osState = useOS.getState() as any;
-            const isAlreadyForging = Boolean(osState?.isForging);
-            const cooldownPassed = (now - this.lastForgeTime) > this.FORGE_COOLDOWN_MS;
-
-            if (isAlreadyForging) {
-              os.addAutonomyLog('◈ FORGE MUTEX: Already forging. Skipping build command.');
-            } else if (!cooldownPassed) {
-              const remaining = Math.round((this.FORGE_COOLDOWN_MS - (now - this.lastForgeTime)) / 1000);
-              os.addAutonomyLog(`◈ FORGE COOLDOWN: ${remaining}s remaining. Skipping.`);
-            } else {
+          const runCmd = async () => {
+            if (isForge) {
+              const now = Date.now();
+              const osState = useOS.getState() as any;
+              const isAlreadyForging = Boolean(osState?.isForging);
+              const cooldownPassed = (now - this.lastForgeTime) > this.FORGE_COOLDOWN_MS;
+              if (isAlreadyForging) {
+                os.addAutonomyLog('◈ FORGE MUTEX: Already forging. Skipping build command.');
+                return;
+              }
+              if (!cooldownPassed) {
+                const remaining = Math.round((this.FORGE_COOLDOWN_MS - (now - this.lastForgeTime)) / 1000);
+                os.addAutonomyLog(`◈ FORGE COOLDOWN: ${remaining}s remaining. Skipping.`);
+                return;
+              }
               this.lastForgeTime = now;
               if (typeof osState?.setForging === 'function') osState.setForging(true);
-              os.addAutonomyLog(`◈ DISPATCH: ${cmd}`);
-              await commander.execute(
-                cmd,
-                (text, type) => { if (type === 'out') os.addAutonomyLog(`◈ KERNEL: ${text}`); },
-                os.kernelRules
-              );
             }
-          } else {
-            os.addAutonomyLog(`◈ DISPATCH: ${cmd}`);
+            os.addAutonomyLog(`◈ DISPATCH [${tier}]: ${cmd}`);
             await commander.execute(
               cmd,
               (text, type) => { if (type === 'out') os.addAutonomyLog(`◈ KERNEL: ${text}`); },
               os.kernelRules
             );
+          };
+
+          if (govProposalId) {
+            // validate-only: execute via staging promote (fully tracked)
+            const artifact = sm.stage(govProposalId, 'generic', cmd, cmd, null);
+            sm.seal(artifact.id);
+            const deployRecord = await sm.promote(govProposalId, async () => { await runCmd(); });
+            if (deployRecord.status === 'complete') {
+              pe.markSucceeded(govProposalId);
+            } else {
+              pe.markFailed(govProposalId, deployRecord.failureReason || 'promote failed');
+            }
+          } else {
+            // auto tier: execute directly, no staging overhead
+            await runCmd();
           }
         }
-        
+
         // Persist outcome to the mission-learning history.
         missionLearning.recordAttempt(selectedMission.id, {
           success: true,

@@ -128,6 +128,36 @@ const DEFAULT_RULES: PolicyRule[] = [
     reason: 'AI system-level command execution requires user sign-off.',
     requiresApprovalFrom: 'user',
   },
+  // App install by AI requires user approval (app-logic tier)
+  {
+    match: ctx => ctx.actionClass === 'install-app' && ctx.initiator === 'ai',
+    decision: 'require-approval',
+    reason: 'AI-initiated app installation requires user confirmation.',
+    requiresApprovalFrom: 'user',
+  },
+  // App open/close by AI is allowed (ui tier — visible, non-destructive)
+  {
+    match: ctx =>
+      (ctx.actionClass === 'open-app' || ctx.actionClass === 'close-app') &&
+      ctx.initiator === 'ai',
+    decision: 'allow',
+    reason: 'AI app open/close is allowed at the ui trust tier.',
+  },
+  // Network requests by AI are allowed (ui tier)
+  {
+    match: ctx => ctx.actionClass === 'network-request' && ctx.initiator === 'ai',
+    decision: 'allow',
+    reason: 'AI network requests are allowed at the ui trust tier.',
+  },
+  // User-scope command execution and VFS file writes by AI are allowed
+  {
+    match: ctx =>
+      (ctx.actionClass === 'run-command' || ctx.actionClass === 'write-file') &&
+      ctx.initiator === 'ai' &&
+      ctx.scope === 'user',
+    decision: 'allow',
+    reason: 'AI user-scope shell commands and VFS writes are allowed.',
+  },
   // User-initiated actions are allowed by default
   {
     match: ctx => ctx.initiator === 'user',
