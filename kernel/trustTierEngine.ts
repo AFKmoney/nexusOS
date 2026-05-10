@@ -168,8 +168,18 @@ export interface TierEscalationResult {
   currentTier: TrustTier;
 }
 
+type TierOverrideListener = (tier: TrustTier | null) => void;
+
 class TrustTierEngine {
   private overrideTier: TrustTier | null = null;
+  private listeners = new Set<TierOverrideListener>();
+
+  // ── Subscribe to override changes ─────────────────────────────────────────
+  subscribeOverride(listener: TierOverrideListener): () => void {
+    this.listeners.add(listener);
+    listener(this.overrideTier);
+    return () => this.listeners.delete(listener);
+  }
 
   classify(actionClass: ActionClass, scope: ActionScope): TierClassification {
     const rule = TIER_RULES.find(r => r.match(actionClass, scope));
@@ -233,6 +243,7 @@ class TrustTierEngine {
         : `Trust tier override cleared: ${reason}`,
       metadata: { tier, reason },
     });
+    this.listeners.forEach(l => l(tier));
   }
 
   getGlobalTierOverride(): TrustTier | null {
