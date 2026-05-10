@@ -67,17 +67,16 @@ describe('E2E Governance Pipeline', () => {
     const { tier, policy: tierPolicy } = trustTierEngine.classify(actionClass, scope);
     const policyResult = policyEngine.evaluate({ actionClass, scope, initiator: 'ai' });
 
-    assert.strictEqual(tier, 'doc');
-    assert.strictEqual(tierPolicy.approvalGate, 'auto');
-    assert.strictEqual(policyResult.decision, 'allow');
-
-    // auto gate: no proposal, no staging — execute directly
+    // compute before assertions so TypeScript doesn't narrow the union away
     const needsApproval =
       policyResult.decision === 'require-approval' ||
       policyResult.decision === 'require-staged' ||
       tierPolicy.approvalGate === 'user-approval' ||
       tierPolicy.approvalGate === 'admin-approval';
 
+    assert.strictEqual(tier, 'doc');
+    assert.strictEqual(tierPolicy.approvalGate, 'auto');
+    assert.strictEqual(policyResult.decision, 'allow');
     assert.strictEqual(needsApproval, false);
     assert.strictEqual(tierPolicy.allowSelfDeploy, true);
   });
@@ -152,21 +151,21 @@ describe('E2E Governance Pipeline', () => {
     const { actionClass, scope } = inferActionClass(cmd, 'INSTALL_APP');
     const { tier, policy: tierPolicy } = trustTierEngine.classify(actionClass, scope);
 
-    assert.strictEqual(tier, 'app-logic');
-    assert.strictEqual(tierPolicy.approvalGate, 'user-approval');
-
     const policyResult = policyEngine.evaluate({ actionClass, scope, initiator: 'ai' });
 
+    // compute before assertions so TypeScript doesn't narrow the union away
     const needsHumanApproval =
       policyResult.decision === 'require-approval' ||
       policyResult.decision === 'require-staged' ||
       tierPolicy.approvalGate === 'user-approval' ||
       tierPolicy.approvalGate === 'admin-approval';
 
+    assert.strictEqual(tier, 'app-logic');
+    assert.strictEqual(tierPolicy.approvalGate, 'user-approval');
     assert.strictEqual(needsHumanApproval, true);
 
     // Create proposal
-    const riskLevel = tier === 'kernel' ? 'critical' as const : 'medium' as const;
+    const riskLevel = 'medium' as const;
     const proposal = proposalEngine.create({
       title: '[BUILD_UTILITY] INSTALL_APP calculator',
       description: `Autonomous command from mission BUILD_UTILITY: ${cmd}`,
@@ -209,19 +208,19 @@ describe('E2E Governance Pipeline', () => {
     const { actionClass, scope } = inferActionClass(cmd, 'MODIFY_KERNEL_RULES');
     const { tier, policy: tierPolicy } = trustTierEngine.classify(actionClass, scope);
 
-    assert.strictEqual(tier, 'kernel');
-    assert.strictEqual(tierPolicy.approvalGate, 'admin-approval');
-    assert.strictEqual(tierPolicy.requireFullTestSuite, true);
-    assert.strictEqual(tierPolicy.allowSelfDeploy, false);
-
     const policyResult = policyEngine.evaluate({ actionClass, scope, initiator: 'ai' });
 
+    // compute before assertions so TypeScript doesn't narrow the union away
     const needsHumanApproval =
       policyResult.decision === 'require-approval' ||
       policyResult.decision === 'require-staged' ||
       tierPolicy.approvalGate === 'user-approval' ||
       tierPolicy.approvalGate === 'admin-approval';
 
+    assert.strictEqual(tier, 'kernel');
+    assert.strictEqual(tierPolicy.approvalGate, 'admin-approval');
+    assert.strictEqual(tierPolicy.requireFullTestSuite, true);
+    assert.strictEqual(tierPolicy.allowSelfDeploy, false);
     assert.strictEqual(needsHumanApproval, true);
 
     const proposal = proposalEngine.create({

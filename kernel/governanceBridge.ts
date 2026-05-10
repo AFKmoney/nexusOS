@@ -21,7 +21,7 @@ export function initGovernanceBridge(): void {
     humanOverride.subscribe(state => {
       useOS.getState().updateGovernance({
         overrideMode: state.mode,
-        overrideReason: state.reason,
+        ...(state.reason !== undefined ? { overrideReason: state.reason } : {}),
       });
     });
 

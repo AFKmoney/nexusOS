@@ -1,6 +1,6 @@
 # NexusOS — Testing Reference
 
-This document describes the test harness, the current coverage, and the gaps. It is grounded in the present state of the repository at version 2.0.5.
+This document describes the test harness, the current coverage, and the gaps. It is grounded in the present state of the repository at version 2.0.6.
 
 The author of every test must read this document before adding new ones; the harness has specific requirements (Node test runner, browser-shim ordering, force-exit grace window) that are easy to miss.
 
@@ -93,14 +93,22 @@ Test files run in the order returned by `readdir` after `.sort()`. This means al
 
 | File | Asserts |
 |---|---|
-| `kernel/tests/errorGuard.test.ts` | `OS::` action validation, HTML structure validation (DOCTYPE, closing tags). |
+| `kernel/tests/aiProviders.test.ts` | Provider registry completeness, endpoint validation, model declarations, OpenAI-compatible presets. |
+| `kernel/tests/aiProvidersFailover.test.ts` | Transient vs. permanent error classification, failover decision logic. |
+| `kernel/tests/e2eGovernancePipeline.test.ts` | End-to-end governance pipeline: all 4 tier paths (doc/ui/app-logic/kernel), dashboard approval flow, revert flow, artifact count sync. |
+| `kernel/tests/errorGuard.test.ts` | `OS::` action grammar validation, HTML structure validation (DOCTYPE, closing tags). |
 | `kernel/tests/fileSystem.test.ts` | VFS permission enforcement, IndexedDB-fallback behavior, system bypass via `__system__` appId. |
+| `kernel/tests/generatedRuntimeCoverage.test.ts` | Runtime coverage assertions for dynamically generated apps and components. |
+| `kernel/tests/governance.test.ts` | `policyEngine` (8 tests), `autonomyEventLog` (6 tests), `proposalEngine` (8 tests), `validationPipeline` (5 tests), `rollbackManager` (5 tests), `humanOverride` (5 tests), `autonomyHealthMonitor` (5 tests). |
+| `kernel/tests/mirrorGuard.test.ts` | Structural action validation, verb allow-list, argument bounds. |
+| `kernel/tests/missionLearning.test.ts` | Mission trust scoring, Bayesian smoothing, time-decay, storage namespacing. |
 | `kernel/tests/osManifest.test.ts` | `parseOsActions()` grammar, `generateOSManifest()` v3 compressed output across tiers. |
-| `kernel/tests/releaseReadiness.test.ts` | `package.json` and `electron-builder.yml` are aligned on the NexusOS branding; `TESTING.md` references the correct validation sequence; runner auto-discovery contract. |
+| `kernel/tests/permissions.test.ts` | Capability enforcement, `grant()` / `revoke()`, permission declaration model. |
+| `kernel/tests/releaseReadiness.test.ts` | `package.json` and `electron-builder.yml` NexusOS branding alignment; `TESTING.md` validation sequence; runner auto-discovery contract. |
+| `kernel/tests/stagingTrustTier.test.ts` | `stagingManager` (13 tests): stage, seal, sealAll, promote, revert, subscribe, event emission. `trustTierEngine` (24 tests): all tier classifications, approval gates, rank ordering, canActAtTier, subscribeOverride. |
 | `kernel/tests/store.test.ts` | `createDefaultStoreState()` shape, `makeStoreId()` determinism. |
-| `utils/uuid.test.ts`, `utils/tests/uuid.test.ts` | UUID generation determinism and uniqueness. |
 
-Total: 39 assertions across 6 files. All passing on `main` and `claude/audit-ai-fixes-kbRar`.
+Total: 90 assertions across 14 files. All passing on `main`.
 
 ---
 
@@ -114,9 +122,19 @@ Total: 39 assertions across 6 files. All passing on `main` and `claude/audit-ai-
 | `kernel/permissions.ts` | indirect | Exercised through VFS tests. No dedicated suite. |
 | `store/osStore.ts` | partial | Default state and id. Missing: slice mutations, persistence rehydration. |
 | `appRegistry.ts` | indirect | Validated through release-readiness assertions. |
-| `kernel/autonomy.ts` | none | Mission scoring, command filtering, error swallowing. |
+| `kernel/policyEngine.ts` | yes | Deny-by-default rules, decision classes, approval gates. |
+| `kernel/autonomyEventLog.ts` | yes | Append, getByKind, startRun, subscriber pattern. |
+| `kernel/proposalEngine.ts` | yes | Full state machine, create, approve, deny, transitions. |
+| `kernel/validationPipeline.ts` | yes | All 4 built-in validators, pass/fail paths. |
+| `kernel/stagingManager.ts` | yes | Stage, seal, sealAll, promote, revert, subscribe, event emission. |
+| `kernel/trustTierEngine.ts` | yes | All tier classifications, policies, canActAtTier, subscribeOverride. |
+| `kernel/rollbackManager.ts` | yes | Snapshot creation, async restore, record status. |
+| `kernel/humanOverride.ts` | yes | Mode transitions, persistence, kill switch semantics. |
+| `kernel/autonomyHealthMonitor.ts` | yes | Metric accumulation, confidence computation, auto safe-mode. |
+| `kernel/mirrorGuard.ts` | yes | Action structural validation, verb allow-list. |
+| `kernel/missionLearning.ts` | yes | Trust scoring, storage, time-decay. |
+| `kernel/autonomy.ts` | partial | Governance pipeline wiring tested via e2e suite. Mission scoring, command filtering not yet unit-tested. |
 | `kernel/commander.ts` | none | Command dispatch, pipes, redirection. |
-| `kernel/mirrorGuard.ts` | none | Action structural validation. |
 | `kernel/eventBus.ts` | none | Pub/sub semantics, history retention. |
 | `kernel/processManager.ts` | none | PID allocation, lifecycle. |
 | `kernel/cronScheduler.ts` | none | Expression parsing, persistent scheduling. |
@@ -134,7 +152,7 @@ The dominant gap is autonomy. The autonomy loop is the core of the system's thes
 
 - **No browser UI tests.** The shell is rendered by React 19; component-level tests would require a browser environment (jsdom + React Testing Library). This has not been wired up.
 - **No Electron main-process tests.** The Electron handlers are validated only through manual smoke testing during packaging.
-- **No end-to-end tests.** A full open-application → write-file → close-application flow is not exercised automatically.
+- **Partial end-to-end coverage.** `e2eGovernancePipeline.test.ts` covers the full governance pipeline (propose → validate → stage → promote → succeed/revert). Browser-level UI automation and Electron main-process tests remain unautomated.
 - **No visual regression.** Screenshot comparison is not configured.
 - **No performance assertions.** Bundle size, startup time, and tick latency are not gated.
 

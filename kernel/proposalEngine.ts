@@ -80,7 +80,7 @@ class ProposalEngine {
       actionClass: input.actionClass,
       scope: input.scope,
       initiator: 'ai',
-      targetPath: input.targetPath,
+      ...(input.targetPath !== undefined ? { targetPath: input.targetPath } : {}),
     });
 
     const approvalRequired =
@@ -93,7 +93,7 @@ class ProposalEngine {
       id: uuid(),
       runId: autonomyEventLog.getCurrentRunId(),
       approvalRequired,
-      approvalFrom: policyResult.requiresApprovalFrom,
+      ...(policyResult.requiresApprovalFrom !== undefined ? { approvalFrom: policyResult.requiresApprovalFrom } : {}),
       status: 'draft',
       validationResults: {},
       createdAt: now,
@@ -116,7 +116,7 @@ class ProposalEngine {
       proposalId: proposal.id,
       policyDecisionId: policyResult.id,
       outcome: policyResult.decision === 'deny' ? 'failure' : 'success',
-      errorMessage: policyResult.decision === 'deny' ? policyResult.reason : undefined,
+      ...(policyResult.decision === 'deny' ? { errorMessage: policyResult.reason } : {}),
       metadata: { actionClass: input.actionClass, scope: input.scope, riskLevel: input.riskLevel },
     });
 
