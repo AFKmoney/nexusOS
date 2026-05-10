@@ -143,7 +143,7 @@ function StatusPanel({ mode, metrics }: { mode: OverrideMode; metrics: AutonomyM
       <ConfidenceBar score={metrics.confidenceScore} health={metrics.healthStatus} />
 
       <div className="grid grid-cols-2 gap-1.5 mt-3 text-xs font-mono">
-        <MetricRow label="Health"   value={metrics.healthStatus.toUpperCase()} cls={HEALTH_CLS[metrics.healthStatus]} />
+        <MetricRow label="Health"   value={metrics.healthStatus.toUpperCase()} cls={HEALTH_CLS[metrics.healthStatus] ?? 'text-zinc-300'} />
         <MetricRow label="Proposals" value={metrics.proposalsTotal} />
         <MetricRow label="Success"  value={pct(metrics.successRate)} cls={metrics.successRate >= 0.8 ? 'text-emerald-400' : 'text-amber-400'} />
         <MetricRow label="Rollbacks" value={metrics.proposalsRolledBack} cls={metrics.proposalsRolledBack > 0 ? 'text-purple-400' : 'text-zinc-400'} />
@@ -528,12 +528,13 @@ export default function GovernanceDashboard() {
 
   const pendingCount = proposals.filter(p => p.status === 'pending-approval').length;
 
+  const stagingBadge = artifacts.filter(a => a.status === 'staged' || a.status === 'sealed').length || undefined;
   const TAB_META: Array<{ id: typeof tab; label: string; badge?: number }> = [
-    { id: 'proposals', label: 'Proposals',  badge: pendingCount || undefined },
-    { id: 'log',       label: 'Audit Log',  badge: undefined },
-    { id: 'health',    label: 'Metrics',    badge: undefined },
-    { id: 'staging',   label: 'Staging',    badge: artifacts.filter(a => a.status === 'staged' || a.status === 'sealed').length || undefined },
-    { id: 'tiers',     label: 'Trust Tiers', badge: undefined },
+    { id: 'proposals',  label: 'Proposals',   ...(pendingCount   ? { badge: pendingCount }   : {}) },
+    { id: 'log',        label: 'Audit Log' },
+    { id: 'health',     label: 'Metrics' },
+    { id: 'staging',    label: 'Staging',     ...(stagingBadge   ? { badge: stagingBadge }   : {}) },
+    { id: 'tiers',      label: 'Trust Tiers' },
   ];
 
   return (

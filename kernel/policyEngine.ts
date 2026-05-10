@@ -188,7 +188,7 @@ class PolicyEngine {
       scope: ctx.scope,
       initiator: ctx.initiator,
       timestamp: Date.now(),
-      requiresApprovalFrom: rule?.requiresApprovalFrom,
+      ...(rule?.requiresApprovalFrom !== undefined ? { requiresApprovalFrom: rule.requiresApprovalFrom } : {}),
     };
 
     this.decisionLog.push(result);

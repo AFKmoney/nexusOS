@@ -55,7 +55,7 @@ class RollbackManager {
 
     const snap: Snapshot = {
       id: uuid(),
-      proposalId: options.proposalId,
+      ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
       kind,
       key,
       data: this.deepClone(data),
@@ -89,7 +89,7 @@ class RollbackManager {
   ): Promise<RollbackRecord> {
     const record: RollbackRecord = {
       id: uuid(),
-      proposalId: options.proposalId,
+      ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
       snapshotIds,
       status: 'pending',
       triggeredAt: Date.now(),
@@ -101,7 +101,7 @@ class RollbackManager {
       subsystem: 'rollback-manager',
       actor: 'system',
       summary: `Rollback triggered for ${snapshotIds.length} snapshot(s)`,
-      proposalId: options.proposalId,
+      ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
       metadata: { snapshotIds, rollbackRecordId: record.id },
     });
 
@@ -118,7 +118,7 @@ class RollbackManager {
           subsystem: 'rollback-manager',
           actor: 'system',
           summary: `Rollback failed: snapshot ${snapshotId} not found`,
-          proposalId: options.proposalId,
+          ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
           outcome: 'failure',
           errorMessage: record.failureReason,
         });
@@ -140,7 +140,7 @@ class RollbackManager {
           subsystem: 'rollback-manager',
           actor: 'system',
           summary: `Rollback restore threw: ${msg}`,
-          proposalId: options.proposalId,
+          ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
           outcome: 'failure',
           errorMessage: record.failureReason,
         });
@@ -158,7 +158,7 @@ class RollbackManager {
       subsystem: 'rollback-manager',
       actor: 'system',
       summary: `Rollback succeeded for ${snapshotIds.length} snapshot(s)`,
-      proposalId: options.proposalId,
+      ...(options.proposalId !== undefined ? { proposalId: options.proposalId } : {}),
       outcome: 'success',
     });
 
