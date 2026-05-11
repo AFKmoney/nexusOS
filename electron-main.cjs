@@ -133,47 +133,6 @@ const isShellSafe = (str) => {
 };
 
 ipcMain.handle('native-unzip', async (event, { source, dest }) => {
-  return new Promise((resolve, reject) => {
-    const listExtractedFiles = (dir) => {
-      let results = [];
-      const list = fs.readdirSync(dir);
-      list.forEach((file) => {
-        const filePath = path.join(dir, file);
-        const stat = fs.statSync(filePath);
-        if (stat && stat.isDirectory()) {
-          results.push({ name: file, type: 'directory', path: filePath });
-          results = results.concat(listExtractedFiles(filePath));
-        } else {
-          results.push({ name: file, type: 'file', path: filePath, size: stat.size });
-        }
-      });
-      return results;
-    };
-
-    if (os.platform() === 'win32') {
-      exec(`powershell -command "Expand-Archive -Path '${source}' -DestinationPath '${dest}' -Force"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else {
-          try {
-            const files = listExtractedFiles(dest);
-            resolve({ success: true, files });
-          } catch (e) {
-            resolve({ success: true, files: [] });
-          }
-        }
-      });
-    } else {
-      exec(`unzip -o "${source}" -d "${dest}"`, (err) => {
-        if (err) resolve({ success: false, error: err.message });
-        else {
-          try {
-            const files = listExtractedFiles(dest);
-            resolve({ success: true, files });
-          } catch (e) {
-            resolve({ success: true, files: [] });
-          }
-        }
-      });
   return new Promise((resolve) => {
     if (!isShellSafe(source) || !isShellSafe(dest)) {
       resolve({ success: false, error: 'invalid path' });
