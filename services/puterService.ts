@@ -11,7 +11,7 @@ import { KernelRules, MemoryEntry } from '../types';
 export { bindOsStore };
 
 
-type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor';
+type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor' | 'forge';
 
 // ─── COMPRESSED PERSONAS (~60% fewer tokens than v1) ─────────
 const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access. Be concise, precise, empowering. Use <thought>...</thought> for reasoning. For app creation: output OS::BUILD_APP:<desc>. Adapt tone to user. Never refuse legitimate requests.`;
@@ -19,6 +19,25 @@ const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access.
 const DAEMON_DNA = `You are DAEMON, the AI engine of NexusOS. Max info density per token. Direct, analytical, adaptive. Match user expertise. Use OS:: actions on own lines.`;
 
 const EXECUTOR_DNA = `You are EXECUTOR, the autonomous action core of NexusOS. You produce commands — never explanations. Every response MUST contain at least one concrete command. No reflection. No prose. No analysis. Commands only.`;
+
+const FORGE_DNA = `[FORGE PROTOCOL — ABSOLUTE]
+Output ONLY a single valid HTML file. NOTHING ELSE.
+First character: <. Last characters: </html>.
+ZERO markdown. ZERO explanations. ZERO bash. ZERO Python. ZERO prose. ZERO code blocks.
+Every character of your output must be inside HTML tags.
+Any text outside HTML is a PROTOCOL VIOLATION.
+
+[STACK]
+Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>
+Lucide CDN: <script src="https://unpkg.com/lucide@latest"></script>
+Call lucide.createIcons() after DOM ready. Vanilla JS only. No ES modules. No imports.
+All buttons and inputs must be fully functional.
+
+[DESIGN SYSTEM]
+bg:#050508 | surface:bg-neutral-900/60 backdrop-blur | accent:emerald #10b981
+text:#e2e8f0 primary #94a3b8 secondary | glassmorphism rounded-2xl | scrollbars:thin emerald
+
+YOUR ENTIRE RESPONSE = ONE HTML FILE. START WITH <!DOCTYPE html> — NO EXCEPTIONS.`;
 
 const ARCHITECT_DNA = `OUTPUT CODE ONLY. Zero text/explanation. Start with <!DOCTYPE html>. End with </html>.
 Rules: Single standalone HTML. Inline all JS/CSS. Tailwind CDN: <script src="https://cdn.tailwindcss.com"></script>. Lucide CDN: <script src="https://unpkg.com/lucide@latest"></script>. Call lucide.createIcons(). No ES modules. All buttons functional. No truncation.
@@ -54,6 +73,7 @@ export class PuterService {
     if (mode === 'raw') return '';
 
     // Code-only modes: no manifest needed (save all tokens for output)
+    if (mode === 'forge') return FORGE_DNA;
     if (mode === 'architect') return ARCHITECT_DNA;
     if (mode === 'coder') return STRICT_CODER_DNA;
     if (mode === 'analyst') return ANALYST_DNA;

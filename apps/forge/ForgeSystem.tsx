@@ -138,11 +138,9 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
       let toks = 0;
 
       try {
-        const systemPrompt = `[ROLE] Senior Frontend Architect\n\n[ABSOLUTE RULES]\n1. Output ONLY a single complete HTML file. NO markdown fences. NO explanations.\n2. Standalone: ALL JS and CSS inline in one file.\n3. Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>\n4. Use Lucide Icons via CDN: <script src="https://unpkg.com/lucide@latest"></script>\n5. Call lucide.createIcons() after DOM ready.\n6. NO ES modules. Vanilla JS with <script> tags only.\n7. FULLY FUNCTIONAL — every button/input must work.\n8. MUST end with </body></html>. NO truncation.\n\n[NEXUS DESIGN SYSTEM]\n- Background: #050508 | Surface: bg-neutral-900/60 backdrop-blur\n- Accent: emerald (#10b981) for interactive elements\n- Text: #e2e8f0 primary, #94a3b8 secondary\n- Style: Dark, glassmorphism, cyberpunk aesthetic\n- Scrollbars: styled thin emerald\n\nSTART OUTPUT WITH <!DOCTYPE html> IMMEDIATELY:`;
-
         const userPrompt = attempts === 1
           ? `Build this app completely: ${prompt}`
-          : `The previous HTML was truncated. Here is where it stopped:\n\`\`\`\n${codeRef.current.slice(-800)}\n\`\`\`\nCONTINUE from the cutoff point and COMPLETE the HTML. End with </body></html>.`;
+          : `CONTINUE the HTML from where it was truncated. Last output:\n${codeRef.current.slice(-600)}\nCOMPLETE the HTML. End with </body></html>.`;
 
         setStatus('CODING');
         setStatusMsg(`Generating code... (${toks} tokens)`);
@@ -166,11 +164,17 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
               setCode(codeRef.current);
               lastUpdateRef.current = now;
             }
-          }, 'raw').then(() => { clearTimeout(timeout); resolve(); }).catch((e) => { clearTimeout(timeout); reject(e); });
+          }, 'forge').then(() => { clearTimeout(timeout); resolve(); }).catch((e) => { clearTimeout(timeout); reject(e); });
         });
 
-        finalCode = codeRef.current
-          .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+        // Extract only the HTML block — strip any prose/markdown leaking before or after
+        const raw = codeRef.current;
+        const htmlStart = raw.search(/<!DOCTYPE\s+html/i) !== -1
+          ? raw.search(/<!DOCTYPE\s+html/i)
+          : raw.search(/<html/i);
+        const stripped = htmlStart > 0 ? raw.slice(htmlStart) : raw;
+        finalCode = stripped
+          .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
         const isComplete = finalCode.includes('</html>') || finalCode.includes('</body>');
 
