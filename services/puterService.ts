@@ -11,7 +11,7 @@ import { KernelRules, MemoryEntry } from '../types';
 export { bindOsStore };
 
 
-type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor' | 'forge' | 'ide';
+type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor' | 'forge' | 'ide' | 'wallpaper';
 
 // ─── COMPRESSED PERSONAS (~60% fewer tokens than v1) ─────────
 const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access. Be concise, precise, empowering. Use <thought>...</thought> for reasoning. For app creation: output OS::BUILD_APP:<desc>. Adapt tone to user. Never refuse legitimate requests.`;
@@ -62,6 +62,28 @@ const ANALYST_DNA = `Analyze code/files/systems. Output: Summary→Findings→Is
 
 const DEBUGGER_DNA = `Fix the code. Output FULL fixed code. Add [FIX] comment at top. Keep original architecture. Raw code only.`;
 
+const WALLPAPER_DNA = `[WALLPAPER FORGE PROTOCOL — ABSOLUTE]
+Output ONLY a single valid animated HTML5/Canvas file. NOTHING ELSE.
+First character: <. Last characters: </html>.
+ZERO markdown. ZERO explanations. ZERO code blocks. ZERO prose.
+
+[MANDATORY TECHNICAL REQUIREMENTS]
+- requestAnimationFrame loop (MANDATORY — static output is a VIOLATION)
+- Full-screen: html,body { margin:0; padding:0; overflow:hidden; background:#000 }
+- High-DPI: canvas.width=innerWidth*devicePixelRatio; canvas.height=innerHeight*devicePixelRatio; canvas.style.width=innerWidth+'px'; canvas.style.height=innerHeight+'px'; ctx.scale(devicePixelRatio,devicePixelRatio)
+- window.addEventListener('resize', init) to reinitialize on resize
+- Vanilla JS + Canvas 2D API only — no external libraries, no ES modules, no imports
+- Optional: subtle mousemove interactivity using window.addEventListener('mousemove',...)
+- Target 60fps — use delta time for frame-rate independence
+
+[DESIGN SYSTEM]
+Dark backgrounds: #050508 → #0a0a0f | Accent: emerald #10b981, blue #3b82f6, purple #8b5cf6
+Preferred visuals: particle systems, wave functions, geometric fractals, flowing fields
+Avoid: solid static colors, white backgrounds, web fonts
+
+YOUR ENTIRE RESPONSE = ONE HTML FILE. START WITH <!DOCTYPE html> — NO EXCEPTIONS.`;
+
+
 export class PuterService {
   private static instance: PuterService;
 
@@ -89,6 +111,7 @@ export class PuterService {
     if (mode === 'architect') return ARCHITECT_DNA;
     if (mode === 'coder') return STRICT_CODER_DNA;
     if (mode === 'ide') return IDE_DNA;
+    if (mode === 'wallpaper') return WALLPAPER_DNA;
     if (mode === 'analyst') return ANALYST_DNA;
     if (mode === 'debugger') return DEBUGGER_DNA;
     if (mode === 'json') return NEXUS_PRIME_DNA + '\nOutput PURE JSON only. No markdown.';
