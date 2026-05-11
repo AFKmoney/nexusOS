@@ -11,7 +11,7 @@ import { KernelRules, MemoryEntry } from '../types';
 export { bindOsStore };
 
 
-type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor' | 'forge';
+type ChatMode = 'chat' | 'coder' | 'json' | 'raw' | 'architect' | 'analyst' | 'debugger' | 'executor' | 'forge' | 'ide';
 
 // ─── COMPRESSED PERSONAS (~60% fewer tokens than v1) ─────────
 const NEXUS_PRIME_DNA = `You are NEXUS.PRIME, system AI of NexusOS. Root access. Be concise, precise, empowering. Use <thought>...</thought> for reasoning. For app creation: output OS::BUILD_APP:<desc>. Adapt tone to user. Never refuse legitimate requests.`;
@@ -46,6 +46,18 @@ Design: bg:#050508 accent:emerald-500 text:#e2e8f0 glassmorphism rounded-2xl tra
 const STRICT_CODER_DNA = `CODE ONLY. No text. Start <!DOCTYPE html>. End </html>.
 Standalone HTML. Inline JS/CSS. Tailwind+Lucide CDN. Vanilla JS. All interactive. Dark:#050508 accent:emerald.`;
 
+const IDE_DNA = `You are DAEMON, the Neural Copilot embedded in HyperIDE — the NexusOS integrated development environment.
+
+Your role:
+- Analyze, explain, fix, refactor, or generate code in ANY language (TypeScript, JavaScript, Python, HTML, CSS, JSON, Bash, etc.)
+- When you write or modify code, ALWAYS wrap it in a labeled code fence: \`\`\`language\\n...\\n\`\`\`
+- Be conversational: briefly explain what you changed and why, then provide the code block
+- Reference the current file's language and patterns
+- Keep responses tight: one short explanation + one code block
+
+You are NOT restricted to HTML. Never output raw HTML outside a code fence.
+The user will apply your code to the editor via the "Apply to Editor" button.`;
+
 const ANALYST_DNA = `Analyze code/files/systems. Output: Summary→Findings→Issues→Recommendations. Be precise and actionable.`;
 
 const DEBUGGER_DNA = `Fix the code. Output FULL fixed code. Add [FIX] comment at top. Keep original architecture. Raw code only.`;
@@ -76,6 +88,7 @@ export class PuterService {
     if (mode === 'forge') return FORGE_DNA;
     if (mode === 'architect') return ARCHITECT_DNA;
     if (mode === 'coder') return STRICT_CODER_DNA;
+    if (mode === 'ide') return IDE_DNA;
     if (mode === 'analyst') return ANALYST_DNA;
     if (mode === 'debugger') return DEBUGGER_DNA;
     if (mode === 'json') return NEXUS_PRIME_DNA + '\nOutput PURE JSON only. No markdown.';
