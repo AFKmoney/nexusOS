@@ -335,19 +335,22 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
       await aiService.streamChat(prompt, kernelRules, (token) => {
         buf += token;
         setAiMessages(prev => { const u = [...prev]; u[u.length-1] = { role: 'ai', content: buf }; return u; });
-      }, 'coder');
+      }, 'ide');
     } catch (e: any) {
       setAiMessages(prev => { const u=[...prev]; u[u.length-1]={role:'ai',content:`[Error: ${e.message}]`}; return u; });
     } finally { setIsAiThinking(false); }
   };
 
-  const applyAICode = () => {
-    const lastAI = aiMessages.slice().reverse().find(m => m.role === 'ai');
-    if (!lastAI || !activeTab) return;
-    const codeMatch = lastAI.content.match(/```(?:\w+)?\n([\s\S]*?)```/);
-    const code = codeMatch?.[1] || lastAI.content;
+  const applyAICode = (msgContent?: string) => {
+    const content = msgContent ?? aiMessages.slice().reverse().find(m => m.role === 'ai')?.content ?? '';
+    if (!content || !activeTab) return;
+    // Extract the largest code block found, or fall back to raw content
+    const blocks = [...content.matchAll(/```(?:\w+)?\n([\s\S]*?)```/g)].map(m => m[1] ?? '');
+    const code = blocks.length
+      ? blocks.reduce((a, b) => (b.length > a.length ? b : a))
+      : content.replace(/```(?:\w+)?/g, '').trim();
     updateContent(code.trim());
-    addNotification({ title: 'Code Injected', message: `Neural synthesis applied to ${activeTab.name}`, type: 'success' });
+    addNotification({ title: '⚡ Code Applied', message: `Neural synthesis injected into ${activeTab.name}`, type: 'success' });
   };
 
   const copyCode = (content: string) => {
@@ -392,7 +395,7 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-300">$1</strong>')
       .replace(/`([^`]+)`/g, '<code class="bg-black/50 text-emerald-300 px-1.5 py-0.5 rounded-md text-xs font-mono border border-emerald-500/20">$1</code>')
-      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/80 border border-white/10 rounded-xl p-4 my-3 overflow-x-auto text-emerald-200 text-[11px] font-mono shadow-inner">$2</pre>')
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/80 border border-white/10 rounded-xl p-3 my-2 overflow-x-auto max-w-full text-emerald-200 text-[11px] font-mono shadow-inner whitespace-pre-wrap break-words">$2</pre>')
       .replace(/^#{1,3}\s(.+)$/gm, '<div class="text-white font-black text-sm mt-4 mb-2 tracking-wide uppercase">$1</div>')
       .replace(/\n/g, '<br/>');
   };
@@ -699,28 +702,28 @@ export default function HyperIDE({ windowId, initPath }: { windowId: string; ini
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar relative z-10">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar relative z-10">
             {aiMessages.map((msg, i) => (
-              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                {msg.role === 'user' && <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1.5 ml-1">You</span>}
+              <div key={i} className={`flex flex-col w-full ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                {msg.role === 'user' && <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1.5 mr-1">You</span>}
                 {msg.role === 'ai' && <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1.5 ml-1 flex items-center gap-1"><Zap size={8} /> DAEMON</span>}
-                
-                <div className={`max-w-[92%] p-4 rounded-2xl text-[13px] leading-relaxed font-sans shadow-xl ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-tr-sm border border-white/10' : 'bg-emerald-950/40 border border-emerald-500/20 text-zinc-200 rounded-tl-sm backdrop-blur-md'}`}>
+
+                <div className={`w-[92%] min-w-0 overflow-hidden p-3.5 rounded-2xl text-[12px] leading-relaxed font-sans shadow-xl ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-tr-sm border border-white/10 self-end' : 'bg-emerald-950/40 border border-emerald-500/20 text-zinc-200 rounded-tl-sm backdrop-blur-md'}`}>
                   {msg.role === 'ai' ? (
                     msg.content
-                      ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(msg.content)) }} />
+                      ? <div className="min-w-0 overflow-hidden [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:break-all [&_*]:max-w-full" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(msg.content)) }} />
                       : (isAiThinking && i === aiMessages.length-1 ? <div className="flex items-center gap-2 text-emerald-500 font-mono text-xs uppercase tracking-widest"><Loader2 size={12} className="animate-spin" /> Synthesizing...</div> : '')
-                  ) : msg.content}
+                  ) : <span className="break-words">{msg.content}</span>}
                 </div>
-                
+
                 {msg.role === 'ai' && msg.content && (
-                  <div className="flex items-center gap-2 mt-2 ml-1">
-                    <button onClick={() => copyCode(msg.content)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all border border-transparent hover:border-white/10">
-                      <Copy size={12} /> Copy
+                  <div className="flex items-center gap-2 mt-2 ml-1 flex-wrap">
+                    <button onClick={() => copyCode(msg.content)} className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all border border-transparent hover:border-white/10">
+                      <Copy size={11} /> Copy
                     </button>
                     {msg.content.includes('```') && activeTab && (
-                      <button onClick={applyAICode} className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 rounded-lg text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                        <Save size={12} /> Apply to Manifest
+                      <button onClick={() => applyAICode(msg.content)} className="px-2.5 py-1.5 bg-emerald-500/15 border border-emerald-500/40 hover:bg-emerald-500/25 rounded-lg text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(16,185,129,0.15)] hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                        <Save size={11} /> Apply to Editor
                       </button>
                     )}
                   </div>
