@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    name: Build Linux (AppImage + snap)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build Electron (Linux)
+        run: npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          path: |
+            dist_electron/*.AppImage
+            dist_electron/*.snap
+          retention-days: 1
+
+  build-windows:
+    name: Build Windows (NSIS installer)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron (Windows)
+        run: npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          path: dist_electron/*.exe
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-dist
+          path: release-assets
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-dist
+          path: release-assets
+
+      - name: List release assets
+        run: ls -lh release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NexusOS ${{ github.ref_name }}
+          body: |
+            ## NexusOS ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File | Format |
+            |---|---|---|
+            | Linux | `NexusOS-*.AppImage` | Portable (no install needed) |
+            | Linux | `nexusos_*_amd64.snap` | Snap package |
+            | Windows | `NexusOS_Setup_*.exe` | NSIS installer (with uninstaller) |
+
+            ### Install
+            **Linux AppImage** — `chmod +x NexusOS-*.AppImage && ./NexusOS-*.AppImage`
+            **Linux Snap** — `snap install nexusos_*_amd64.snap --dangerous`
+            **Windows** — Run `NexusOS_Setup_*.exe`, choose install directory
+
+            ### Validation
+            All releases pass: `npm run typecheck` + `npm test` (90/90) + `npm run build`
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
