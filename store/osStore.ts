@@ -106,7 +106,10 @@ export const useOS = create<OSState>()(
       isSearchOpen: false,
       setHasSeenIntro: (val) => set({ hasSeenIntro: val }),
       switchWorkspace: (id) => set({ activeWorkspace: id }),
-      setBooted: (val) => set({ booted: val }),
+      setBooted: (val) => {
+        console.log("[SYSTEM] Boot state updated to:", val);
+        set({ booted: val });
+      },
       login: (profileId) => {
         const profile = get().profiles.find(p => p.id === profileId) ?? get().profiles[0] ?? null;
         set({ isLoggedIn: true, currentUser: profile });

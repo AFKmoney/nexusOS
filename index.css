@@ -30,8 +30,8 @@ html, body, #root {
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #000;
-    color: #fff;
+    background-color: #050508; /* Slightly off-black for diagnostic */
+    color: #e2e8f0;
     font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
 }
