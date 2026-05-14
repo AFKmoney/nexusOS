@@ -23,6 +23,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
   const [retryCount, setRetryCount] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
   const [isAiConnected, setIsAiConnected] = useState(localBrain.isReady());
+  const [isNaming, setIsNaming] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -55,49 +56,66 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     }
   }, [view, code]);
 
-  const handleInstall = (codeOverride?: string) => {
-    const content = (codeOverride || codeRef.current)
+  const handleInstall = async (codeOverride?: string) => {
+    const raw = (codeOverride || codeRef.current)
       .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-    if (!content) return;
+
+    // Must contain real HTML — reject empty or non-HTML content
+    const htmlStart = raw.search(/<!DOCTYPE\s+html/i) !== -1
+      ? raw.search(/<!DOCTYPE\s+html/i)
+      : raw.search(/<html/i);
+    const content = htmlStart >= 0 ? raw.slice(htmlStart) : raw;
+    if (!content || (!content.includes('</body>') && !content.includes('</html>'))) return;
 
     setStatus('INSTALLING');
+    setIsNaming(true);
+
+    // AI generates a classy app name
+    let manifestName = 'Forged App';
+    try {
+      const namePrompt = `Generate a short creative app name (2-3 words maximum, NO generic words like "App" or "Tool") for this concept: "${prompt}". Output ONLY the name, nothing else.`;
+      const aiName = await aiService.generateOnce(namePrompt, kernelRules, 'raw');
+      const cleaned = aiName.trim()
+        .replace(/^["'`]|["'`]$/g, '')
+        .replace(/[^\w\s\-\.]/g, '')
+        .trim();
+      if (cleaned.length >= 3 && cleaned.length <= 32) {
+        manifestName = cleaned;
+      }
+    } catch {}
+    setIsNaming(false);
 
     const timestamp = Date.now();
-    const cleanName = prompt
-      .replace(/^(build|create|make|forge)\s+/i, '')
-      .replace(/['":]/g, '').trim();
-    const manifestName = cleanName.split(' ').slice(0, 4).join(' ').slice(0, 25) || 'Forged App';
-    
-    // Save to user Apps directory
+    const safeFileName = manifestName.replace(/\s+/g, '_');
+
+    // Save to Apps directory
     const appsDir = `/home/user/Apps`;
     if (!vfs.resolveNode(appsDir)) vfs.createDir(appsDir);
-    
-    const fileName = `${manifestName.replace(/\s+/g, '_')}_${timestamp}.html`;
-    const filePath = `${appsDir}/${fileName}`;
+    const filePath = `${appsDir}/${safeFileName}_${timestamp}.html`;
     vfs.writeFile(filePath, content);
 
+    // Also place on Desktop
+    const desktopDir = `/home/user/Desktop`;
+    if (!vfs.resolveNode(desktopDir)) vfs.createDir(desktopDir);
+    const desktopPath = `${desktopDir}/${safeFileName}.html`;
+    vfs.writeFile(desktopPath, content);
+
     const appId = `forge_${timestamp}`;
-    const manifest = {
+    registerCustomApp({
       id: appId,
       name: manifestName,
-      icon: 'box',
+      icon: Box,
       defaultSize: { width: 960, height: 720 },
       isCustom: true,
-      sourcePath: filePath
-    };
-
-    registerCustomApp({
-      ...manifest,
-      icon: Box,
+      sourcePath: filePath,
       permissions: ['vfs.read', 'vfs.write', 'network']
     });
 
-    // Remember the creation for AI context
-    memory.remember(`Created app: "${manifestName}" — ${prompt} (saved to ${filePath})`, ['forge', 'app', 'created']);
+    memory.remember(`Created app: "${manifestName}" — ${prompt} (desktop: ${desktopPath})`, ['forge', 'app', 'created']);
 
     addNotification({
       title: '✅ App Installed',
-      message: `"${manifestName}" saved to ${filePath} and added to menu.`,
+      message: `"${manifestName}" added to Desktop & app menu.`,
       type: 'success'
     });
 
@@ -244,8 +262,8 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Neural Forge {isAiConnected ? '(Online)' : '(Offline)'}</div>
             <div className={`text-xs font-mono ${statusColor} flex items-center gap-1`}>
-              {isGenerating && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
-              {isAiConnected ? (statusMsg || status) : 'Waiting for Neural Core...'}
+              {(isGenerating || isNaming) && <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
+              {isNaming ? 'Naming app...' : isAiConnected ? (statusMsg || status) : 'Waiting for Neural Core...'}
               {isGenerating && tokenCount > 0 && (
                 <span className="text-zinc-500 ml-1">({tokenCount} tok)</span>
               )}
@@ -262,9 +280,10 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
             <button onClick={() => setView('code')} className={`px-2 py-1 rounded transition-all ${view === 'code' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-400'}`}><Code size={16}/></button>
             <button onClick={() => setView('preview')} className={`px-2 py-1 rounded transition-all ${view === 'preview' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-400'}`}><Eye size={16}/></button>
           </div>
-          {code && !isGenerating && (
+          {code && !isGenerating && !isNaming && (
             <button onClick={() => handleInstall()} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg shadow-emerald-950/40">
-              <Rocket size={14} /> Install
+              {isNaming ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+              {isNaming ? 'NAMING...' : 'INSTALL'}
             </button>
           )}
         </div>
@@ -295,7 +314,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
           {isGenerating ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} fill="currentColor" />}
           {isGenerating ? 'FORGING' : 'FORGE'}
         </button>
-        {code && !isGenerating && (
+        {code && !isGenerating && !isNaming && (
           <button onClick={() => { setCode(''); codeRef.current=''; setStatus('IDLE'); setStatusMsg(''); }} className="p-2 border border-white/10 hover:border-red-500/30 text-zinc-600 hover:text-red-400 rounded-lg transition-all" title="Clear">
             <RotateCcw size={16} />
           </button>

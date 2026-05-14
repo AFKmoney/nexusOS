@@ -52,10 +52,11 @@ export default function WallpaperApp() {
     setIsSuggesting(true);
     try {
       const suggestion = await aiService.generateOnce(
-        "Give me a one-sentence artistic prompt for an animated HTML5/Canvas cyberpunk sci-fi wallpaper. Be creative, vivid, specific. One sentence only.",
-        kernelRules
+        'Give me a one-sentence artistic prompt for an animated HTML5/Canvas cyberpunk sci-fi wallpaper. Be creative, vivid, specific. One sentence only. No quotes.',
+        kernelRules,
+        'chat'
       );
-      setPrompt(suggestion.replace(/"/g, ''));
+      setPrompt(suggestion.replace(/"/g, '').trim());
     } catch (e) {
       addNotification({ title: 'AI Error', message: 'Failed to generate suggestion.', type: 'error' });
     }
@@ -67,23 +68,15 @@ export default function WallpaperApp() {
     setIsGenerating(true);
     try {
       addNotification({ title: 'Neural Core', message: 'Architecting visual logic...', type: 'info' });
-      const systemPrompt = `You are a generative art engine. Create a FULLY ANIMATED HTML5/Canvas wallpaper.
-REQUIREMENTS:
-- Single HTML file starting with <!DOCTYPE html>
-- Full-screen, no scrollbars (body: margin:0; overflow:hidden)
-- Must use requestAnimationFrame animation loop
-- Must handle high-DPI screens correctly (canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px'; ctx.scale(devicePixelRatio, devicePixelRatio);)
-- Must be visually stunning with particle systems, waves, or geometric patterns
-- Cyberpunk/Sci-Fi/Abstract aesthetics only
-- Use only vanilla JS and Canvas API — no external libraries
-- Must react to ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'night'} time of day for colors
+      const hour = new Date().getHours();
+      const timeCtx = hour < 12 ? 'dawn — cool blues, pale golds' : hour < 18 ? 'midday — vibrant, saturated' : 'night — deep darks, neon glows';
 
-USER VISION: "${prompt}"
-
-RETURN: ONLY the single HTML file. No markdown. No code blocks. Start with <!DOCTYPE html>.`;
-
-      const code = await aiService.generateOnce(systemPrompt, kernelRules);
-      const cleanCode = code.replace(/```html(\s|\\n)*/gi, '').replace(/```(\s|\\n)*/g, '').trim();
+      const code = await aiService.generateOnce(
+        `USER VISION: "${prompt}"\nTIME OF DAY: ${timeCtx} — adapt color palette accordingly.`,
+        kernelRules,
+        'wallpaper'
+      );
+      const cleanCode = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
       if (cleanCode.includes('<!DOCTYPE') || cleanCode.includes('<html')) {
         const timestamp = Date.now();
