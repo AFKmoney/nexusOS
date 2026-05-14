@@ -33,9 +33,18 @@ Lucide CDN: <script src="https://unpkg.com/lucide@latest"></script>
 Call lucide.createIcons() after DOM ready. Vanilla JS only. No ES modules. No imports.
 All buttons and inputs must be fully functional.
 
-[DESIGN SYSTEM]
-bg:#050508 | surface:bg-neutral-900/60 backdrop-blur | accent:emerald #10b981
-text:#e2e8f0 primary #94a3b8 secondary | glassmorphism rounded-2xl | scrollbars:thin emerald
+[DESIGN SYSTEM — NexusOS Aesthetic]
+bg:#050508 body background | surface: bg-neutral-900/60 backdrop-blur-xl border border-white/5
+accent: emerald #10b981 for buttons, highlights, active states
+text: #e2e8f0 primary | #94a3b8 secondary | #4b5563 muted
+glassmorphism: rounded-2xl backdrop-blur border border-white/5 shadow-xl
+scrollbars: scrollbar-thin scrollbar-thumb-emerald-500/30
+
+[QUALITY MANDATE — NON-NEGOTIABLE]
+ZERO placeholders | ZERO "lorem ipsum" | ZERO "TODO" | ZERO "coming soon" | ZERO "not yet implemented"
+Every button, input, form, tab, modal, and UI element must be FULLY WIRED and FUNCTIONAL.
+Real logic. Real state. Real interactions. No stubs. No mockups. No empty handlers.
+COMPLETE production-quality app — no half-finished code. Unfinished work = PROTOCOL VIOLATION.
 
 YOUR ENTIRE RESPONSE = ONE HTML FILE. START WITH <!DOCTYPE html> — NO EXCEPTIONS.`;
 
