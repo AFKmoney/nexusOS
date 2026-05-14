@@ -12,10 +12,13 @@ import {
   OSStateShape
 } from './osStoreSlices';
 
+export type PowerMode = 'normal' | 'saver' | 'critical';
+
 interface OSState extends OSStateShape {
   booted: boolean;
   hasSeenIntro: boolean;
   isLoggedIn: boolean;
+  powerMode: PowerMode;
   setHasSeenIntro: (val: boolean) => void;
   switchWorkspace: (id: number) => void;
   setBooted: (val: boolean) => void;
@@ -24,6 +27,7 @@ interface OSState extends OSStateShape {
   updateKernelRules: (updates: Partial<KernelRules>) => void;
   systemReset: (wipe: boolean) => void;
   setForging: (v: boolean) => void;
+  setPowerMode: (mode: PowerMode) => void;
 }
 
 export function makeStoreId(seed = 'default') {
@@ -57,6 +61,7 @@ export const useOS = create<OSState>()(
       booted: false,
       hasSeenIntro: false,
       isLoggedIn: false,
+      powerMode: 'normal' as PowerMode,
       currentUser: { id: 'system', name: 'System', themeColor: '#10b981', isAdmin: true } as any,
       profiles: DEFAULT_PROFILES,
       windows: [],
@@ -126,7 +131,8 @@ export const useOS = create<OSState>()(
       },
       ...createRegistryActions(set),
       ...createSessionActions(set),
-      setForging: (v) => set({ isForging: v })
+      setForging: (v) => set({ isForging: v }),
+      setPowerMode: (mode) => set({ powerMode: mode }),
     }),
     {
       name: STORE_PERSIST_KEY,
