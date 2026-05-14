@@ -13,6 +13,7 @@ import { policyEngine } from './policyEngine';
 import type { ActionClass, ActionScope } from './policyEngine';
 import { initGovernanceBridge } from './governanceBridge';
 import { buildGuardianDirective } from './guardianDirective';
+import { usageTracker } from './usageTracker';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -144,6 +145,29 @@ Uptime: ${Math.floor(state.uptime / 1000)}s
 Write one concrete, actionable optimization directive to /system/.daemon/reflections.txt using the \`write\` command.
 The content must be a single imperative improvement for the next cycle. Write it now.`,
   },
+  {
+    id: 'PREDICTIVE_ASSIST',
+    trigger: 'pattern_match',
+    weight: () => {
+      const predicted = usageTracker.getPredictedApps(1);
+      const top = predicted[0];
+      if (!top) return 0;
+      // Only engage when prediction confidence is meaningful
+      return top.score > 0.4 ? Math.min(0.7, top.score) : 0;
+    },
+    prompt: (state) => {
+      const predicted = usageTracker.getPredictedApps(3);
+      const top = predicted.map(p => `${p.appId}(confidence:${(p.score * 100).toFixed(0)}%)`).join(', ');
+      return `[MISSION: PREDICTIVE_ASSIST]
+Behavioral resonance field detected: ${usageTracker.getPatternSummary()}
+Current time-pattern predictions: ${top || 'none yet'}
+Currently open: ${state.apps}
+
+Based on the user's usage patterns, prepare their workspace proactively.
+If the top predicted app is not currently open and would add value, open it.
+Otherwise write a concise context note to /home/user/Desktop/context_brief.txt with what you predict the user will need in the next hour.`;
+    },
+  },
 ];
 
 // ─── Action Class Inference ───────────────────────────────────────────────────
@@ -219,7 +243,10 @@ export class AutonomyEngine {
     });
     eventBus.on(OS_EVENTS.WINDOW_OPENED, (payload) => {
       const eventPayload = (payload ?? {}) as EventPayload;
-      this.queueEvent(`WINDOW_OPENED: ${eventPayload.appId || 'unknown'}`);
+      const appId = eventPayload.appId || '';
+      this.queueEvent(`WINDOW_OPENED: ${appId || 'unknown'}`);
+      // Record for behavioral resonance / predictive assist
+      if (appId) usageTracker.trackAppOpen(appId);
     });
     eventBus.on(OS_EVENTS.WINDOW_CLOSED, (payload) => {
       const eventPayload = (payload ?? {}) as EventPayload;
@@ -284,23 +311,21 @@ export class AutonomyEngine {
   private calculateNextFractalDelay(): number {
     const os = useOS.getState();
     // n: folding depth (compression) -> based on window count (complexity)
-    const n = Math.min(os.windows.length, 5); 
+    const n = Math.min(os.windows.length, 5);
     // k: branching expansion (generation) -> based on recent event density
     const k = Math.min(this.eventQueue.length, 3);
-    
-    // Formula: V = 7 * 2^n * 3^k
-    // We use this to modulate a baseline of 30s
-    // High n/k should lead to high "value", which we map to higher activity (shorter delay)
+
     const baseValue = 7 * Math.pow(2, n) * Math.pow(3, k);
-    
-    // Normalize to a reasonable range (5s to 60s)
-    // baseValue for n=0, k=0 is 7. For n=5, k=3 is 7 * 32 * 27 = 6048.
-    // We want higher activity (high baseValue) to LOWER the delay.
     const baseline = 60000; // 60s max
     const minDelay = 5000;  // 5s min
-    
-    const fractalDelay = Math.max(minDelay, baseline - (baseValue * 8));
-    
+
+    let fractalDelay = Math.max(minDelay, baseline - (baseValue * 8));
+
+    // Power mode: throttle the autonomy engine to preserve battery
+    const powerMode = os.powerMode || 'normal';
+    if (powerMode === 'saver') fractalDelay = Math.max(fractalDelay * 3, 45000);
+    if (powerMode === 'critical') fractalDelay = Math.max(fractalDelay * 8, 120000);
+
     return fractalDelay;
   }
 
@@ -324,6 +349,12 @@ export class AutonomyEngine {
     if (!os.kernelRules.autonomyEnabled) return;
     if (!humanOverride.isAutonomyEnabled) {
       os.addAutonomyLog(`◈ OVERRIDE: Autonomy halted (${humanOverride.currentMode}). Skipping tick.`);
+      return;
+    }
+
+    // Power-critical mode: suspend autonomy to preserve battery
+    if (os.powerMode === 'critical') {
+      os.addAutonomyLog('◈ POWER-CRITICAL: Autonomy suspended to preserve battery. Recharging required.');
       return;
     }
 

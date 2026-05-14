@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useOS } from '../store/osStore';
 
 interface SystemControls {
   volume: number;
@@ -15,6 +16,8 @@ interface SystemControls {
 }
 
 export function useSystemControls(): SystemControls {
+  const setPowerMode = useOS(s => s.setPowerMode);
+
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('nexus-volume');
     return saved ? parseFloat(saved) : 80;
@@ -100,21 +103,33 @@ export function useSystemControls(): SystemControls {
     setBrightnessState(Math.max(10, Math.min(100, v)));
   }, []);
 
-  // Battery API
+  // Battery API — tracks level and updates OS power mode for autonomy throttling
   useEffect(() => {
+    const applyLevel = (level: number, charging: boolean) => {
+      setBatteryLevel(level);
+      if (!charging) {
+        if (level <= 10) setPowerMode('critical');
+        else if (level <= 20) setPowerMode('saver');
+        else setPowerMode('normal');
+      } else {
+        setPowerMode('normal');
+      }
+    };
+
     if ('getBattery' in navigator) {
       (navigator as any).getBattery().then((bat: any) => {
-        setBatteryLevel(Math.round(bat.level * 100));
+        const level = Math.round(bat.level * 100);
         setIsCharging(bat.charging);
-        bat.addEventListener('levelchange', () => setBatteryLevel(Math.round(bat.level * 100)));
-        bat.addEventListener('chargingchange', () => setIsCharging(bat.charging));
+        applyLevel(level, bat.charging);
+        bat.addEventListener('levelchange', () => applyLevel(Math.round(bat.level * 100), bat.charging));
+        bat.addEventListener('chargingchange', () => { setIsCharging(bat.charging); applyLevel(Math.round(bat.level * 100), bat.charging); });
       }).catch(() => {
         setBatteryLevel(85);
       });
     } else {
       setBatteryLevel(85);
     }
-  }, []);
+  }, [setPowerMode]);
 
   // Network status
   useEffect(() => {
