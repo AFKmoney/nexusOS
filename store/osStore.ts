@@ -89,7 +89,7 @@ export const useOS = create<OSState>()(
         activeTrustTierOverride: null,
       },
       clipboard: null,
-      wallpaper: 'NEURAL_GLOBE',
+      wallpaper: 'nexus://procedural/nebula',
       accentColor: '#10b981',
       wallpaperEffect: 'nebula',
       wallpaperMotionStrength: 0.6,

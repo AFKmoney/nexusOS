@@ -12,6 +12,7 @@ import { autonomyEventLog } from './autonomyEventLog';
 import { policyEngine } from './policyEngine';
 import type { ActionClass, ActionScope } from './policyEngine';
 import { initGovernanceBridge } from './governanceBridge';
+import { buildGuardianDirective } from './guardianDirective';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
@@ -386,24 +387,24 @@ export class AutonomyEngine {
       ? `\n[PRIOR FAILURE] Last attempt of this mission failed with: ${priorFailure.slice(0, 200)}\nAvoid repeating that mistake.\n`
       : '';
 
-    const fullPrompt = `
+    const guardian = buildGuardianDirective({
+      missionId: selectedMission.id,
+      tickCount: this.tickCount,
+      windowCount: snapshot.windows,
+      ramUsagePct: snapshot.ramLimitGB > 0
+        ? Math.min(100, (snapshot.ramUsageGB / snapshot.ramLimitGB) * 100)
+        : 0,
+      overrideMode: useOS.getState().governance?.overrideMode ?? 'active',
+      confidenceScore: useOS.getState().governance?.confidenceScore ?? 1,
+      recentCommands: this.eventQueue.slice(-3),
+      pendingApprovals: useOS.getState().governance?.pendingApprovals ?? 0,
+    });
+
+    const fullPrompt = `${guardian}
 ${selectedMission.prompt(snapshot)}
 ${failureHint}
 [RECENT SYSTEM EVENTS]
 ${this.eventQueue.slice(-5).join('\n') || 'No recent events.'}
-
-[PROTOCOL — NON-NEGOTIABLE]
-You are an executor. Produce commands, not prose.
-Returning an empty commands array is a PROTOCOL VIOLATION counted as a mission failure.
-You MUST produce at least one real command every cycle.
-
-[OUTPUT — PURE JSON, NO MARKDOWN]
-{
-  "mission": "${selectedMission.id}",
-  "action": "imperative one-liner: what you are executing right now",
-  "commands": ["exact command 1", "exact command 2"],
-  "urgency": "high|medium|low"
-}
 
 [AVAILABLE COMMANDS]
 - build "description of app to create"
