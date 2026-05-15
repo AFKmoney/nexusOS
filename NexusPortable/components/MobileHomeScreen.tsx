@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, X, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Plus, Check, Box } from 'lucide-react';
 import { useMobile } from '../store/mobileStore';
 import { MOBILE_APPS } from '../appRegistry';
 
@@ -50,21 +50,46 @@ function AppIcon({
   onMoveRight?: (() => void) | undefined;
   onLongPress?: (() => void) | undefined;
 }) {
-  const app = MOBILE_APPS.find(a => a.id === appId);
+  const { registry } = useMobile();
+  const app = registry.find(a => a.id === appId);
   if (!app) return null;
-  const Icon = app.icon;
+  const Icon = app.icon || Box;
 
-  let pressTimer: any = null;
+  const pressTimer = useRef<any>(null);
+  const startPos = useRef({ x: 0, y: 0 });
 
-  const handleTouchStart = () => {
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (isEditing) return;
-    pressTimer = setTimeout(() => {
+    const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
+    startPos.current = { x: clientX, y: clientY };
+
+    pressTimer.current = setTimeout(() => {
       onLongPress && onLongPress();
-    }, 500);
+    }, 600);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!pressTimer.current) return;
+    const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
+    
+    const dx = Math.abs(clientX - startPos.current.x);
+    const dy = Math.abs(clientY - startPos.current.y);
+    
+    if (dx > 10 || dy > 10) {
+      if (pressTimer.current) {
+        clearTimeout(pressTimer.current);
+        pressTimer.current = null;
+      }
+    }
   };
 
   const handleTouchEnd = () => {
-    if (pressTimer) clearTimeout(pressTimer);
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
   };
 
   return (
@@ -82,13 +107,15 @@ function AppIcon({
         className={`app-icon ${isEditing ? 'animate-pulse' : ''}`}
         onClick={() => !isEditing && onOpen(appId)}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleTouchStart}
+        onMouseMove={handleTouchMove}
         onMouseUp={handleTouchEnd}
         onMouseLeave={handleTouchEnd}
         style={isEditing ? { transform: `rotate(${Math.random() > 0.5 ? '1deg' : '-1deg'})` } : undefined}
       >
-        <div className="icon-bg" style={{ background: app.iconBg }}>
+        <div className="icon-bg" style={{ background: (app as any).iconBg || 'linear-gradient(135deg, #374151 0%, #111827 100%)' }}>
           <Icon size={28} className="text-white" strokeWidth={1.8} />
         </div>
         <span className="icon-label">{app.name}</span>

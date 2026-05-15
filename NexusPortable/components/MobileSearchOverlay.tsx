@@ -4,7 +4,7 @@ import { useMobile } from '../store/mobileStore';
 import { MOBILE_APPS } from '../appRegistry';
 
 export default function MobileSearchOverlay() {
-  const { isSearchOpen, setSearchOpen, openApp } = useMobile();
+  const { isSearchOpen, setSearchOpen, openApp, registry } = useMobile();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -17,7 +17,7 @@ export default function MobileSearchOverlay() {
 
   if (!isSearchOpen) return null;
 
-  const apps = MOBILE_APPS.filter(a => !a.hidden);
+  const apps = registry.filter(a => !(a as any).hidden);
   const filtered = query
     ? apps.filter(a =>
         a.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -90,7 +90,7 @@ export default function MobileSearchOverlay() {
                 >
                   <div
                     className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
-                    style={{ background: app.iconBg }}
+                    style={{ background: (app as any).iconBg || 'linear-gradient(135deg, #374151 0%, #111827 100%)' }}
                   >
                     <Icon size={20} className="text-white" strokeWidth={1.8} />
                   </div>

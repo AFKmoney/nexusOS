@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, type ComponentType } from 'react';
 import { useMobile } from '../store/mobileStore';
-import { MOBILE_APPS } from '../appRegistry';
+import CustomAppRunner from '../../apps/CustomAppRunner';
+import { Box } from 'lucide-react';
 
 export default function MobileWindowManager() {
-  const { appStack, activeAppId, goBack } = useMobile();
+  const { appStack, activeAppId, goBack, registry } = useMobile();
 
   if (appStack.length === 0) return null;
 
@@ -11,7 +12,7 @@ export default function MobileWindowManager() {
     <div className="fixed inset-0 z-40">
       {appStack.map((openApp, idx) => {
         const isActive = openApp.id === activeAppId;
-        const app = MOBILE_APPS.find(a => a.id === openApp.appId);
+        const app = registry.find(a => a.id === openApp.appId);
 
         return (
           <AppScreen
@@ -34,7 +35,7 @@ function AppScreen({
   onBack,
 }: {
   openApp: { id: string; appId: string; title: string };
-  app: ReturnType<typeof MOBILE_APPS.find>;
+  app: any;
   isActive: boolean;
   onBack: () => void;
 }) {
@@ -65,7 +66,21 @@ function AppScreen({
     ) : null;
   }
 
-  const Component = app.component;
+  let Component = app.component;
+  
+  // Fallback for custom forged apps on mobile
+  if (!Component && app.isCustom && app.sourcePath) {
+    Component = CustomAppRunner;
+  }
+
+  if (!Component) {
+     return isActive ? (
+      <div className="absolute inset-0 flex items-center justify-center"
+        style={{ background: 'var(--nx-surface)' }}>
+        <p className="text-white/40">No runner for {app.name}</p>
+      </div>
+    ) : null;
+  }
 
   return (
     <div
@@ -80,7 +95,7 @@ function AppScreen({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <Component onBack={onBack} appId={openApp.appId} />
+      <Component onBack={onBack} appId={openApp.appId} windowId={openApp.id} />
     </div>
   );
 }

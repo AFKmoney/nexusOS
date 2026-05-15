@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { MobileNotification, UserProfile, KernelRules, MobileHomePageConfig, OpenApp } from '../types';
+import { Box } from 'lucide-react';
+import type { MobileNotification, UserProfile, KernelRules, MobileHomePageConfig, OpenApp, AppManifest } from '../types';
 
 // Aligned with desktop osStoreConstants.ts
-export const STORE_PERSIST_KEY = 'nexus-portable-state-v1';
+export const STORE_PERSIST_KEY = 'nexus-portable-state-v3'; // Bumped version
 
-// Mirrors desktop DEFAULT_KERNEL_RULES (same field names, mobile-adapted values)
 const DEFAULT_KERNEL_RULES: KernelRules = {
   verbosity: 0.7,
   creativity: 0.8,
@@ -18,22 +18,17 @@ const DEFAULT_KERNEL_RULES: KernelRules = {
   primaryBootDevice: 'VFS',
 };
 
-// Mirrors desktop DEFAULT_PROFILES (same DAEMON Core profile)
 const DEFAULT_PROFILES: UserProfile[] = [
   { id: 'daemon', name: 'DAEMON Core', themeColor: '#10b981', isAdmin: true },
   { id: 'user',   name: 'User',        themeColor: '#6366f1', isAdmin: false },
 ];
 
-// Mirrors desktop DEFAULT_PINNED_APPS order on home page 1
 const DEFAULT_HOME: MobileHomePageConfig = {
   pages: [
-    // Page 1: Core apps matching desktop DEFAULT_PINNED_APPS + essentials
     ['welcome', 'explorer', 'hyperide', 'terminal', 'netrunner', 'dashboard',
      'daemon_chat', 'aion_agent', 'forge', 'settings', 'appstore', 'model_manager'],
-    // Page 2: Productivity
     ['notepad', 'rich_editor', 'sticky_notes', 'kanban', 'habits', 'pomodoro',
      'calendar', 'contacts', 'clipboard', 'silence', 'daemon_journal', 'rss'],
-    // Page 3: Media & Utilities
     ['calculator', 'weather', 'music', 'image_viewer', 'voice_recorder', 'markdown',
      'sysinfo', 'fractal', 'nfr', 'accessibility', 'native_zip', 'recycle_bin'],
   ],
@@ -51,77 +46,66 @@ export const WALLPAPER_PRESETS = [
 export type WallpaperPreset = typeof WALLPAPER_PRESETS[number]['id'];
 
 interface MobileState {
-  // Boot / Auth
   booted: boolean;
   isLoggedIn: boolean;
   currentUser: UserProfile | null;
   profiles: UserProfile[];
 
-  // App Stack (navigation — mobile full-screen model)
+  registry: AppManifest[];
+  customManifests: AppManifest[];
   appStack: OpenApp[];
   activeAppId: string | null;
 
-  // Home
   homeConfig: MobileHomePageConfig;
   currentHomePage: number;
-  pinnedApps: string[]; // mirrors desktop DEFAULT_PINNED_APPS
+  pinnedApps: string[];
 
-  // Overlays
   isAppDrawerOpen: boolean;
   isNotificationPanelOpen: boolean;
   isControlCenterOpen: boolean;
   isRecentAppsOpen: boolean;
   isSearchOpen: boolean;
 
-  // Notifications
   notifications: MobileNotification[];
   unreadCount: number;
 
-  // System / Kernel
   kernelRules: KernelRules;
   accentColor: string;
   wallpaper: WallpaperPreset;
   wallpaperMotionStrength: number;
   isForging: boolean;
 
-  // Clipboard (mirrors desktop)
   clipboard: { text: string; ts: number } | null;
   clipboardHistory: Array<{ text: string; ts: number }>;
 
-  // AI / Autonomy
   autonomyLog: string[];
   currentObjective: string;
   autonomyState: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING';
 
-  // Actions: Boot/Auth
   setBooted: (v: boolean) => void;
   login: (profileId: string) => void;
   logout: () => void;
 
-  // Actions: App Navigation
   openApp: (appId: string) => void;
   closeApp: (appId: string) => void;
   closeAllApps: () => void;
   goBack: () => void;
 
-  // Actions: Overlays
   setAppDrawerOpen: (v: boolean) => void;
   setNotificationPanelOpen: (v: boolean) => void;
   setControlCenterOpen: (v: boolean) => void;
   setRecentAppsOpen: (v: boolean) => void;
   setSearchOpen: (v: boolean) => void;
 
-  // Actions: Notifications
   addNotification: (n: Omit<MobileNotification, 'id' | 'timestamp'>) => void;
   dismissNotification: (id: string) => void;
   clearAllNotifications: () => void;
   markAllRead: () => void;
 
-  // Actions: Home
   setCurrentHomePage: (page: number) => void;
   updateHomeConfig: (config: Partial<MobileHomePageConfig>) => void;
 
-  // Actions: System (mirrors desktop updateKernelRules)
+  registerCustomApp: (manifest: AppManifest) => void;
   updateKernelRules: (updates: Partial<KernelRules>) => void;
   setAccentColor: (color: string) => void;
   setWallpaper: (wallpaper: WallpaperPreset) => void;
@@ -129,11 +113,9 @@ interface MobileState {
   setForging: (v: boolean) => void;
   systemReset: (wipe: boolean) => void;
 
-  // Actions: Clipboard
   setClipboard: (text: string) => void;
   clearClipboard: () => void;
 
-  // Actions: Autonomy
   addAutonomyLog: (entry: string) => void;
   setCurrentObjective: (obj: string) => void;
   setAutonomyState: (s: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING') => void;
@@ -150,6 +132,8 @@ export const useMobile = create<MobileState>()(
       isLoggedIn: false,
       currentUser: null,
       profiles: DEFAULT_PROFILES,
+      registry: [],
+      customManifests: [],
       appStack: [],
       activeAppId: null,
       homeConfig: DEFAULT_HOME,
@@ -178,7 +162,6 @@ export const useMobile = create<MobileState>()(
       login: (profileId) => {
         const profile = get().profiles.find(p => p.id === profileId) ?? get().profiles[0] ?? null;
         set({ isLoggedIn: true, currentUser: profile });
-        // Apply theme color from profile
         if (profile) {
           document.documentElement.style.setProperty('--nx-accent', profile.themeColor);
           set({ accentColor: profile.themeColor });
@@ -188,7 +171,6 @@ export const useMobile = create<MobileState>()(
       logout: () => set({ isLoggedIn: false, currentUser: null, appStack: [], activeAppId: null }),
 
       openApp: (appId) => {
-        // Singleton: if already open, bring to front (same as desktop DEFAULT_SINGLETON_APPS)
         const existing = get().appStack.find(a => a.appId === appId);
         if (existing) {
           set({ activeAppId: existing.id });
@@ -249,6 +231,14 @@ export const useMobile = create<MobileState>()(
       updateHomeConfig: (config) =>
         set(state => ({ homeConfig: { ...state.homeConfig, ...config } })),
 
+      registerCustomApp: (manifest) => {
+        const cleanManifest = { ...manifest, icon: manifest.icon || Box };
+        set(state => ({
+          registry: [...state.registry, cleanManifest],
+          customManifests: [...state.customManifests.filter(m => m.id !== manifest.id), cleanManifest]
+        }));
+      },
+
       updateKernelRules: (updates) =>
         set(state => ({ kernelRules: { ...state.kernelRules, ...updates } })),
 
@@ -301,7 +291,30 @@ export const useMobile = create<MobileState>()(
         pinnedApps: state.pinnedApps,
         profiles: state.profiles,
         clipboardHistory: state.clipboardHistory,
+        customManifests: state.customManifests,
       }),
     }
   )
 );
+
+export function getMobileApp(id: string): AppManifest | undefined {
+  return useMobile.getState().registry.find(a => a.id === id);
+}
+
+export async function hydrateMobileRegistry(): Promise<void> {
+  try {
+    const { MOBILE_APPS } = await import('../appRegistry');
+    const { customManifests = [] } = useMobile.getState();
+    
+    const fullRegistry = [...MOBILE_APPS];
+    customManifests.forEach(custom => {
+       if (!fullRegistry.find(a => a.id === custom.id)) {
+          fullRegistry.push({ ...custom, icon: Box, iconBg: 'linear-gradient(135deg, #374151 0%, #111827 100%)' } as any);
+       }
+    });
+
+    useMobile.setState({ registry: fullRegistry });
+  } catch (error) {
+    console.warn('[MOBILE_STORE] Failed to hydrate registry:', error);
+  }
+}
