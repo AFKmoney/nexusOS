@@ -46,9 +46,9 @@ function AppIcon({
   onOpen: (id: string) => void;
   isEditing: boolean;
   onRemove?: () => void;
-  onMoveLeft?: () => void;
-  onMoveRight?: () => void;
-  onLongPress?: () => void;
+  onMoveLeft?: (() => void) | undefined;
+  onMoveRight?: (() => void) | undefined;
+  onLongPress?: (() => void) | undefined;
 }) {
   const app = MOBILE_APPS.find(a => a.id === appId);
   if (!app) return null;
@@ -151,10 +151,14 @@ export default function MobileHomeScreen() {
 
   const handleRemove = (pageIdx: number, appIdx: number) => {
     const newPages = [...pages];
-    newPages[pageIdx] = [...newPages[pageIdx]];
-    newPages[pageIdx].splice(appIdx, 1);
+    const page = newPages[pageIdx];
+    if (!page) return;
+
+    const newPage = [...page];
+    newPage.splice(appIdx, 1);
+    newPages[pageIdx] = newPage;
     
-    if (newPages[pageIdx].length === 0 && newPages.length > 1) {
+    if (newPage.length === 0 && newPages.length > 1) {
       newPages.splice(pageIdx, 1);
       setCurrentHomePage(Math.max(0, currentHomePage - 1));
     }
@@ -164,19 +168,37 @@ export default function MobileHomeScreen() {
 
   const handleMove = (pageIdx: number, appIdx: number, direction: -1 | 1) => {
     const newPages = [...pages];
-    newPages[pageIdx] = [...newPages[pageIdx]];
-    
+    const page = newPages[pageIdx];
+    if (!page) return;
+
+    const newPage = [...page];
     const newIdx = appIdx + direction;
-    if (newIdx >= 0 && newIdx < newPages[pageIdx].length) {
-      const temp = newPages[pageIdx][appIdx];
-      newPages[pageIdx][appIdx] = newPages[pageIdx][newIdx];
-      newPages[pageIdx][newIdx] = temp;
-    } else if (direction === 1 && pageIdx < newPages.length - 1 && newPages[pageIdx+1].length < 24) {
-      const app = newPages[pageIdx].splice(appIdx, 1)[0];
-      newPages[pageIdx+1] = [app, ...newPages[pageIdx+1]];
-    } else if (direction === -1 && pageIdx > 0 && newPages[pageIdx-1].length < 24) {
-      const app = newPages[pageIdx].splice(appIdx, 1)[0];
-      newPages[pageIdx-1] = [...newPages[pageIdx-1], app];
+    
+    if (newIdx >= 0 && newIdx < newPage.length) {
+      const temp = newPage[appIdx];
+      if (temp && newPage[newIdx]) {
+        newPage[appIdx] = newPage[newIdx]!;
+        newPage[newIdx] = temp;
+        newPages[pageIdx] = newPage;
+      }
+    } else if (direction === 1 && pageIdx < newPages.length - 1) {
+      const nextPage = newPages[pageIdx + 1];
+      if (nextPage && nextPage.length < 24) {
+        const app = newPage.splice(appIdx, 1)[0];
+        if (app) {
+           newPages[pageIdx] = newPage;
+           newPages[pageIdx + 1] = [app, ...nextPage];
+        }
+      }
+    } else if (direction === -1 && pageIdx > 0) {
+      const prevPage = newPages[pageIdx - 1];
+      if (prevPage && prevPage.length < 24) {
+        const app = newPage.splice(appIdx, 1)[0];
+        if (app) {
+           newPages[pageIdx] = newPage;
+           newPages[pageIdx - 1] = [...prevPage, app];
+        }
+      }
     }
     updateHomeConfig({ pages: newPages });
   };
@@ -233,8 +255,8 @@ export default function MobileHomeScreen() {
                     isEditing={isEditing}
                     onLongPress={() => setIsEditing(true)}
                     onRemove={() => handleRemove(pageIdx, appIdx)}
-                    onMoveLeft={appIdx > 0 || pageIdx > 0 ? () => handleMove(pageIdx, appIdx, -1) : undefined}
-                    onMoveRight={appIdx < page.length - 1 || pageIdx < pages.length - 1 ? () => handleMove(pageIdx, appIdx, 1) : undefined}
+                    onMoveLeft={(appIdx > 0 || pageIdx > 0) ? () => handleMove(pageIdx, appIdx, -1) : undefined}
+                    onMoveRight={(appIdx < page.length - 1 || pageIdx < pages.length - 1) ? () => handleMove(pageIdx, appIdx, 1) : undefined}
                   />
                 </div>
               ))}

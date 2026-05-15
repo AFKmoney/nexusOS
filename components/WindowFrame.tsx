@@ -4,6 +4,7 @@ import { X, Minus, Square, Minimize2, Box, Pin, PinOff, Droplet } from 'lucide-r
 import { useOS } from '../store/osStore';
 import { sounds } from '../kernel/sounds';
 import { ErrorBoundary } from './ErrorBoundary';
+import CustomAppRunner from '../apps/CustomAppRunner';
 
 export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => {
   const {
@@ -42,7 +43,12 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
 
   const app = registry.find(a => a.id === windowState.appId);
   const IconComponent = app?.icon || Box;
-  const AppComponent = app?.component as ComponentType<{ windowId: string }> | undefined;
+  let AppComponent = app?.component as ComponentType<{ windowId: string }> | undefined;
+
+  // Fallback for custom forged apps
+  if (!AppComponent && app?.isCustom && app?.sourcePath) {
+    AppComponent = CustomAppRunner;
+  }
 
   if (windowState.isMinimized) return null;
 
