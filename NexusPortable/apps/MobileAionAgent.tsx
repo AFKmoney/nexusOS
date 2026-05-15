@@ -35,7 +35,7 @@ export default function MobileAionAgent({ onBack }: MobileAppProps) {
     setMission('');
     setRunning(true);
     setCurrentObjective(target);
-    setAutonomyState('RUNNING');
+    setAutonomyState('EXECUTING');
     setLogs([]);
 
     addLog('think', `[DAEMON] Initializing mission: "${target}"`);
@@ -91,7 +91,7 @@ export default function MobileAionAgent({ onBack }: MobileAppProps) {
 
   const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-  const stateColor = { IDLE: '#94a3b8', RUNNING: '#10b981', PAUSED: '#f59e0b' }[autonomyState];
+  const stateColor = { IDLE: '#94a3b8', ANALYZING: '#3b82f6', PROMPTING: '#a855f7', EXECUTING: '#10b981' }[autonomyState] || '#94a3b8';
 
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--nx-surface)' }}>
