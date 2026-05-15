@@ -1,20 +1,35 @@
 import type { LucideIcon } from 'lucide-react';
 
+export interface AppManifest {
+  id: string;
+  name: string;
+  icon: LucideIcon;
+  component?: any;
+  permissions?: string[];
+  defaultSize?: { width: number; height: number };
+  description?: string;
+  isCustom?: boolean;
+  sourcePath?: string;
+}
+
 export interface MobileApp {
   id: string;
   name: string;
   icon: LucideIcon;
-  iconBg: string;
-  component: React.ComponentType<MobileAppProps>;
+  iconBg?: string;
+  component: React.ComponentType<MobileAppProps> | any;
   // Mirrors desktop AppManifest.permissions
   permissions?: ('vfs.read' | 'vfs.write' | 'network' | 'kernel.modify')[];
   hidden?: boolean;
   description?: string;
+  isCustom?: boolean;
+  sourcePath?: string;
 }
 
 export interface MobileAppProps {
   onBack: () => void;
   appId: string;
+  windowId?: string;
 }
 
 export interface OpenApp {

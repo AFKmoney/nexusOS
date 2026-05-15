@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../../store/osStore';
 import { aiService } from '../../services/puterService';
-import { vfs } from '../../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../../kernel/fileSystem';
 import { memory } from '../../kernel/memory';
 import { Cpu, Zap, Code, Eye, RefreshCw, Rocket, Box, Loader2, Sparkles, AlertCircle, CheckCircle, RotateCcw, Braces, FileCode2, Command } from 'lucide-react';
 
@@ -90,15 +90,15 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
 
     // Save to Apps directory
     const appsDir = `/home/user/Apps`;
-    if (!vfs.resolveNode(appsDir)) vfs.createDir(appsDir);
+    if (!vfs.resolveNode(appsDir)) vfs.createDir(appsDir, SYSTEM_VFS_APP_ID);
     const filePath = `${appsDir}/${safeFileName}_${timestamp}.html`;
-    vfs.writeFile(filePath, content);
+    vfs.writeFile(filePath, content, SYSTEM_VFS_APP_ID);
 
     // Also place on Desktop
     const desktopDir = `/home/user/Desktop`;
-    if (!vfs.resolveNode(desktopDir)) vfs.createDir(desktopDir);
+    if (!vfs.resolveNode(desktopDir)) vfs.createDir(desktopDir, SYSTEM_VFS_APP_ID);
     const desktopPath = `${desktopDir}/${safeFileName}.html`;
-    vfs.writeFile(desktopPath, content);
+    vfs.writeFile(desktopPath, content, SYSTEM_VFS_APP_ID);
 
     const appId = `forge_${timestamp}`;
     registerCustomApp({

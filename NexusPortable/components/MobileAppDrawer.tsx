@@ -4,7 +4,7 @@ import { useMobile } from '../store/mobileStore';
 import { MOBILE_APPS } from '../appRegistry';
 
 export default function MobileAppDrawer() {
-  const { isAppDrawerOpen, setAppDrawerOpen, openApp } = useMobile();
+  const { isAppDrawerOpen, setAppDrawerOpen, openApp, registry } = useMobile();
   const [query, setQuery] = useState('');
   const [visible, setVisible] = useState(false);
 
@@ -20,7 +20,7 @@ export default function MobileAppDrawer() {
 
   if (!visible) return null;
 
-  const apps = MOBILE_APPS.filter(a => !a.hidden);
+  const apps = registry.filter(a => !(a as any).hidden);
   const filtered = query
     ? apps.filter(a => a.name.toLowerCase().includes(query.toLowerCase()))
     : apps;
@@ -37,6 +37,8 @@ export default function MobileAppDrawer() {
     openApp(appId);
     setAppDrawerOpen(false);
   };
+
+  const getBg = (app: any) => app.iconBg || 'linear-gradient(135deg, #374151 0%, #111827 100%)';
 
   return (
     <div
@@ -83,7 +85,7 @@ export default function MobileAppDrawer() {
               return (
                 <div key={app.id} className="flex justify-center">
                   <div className="app-icon" onClick={() => handleOpen(app.id)}>
-                    <div className="icon-bg" style={{ background: app.iconBg, width: 56, height: 56, borderRadius: 14 }}>
+                    <div className="icon-bg" style={{ background: getBg(app), width: 56, height: 56, borderRadius: 14 }}>
                       <Icon size={24} className="text-white" strokeWidth={1.8} />
                     </div>
                     <span className="icon-label text-[11px]">{app.name}</span>
@@ -107,7 +109,7 @@ export default function MobileAppDrawer() {
                   >
                     <div
                       className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
-                      style={{ background: app.iconBg }}
+                      style={{ background: getBg(app) }}
                     >
                       <Icon size={20} className="text-white" strokeWidth={1.8} />
                     </div>
