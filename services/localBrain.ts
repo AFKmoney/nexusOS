@@ -293,8 +293,8 @@ export class LocalBrain {
         this.onLoadProgress?.(5, 'Initializing Wllama engine...');
 
         this.wllama = new Wllama({
-          'single-thread/wllama.wasm': '/wllama/wllama-single.wasm',
-          'multi-thread/wllama.wasm':  '/wllama/wllama-multi.wasm',
+          'single-thread/wllama.wasm': './wllama/wllama-single.wasm',
+          'multi-thread/wllama.wasm':  './wllama/wllama-multi.wasm',
         }, {
           logger: {
             debug: () => {},
