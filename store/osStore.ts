@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { Box } from 'lucide-react';
 import { KernelRules } from '../types.ts';
 import { localBrain } from '../services/localBrain';
 import { DEFAULT_KERNEL_RULES, DEFAULT_PINNED_APPS, DEFAULT_PROFILES, STORE_PERSIST_KEY } from './osStoreConstants';
@@ -53,6 +54,7 @@ const partializeOSState = (state: OSState) => ({
   globalZIndex: state.globalZIndex,
   activeWorkspace: state.activeWorkspace,
   uiScale: state.uiScale,
+  customManifests: state.customManifests,
 });
 
 export const useOS = create<OSState>()(
@@ -70,6 +72,7 @@ export const useOS = create<OSState>()(
       globalZIndex: 100,
       registry: [],
       installedApps: [],
+      customManifests: [],
       pinnedApps: DEFAULT_PINNED_APPS,
       kernelRules: DEFAULT_KERNEL_RULES,
       isForging: false,
@@ -147,13 +150,23 @@ export const useOS = create<OSState>()(
 export async function hydrateOSRegistry(): Promise<void> {
   try {
     const { SYSTEM_APPS } = await import('../appRegistry');
-    const { installedApps = [] } = useOS.getState() as Partial<OSState>;
+    const { installedApps = [], customManifests = [] } = useOS.getState() as Partial<OSState>;
     
-    // Registry is NOT persisted, so we must ALWAYS reload it from the manifest
+    // Merge SYSTEM_APPS with persisted customManifests
+    const fullRegistry = [...SYSTEM_APPS];
+    
+    // Add custom manifests if they aren't already there (to avoid duplicates)
+    customManifests.forEach(custom => {
+       if (!fullRegistry.find(a => a.id === custom.id)) {
+          // Re-attach icon component (forged apps use Box by default)
+          fullRegistry.push({ ...custom, icon: Box });
+       }
+    });
+
     useOS.setState({
-      registry: SYSTEM_APPS,
+      registry: fullRegistry,
       // Only set installedApps on first boot (when empty)
-      ...(installedApps.length === 0 ? { installedApps: SYSTEM_APPS.map((app) => app.id) } : {})
+      ...(installedApps.length === 0 ? { installedApps: fullRegistry.map((app) => app.id) } : {})
     });
   } catch (error) {
     console.warn('[OS_STORE] Failed to hydrate app registry:', error);

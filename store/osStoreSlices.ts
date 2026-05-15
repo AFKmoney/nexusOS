@@ -53,6 +53,7 @@ export interface OSStateShape {
   daemonLockLog: string[];
   currentUser: UserProfile | null;
   profiles: UserProfile[];
+  customManifests: AppManifest[];
   setWallpaper: (url: string) => void;
   setAccentColor: (color: string) => void;
   setWallpaperEffect: (effect: OSStateShape['wallpaperEffect']) => void;
@@ -135,14 +136,17 @@ export const createRegistryActions = (
   uninstallApp: (appId: string) =>
     set(state => ({
       installedApps: state.installedApps.filter(id => id !== appId),
-      pinnedApps: state.pinnedApps.filter(id => id !== appId)
+      pinnedApps: state.pinnedApps.filter(id => id !== appId),
+      customManifests: state.customManifests.filter(m => m.id !== appId)
     })),
   registerCustomApp: (manifest: AppManifest) =>
     set(state => {
       const iconComponent = typeof manifest.icon === 'function' ? manifest.icon : Box;
+      const cleanManifest = { ...manifest, icon: iconComponent };
       return {
-        registry: [...state.registry, { ...manifest, icon: iconComponent }],
-        installedApps: [...state.installedApps, manifest.id]
+        registry: [...state.registry, cleanManifest],
+        installedApps: Array.from(new Set([...state.installedApps, manifest.id])),
+        customManifests: [...state.customManifests.filter(m => m.id !== manifest.id), cleanManifest]
       };
     }),
   pinApp: (appId: string) =>

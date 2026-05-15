@@ -5,6 +5,7 @@ import {
   Home, Globe, X, Search, Lock, Loader2, Shield, Brain
 } from 'lucide-react';
 import { aiPipelineBridge } from '../kernel/aiPipelineBridge';
+import { vfs } from '../kernel/fileSystem';
 
 /**
  * WebRunner — NexusOS Embedded Web Browser
@@ -176,6 +177,18 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     setPageHtml('');
 
     try {
+      // Check if it's a local VFS path
+      if (url.startsWith('/') || url.startsWith('/home/') || url.startsWith('/system/')) {
+        const content = vfs.readFile(url);
+        if (content) {
+          setPageHtml(content);
+          setIsLoading(false);
+          return;
+        } else {
+          throw new Error('Local file not found: ' + url);
+        }
+      }
+
       const rawHtml = await fetchViaProxy(url);
       const processedHtml = injectBase(rawHtml, url);
       setPageHtml(processedHtml);
