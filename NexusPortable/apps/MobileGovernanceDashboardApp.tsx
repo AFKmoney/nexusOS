@@ -12,7 +12,7 @@ export default function MobileGovernanceDashboardApp({ onBack }: MobileAppProps)
         </button>
         <h1 className="text-white font-semibold text-[16px]">Governance</h1>
       </div>
-      <div className="flex-1 overflow-auto relative z-0">
+      <div className="flex-1 overflow-auto relative z-0 mobile-wrapper-content">
         <DesktopComponent />
       </div>
     </div>
