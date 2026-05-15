@@ -91,7 +91,7 @@ interface MobileState {
   // AI / Autonomy
   autonomyLog: string[];
   currentObjective: string;
-  autonomyState: 'IDLE' | 'RUNNING' | 'PAUSED';
+  autonomyState: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING';
 
   // Actions: Boot/Auth
   setBooted: (v: boolean) => void;
@@ -136,7 +136,7 @@ interface MobileState {
   // Actions: Autonomy
   addAutonomyLog: (entry: string) => void;
   setCurrentObjective: (obj: string) => void;
-  setAutonomyState: (s: 'IDLE' | 'RUNNING' | 'PAUSED') => void;
+  setAutonomyState: (s: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING') => void;
 }
 
 function uuid() {
