@@ -168,6 +168,37 @@ body {
   margin: 12px auto 8px;
 }
 
+/* ─── Desktop Fallback Overrides for Wrapped Apps ───────────── */
+/* Forces wrapped desktop apps to respond like mobile apps */
+.mobile-wrapper-content {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.mobile-wrapper-content [class*="min-w-["],
+.mobile-wrapper-content [class*="w-["],
+.mobile-wrapper-content [class*="max-w-["] {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+
+.mobile-wrapper-content .flex-row,
+.mobile-wrapper-content .flex {
+  flex-wrap: wrap !important;
+}
+
+/* Specific desktop app overrides when viewed on mobile */
+.mobile-wrapper-content .grid-cols-2,
+.mobile-wrapper-content .grid-cols-3,
+.mobile-wrapper-content .grid-cols-4 {
+  grid-template-columns: 1fr !important;
+}
+
+.mobile-wrapper-content button {
+  min-height: 44px; /* Touch target size */
+}
+
 /* ─── Mobile Typography ──────────────────────────────────────── */
 .text-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
 .text-headline { font-size: 20px; font-weight: 600; }
@@ -362,6 +393,16 @@ body {
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 10px rgba(var(--nx-accent-rgb), 0.3); }
   50% { box-shadow: 0 0 20px rgba(var(--nx-accent-rgb), 0.6); }
+}
+
+/* Added jiggle animation for edit mode */
+@keyframes jiggle {
+  0% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+  100% { transform: rotate(-1deg); }
+}
+.animate-jiggle {
+  animation: jiggle 0.3s infinite ease-in-out;
 }
 
 .animate-slide-up { animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1); }

@@ -1,33 +1,59 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, Send, Cpu, User, Sparkles, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, Send, Cpu, User, Sparkles, RotateCcw, Copy, Terminal, Loader2, Zap } from 'lucide-react';
 import type { MobileAppProps } from '../types';
 import { useMobile } from '../store/mobileStore';
+import { aiService } from '../../services/puterService';
+import { localBrain } from '../../services/localBrain';
+import { vfs } from '../../kernel/fileSystem';
+import { uuid } from '../../utils/uuid';
 
-interface ChatMessage {
+interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'daemon' | 'system';
   content: string;
-  ts: number;
+  timestamp: number;
+  isStreaming?: boolean;
 }
 
-const SUGGESTIONS = [
-  'What can you do?',
-  'Check system status',
-  'Open terminal',
-  'Help me write code',
-  'Explain NexusOS',
+const QUICK_PROMPTS = [
+  '⚡ System Status',
+  '🔍 Audit NexusOS',
+  '💻 Build an App',
+  '🚀 Roadmap',
 ];
 
 export default function MobileDaemonChat({ onBack }: MobileAppProps) {
   const { kernelRules, addNotification } = useMobile();
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [isAiConnected, setIsAiConnected] = useState(localBrain.isReady());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const ready = localBrain.isReady();
+      if (ready !== isAiConnected) setIsAiConnected(ready);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isAiConnected]);
+
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
-      role: 'assistant',
-      content: "Hello! I'm DAEMON, your Neural AI. How can I assist you today?",
-      ts: Date.now(),
-    },
+      role: 'system',
+      content: isAiConnected 
+        ? '⚡ DAEMON ENGINE CONNECTED\nSTATUS: ONLINE'
+        : '⚠️ DAEMON ENGINE INITIALIZING...',
+      timestamp: Date.now()
+    }
   ]);
+
+  useEffect(() => {
+    setMessages(prev => prev.map((m, i) => i === 0 ? {
+      ...m,
+      content: isAiConnected 
+        ? '⚡ DAEMON ENGINE CONNECTED\nSTATUS: ONLINE'
+        : '⚠️ DAEMON ENGINE INITIALIZING...',
+    } : m));
+  }, [isAiConnected]);
+
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -35,226 +61,186 @@ export default function MobileDaemonChat({ onBack }: MobileAppProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isThinking]);
+  }, [messages]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || isThinking) return;
-
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: text, ts: Date.now() };
-    setMessages(m => [...m, userMsg]);
+  const sendMessage = async (text?: string) => {
+    const content = text || input.trim();
+    if (!content || isThinking) return;
     setInput('');
+
+    const userMsg: Message = { id: uuid(), role: 'user', content, timestamp: Date.now() };
+    setMessages(prev => [...prev, userMsg]);
     setIsThinking(true);
 
+    const daemonMsg: Message = { id: uuid(), role: 'daemon', content: '', timestamp: Date.now(), isStreaming: true };
+    setMessages(prev => [...prev, daemonMsg]);
+
+    const systemCtx = `[SYSTEM]: You are DAEMON, the AI engine of NexusOS Mobile. Current time: ${new Date().toLocaleString()}. Be intelligent, technically precise, and helpful.
+
+CRITICAL FEATURE: You can output EXACTLY this format to write files:
+<vfs_write path="/system/autocode/example.js">
+file content here
+</vfs_write>
+
+[USER]: ${content}`;
+
     try {
-      const apiKey = localStorage.getItem('nx_anthropic_key') ?? '';
-      if (!apiKey) {
-        await new Promise(r => setTimeout(r, 800));
-        const reply: ChatMessage = {
-          id: Date.now().toString() + 'r',
-          role: 'assistant',
-          content: `I received your message: "${text}"\n\nTo enable full AI capabilities, add your API key in Settings → DAEMON → AI Keys.`,
-          ts: Date.now(),
-        };
-        setMessages(m => [...m, reply]);
-        return;
+      let buf = '';
+      await aiService.streamChat(systemCtx, { ...kernelRules, creativity: 0.9 }, (token) => {
+        buf += token;
+        setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: buf, isStreaming: true } : m));
+      });
+      setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, isStreaming: false } : m));
+
+      // Parse <vfs_write> tags to inject code autonomously!
+      const vfsRegex = /<vfs_write path="([^"]+)">([\s\S]*?)<\/vfs_write>/g;
+      let match;
+      while ((match = vfsRegex.exec(buf)) !== null) {
+        const path = match[1];
+        const code = match[2]?.trim();
+        if (path && code) {
+          try {
+            const parts = path.split('/').filter(Boolean);
+            let current = '/';
+            for (let i = 0; i < parts.length - 1; i++) {
+                current += parts[i] + '/';
+                if (!vfs.resolveNode(current)) {
+                    try { vfs.createDir(current); } catch {}
+                }
+            }
+            vfs.writeFile(path, code);
+            addNotification({ title: 'DAEMON Auto-Code', message: `Injected pipeline: ${path}`, type: 'success' });
+          } catch (e: any) {
+             console.error('Failed to auto-write VFS', e);
+          }
+        }
       }
 
-      const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      history.push({ role: 'user', content: text });
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: kernelRules.modelId || 'claude-sonnet-4-6',
-          max_tokens: 1024,
-          system: 'You are DAEMON, the AI backbone of NexusOS Mobile. Be concise and helpful.',
-          messages: history,
-        }),
-      });
-
-      if (!resp.ok) throw new Error(`API error ${resp.status}`);
-      const data = await resp.json();
-
-      const reply: ChatMessage = {
-        id: Date.now().toString() + 'r',
-        role: 'assistant',
-        content: data.content?.[0]?.text ?? 'No response.',
-        ts: Date.now(),
-      };
-      setMessages(m => [...m, reply]);
-    } catch (err: any) {
-      const errMsg: ChatMessage = {
-        id: Date.now().toString() + 'e',
-        role: 'assistant',
-        content: `Error: ${err?.message ?? 'Failed to get response'}`,
-        ts: Date.now(),
-      };
-      setMessages(m => [...m, errMsg]);
-    } finally {
-      setIsThinking(false);
+    } catch (e: any) {
+      setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: `[ERROR] ${e.message}`, isStreaming: false } : m));
     }
+    setIsThinking(false);
   };
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
+  const copyMsg = (content: string) => {
+    navigator.clipboard.writeText(content);
+    addNotification({ title: 'Copied', message: '', type: 'success' });
+  };
+
+  const formatContent = (content: string) => {
+    const parts = content.split(/(```[\s\S]*?```)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('```')) {
+        const lines = part.slice(3).split('\n');
+        const lang = lines[0] || '';
+        const code = lines.slice(1).join('\n').replace(/```$/, '').trim();
+        return (
+          <div key={i} className="my-2 rounded-xl overflow-hidden border border-emerald-500/20">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-black/60">
+              <span className="text-[10px] text-emerald-500/70 font-mono uppercase">{lang || 'code'}</span>
+              <button onClick={() => copyMsg(code)} className="text-emerald-500/50 hover:text-emerald-300 p-1"><Copy size={12} /></button>
+            </div>
+            <pre className="p-3 bg-black/40 text-[11px] text-emerald-300 font-mono overflow-x-auto whitespace-pre-wrap">{code}</pre>
+          </div>
+        );
+      }
+      return <span key={i} style={{ whiteSpace: 'pre-wrap' }}>{part}</span>;
+    });
   };
 
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--nx-surface)' }}>
+    <div className="h-full flex flex-col font-mono" style={{ background: '#050810' }}>
       {/* Header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,5,8,0.9)' }}
-      >
-        <button className="p-1.5 rounded-xl active:bg-white/10" onClick={onBack}>
-          <ChevronLeft size={22} className="text-white" />
-        </button>
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}
-        >
-          <Cpu size={18} className="text-emerald-400" strokeWidth={1.8} />
-        </div>
-        <div className="flex-1">
-          <p className="text-white font-semibold text-[15px]">DAEMON</p>
-          <p className="text-emerald-400/60 text-[11px]">Neural AI · Online</p>
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 border-b border-emerald-500/10 bg-black/40">
+        <div className="flex items-center gap-3">
+          <button className="p-1.5 rounded-xl active:bg-white/10" onClick={onBack}>
+            <ChevronLeft size={22} className="text-white" />
+          </button>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center border shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+            style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
+            <Cpu size={18} className="text-emerald-400" strokeWidth={1.8} />
+          </div>
+          <div>
+            <p className="text-emerald-400 font-black tracking-widest text-[14px]">DAEMON</p>
+            <p className="text-emerald-400/60 text-[10px] uppercase">Neural Core · Online</p>
+          </div>
         </div>
         <button
           className="p-1.5 rounded-xl active:bg-white/10"
-          onClick={() => setMessages([{ id: '0', role: 'assistant', content: "Hello! I'm DAEMON. How can I help?", ts: Date.now() }])}
+          onClick={() => setMessages([{ id: '0', role: 'system', content: "DAEMON ENGINE RESTARTED.", timestamp: Date.now() }])}
         >
-          <RotateCcw size={17} className="text-white/50" />
+          <RotateCcw size={16} className="text-zinc-500" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map(msg => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            {/* Avatar */}
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{
-                background: msg.role === 'assistant'
-                  ? 'rgba(16,185,129,0.15)'
-                  : 'rgba(99,102,241,0.15)',
-                border: `1px solid ${msg.role === 'assistant' ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)'}`,
-              }}
-            >
-              {msg.role === 'assistant'
-                ? <Cpu size={15} className="text-emerald-400" />
-                : <User size={15} className="text-indigo-400" />
-              }
-            </div>
-
-            {/* Bubble */}
-            <div
-              className="max-w-[78%] px-4 py-3 rounded-2xl"
-              style={{
-                background: msg.role === 'assistant'
-                  ? 'rgba(255,255,255,0.05)'
-                  : 'rgba(16,185,129,0.12)',
-                border: `1px solid ${msg.role === 'assistant' ? 'rgba(255,255,255,0.07)' : 'rgba(16,185,129,0.25)'}`,
-                borderRadius: msg.role === 'user'
-                  ? '20px 6px 20px 20px'
-                  : '6px 20px 20px 20px',
-              }}
-            >
-              <p className="text-white/90 text-[14px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-              <p className="text-white/25 text-[10px] mt-1 text-right">
-                {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
+          <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            {msg.role === 'system' && (
+              <div className="w-full border rounded-xl p-3 border-emerald-500/20 bg-emerald-500/5 mb-2">
+                <div className="text-[11px] font-mono text-emerald-400" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+              </div>
+            )}
+            {msg.role === 'user' && (
+              <div className="max-w-[85%]">
+                <div className="bg-zinc-800 text-white text-[13px] px-4 py-2.5 rounded-2xl rounded-br-sm leading-relaxed font-sans">
+                  {msg.content}
+                </div>
+              </div>
+            )}
+            {msg.role === 'daemon' && (
+              <div className="max-w-[90%] relative group">
+                <div className="text-[13px] px-4 py-3 rounded-2xl rounded-bl-sm leading-relaxed font-sans bg-emerald-500/5 border border-emerald-500/20 text-emerald-100">
+                  {formatContent(msg.content)}
+                  {msg.isStreaming && <span className="animate-pulse ml-1 text-emerald-500">▊</span>}
+                </div>
+              </div>
+            )}
           </div>
         ))}
-
-        {isThinking && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
-              <Cpu size={15} className="text-emerald-400 animate-pulse" />
-            </div>
-            <div className="px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px 20px 20px 20px' }}>
-              <div className="flex gap-1 items-center h-5">
-                {[0,1,2].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-bounce"
-                    style={{ animationDelay: `${i * 0.15}s` }} />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Suggestions */}
         {messages.length === 1 && (
-          <div className="space-y-2 mt-2">
-            <p className="text-white/30 text-[11px] flex items-center gap-1.5">
-              <Sparkles size={11} /> Suggestions
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map(s => (
-                <button
-                  key={s}
-                  className="px-3 py-1.5 rounded-xl text-[13px] text-white/70 active:bg-white/15 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  onClick={() => { setInput(s); inputRef.current?.focus(); }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {QUICK_PROMPTS.map(s => (
+              <button
+                key={s}
+                className="px-3 py-1.5 rounded-xl text-[11px] uppercase tracking-wider font-bold text-emerald-500 border border-emerald-500/20 bg-emerald-500/5 active:bg-emerald-500/20"
+                onClick={() => sendMessage(s)}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div
-        className="flex items-end gap-3 px-4 py-3 flex-shrink-0"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,5,8,0.95)' }}
-      >
-        <textarea
-          ref={inputRef}
-          className="flex-1 bg-transparent text-white outline-none resize-none"
-          style={{
-            fontSize: '15px',
-            lineHeight: '1.5',
-            maxHeight: '100px',
-            minHeight: '24px',
-            userSelect: 'text',
-            WebkitUserSelect: 'text',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '14px',
-            padding: '10px 14px',
-          }}
-          placeholder="Message DAEMON..."
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          rows={1}
-        />
-        <button
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
-          style={{
-            background: input.trim() ? 'var(--nx-accent)' : 'rgba(255,255,255,0.08)',
-          }}
-          onClick={send}
-          disabled={!input.trim() || isThinking}
-        >
-          <Send size={16} className={input.trim() ? 'text-black' : 'text-white/30'} />
-        </button>
+      <div className="p-3 border-t border-emerald-500/10 bg-black/40">
+        <div className="flex items-end gap-2 bg-black/60 border border-emerald-500/20 rounded-2xl px-3 py-2">
+          <Terminal size={14} className="text-emerald-700 shrink-0 mb-1.5" />
+          <textarea
+            ref={inputRef}
+            className="flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-zinc-500 resize-none max-h-24 min-h-[20px] font-sans"
+            placeholder="Command DAEMON..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            rows={1}
+          />
+          <button
+            className="p-1.5 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-30 text-emerald-400 bg-emerald-500/20 active:bg-emerald-500/40"
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || isThinking}
+          >
+            {isThinking ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+          </button>
+        </div>
       </div>
     </div>
   );
