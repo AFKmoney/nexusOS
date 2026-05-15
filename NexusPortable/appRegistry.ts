@@ -27,13 +27,34 @@ import MobilePasswordManager from './apps/MobilePasswordManager';
 import MobileModelManager from './apps/MobileModelManager';
 import MobileAionAgent from './apps/MobileAionAgent';
 import MobileNeuralForge from './apps/MobileNeuralForge';
+import MobileGovernanceDashboardApp from './apps/MobileGovernanceDashboardApp';
+import MobileNFRApp from './apps/MobileNFRApp';
+import MobileFractalVisualizerApp from './apps/MobileFractalVisualizerApp';
+import MobileMonitorApp from './apps/MobileMonitorApp';
+import MobileUbuntuTerminalApp from './apps/MobileUbuntuTerminalApp';
+import MobileWallpaperApp from './apps/MobileWallpaperApp';
+import MobileFilePropertiesApp from './apps/MobileFilePropertiesApp';
+import MobileTaskManagerApp from './apps/MobileTaskManagerApp';
+import MobileDeviceManagerApp from './apps/MobileDeviceManagerApp';
+import MobileNativeZipApp from './apps/MobileNativeZipApp';
+import MobileRecycleBinApp from './apps/MobileRecycleBinApp';
+import MobileNotificationCenterApp from './apps/MobileNotificationCenterApp';
+import MobileImageViewerApp from './apps/MobileImageViewerApp';
+import MobileRichEditorApp from './apps/MobileRichEditorApp';
+import MobileDaemonJournalApp from './apps/MobileDaemonJournalApp';
+import MobilePaintApp from './apps/MobilePaintApp';
+import MobileVideoPlayerApp from './apps/MobileVideoPlayerApp';
+import MobileSnippetsApp from './apps/MobileSnippetsApp';
+import MobileRSSReaderApp from './apps/MobileRSSReaderApp';
+import MobileAccessibilityPanel from './apps/MobileAccessibilityPanel';
+import MobileScreenshotToolApp from './apps/MobileScreenshotToolApp';
 
-import {
+import { 
   Terminal, Cpu, FileText, FolderOpen, Settings, BarChart2,
   Calculator, Calendar, Globe, Cloud, Music, LayoutGrid, Mic,
   Users, Timer, FileCode, ShoppingBag, Shield, Zap,
   Sparkles, Code2, Pencil, Activity, Monitor, Clipboard, Brain, Bot,
-} from 'lucide-react';
+  Lock, Layers, Network, Command, Image, Database, MonitorDot, Server, FileArchive, Trash2, Bell, Pen, BookOpen, Palette, Video, Rss, Accessibility, Camera } from 'lucide-react';
 
 export const MOBILE_APPS: MobileApp[] = [
   {
@@ -251,6 +272,174 @@ export const MOBILE_APPS: MobileApp[] = [
     iconBg: 'linear-gradient(135deg, #065f46 0%, #10b981 100%)',
     component: MobileNeuralForge,
     description: 'AI-powered app builder',
+  },
+  {
+    id: 'governance',
+    name: 'Governance',
+    icon: Lock,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileGovernanceDashboardApp,
+    description: 'Governance mobile port',
+  },
+  {
+    id: 'nfr',
+    name: 'NFR Compressor',
+    icon: Layers,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileNFRApp,
+    description: 'NFR Compressor mobile port',
+  },
+  {
+    id: 'fractal',
+    name: 'Context Memory',
+    icon: Network,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileFractalVisualizerApp,
+    description: 'Context Memory mobile port',
+  },
+  {
+    id: 'monitor',
+    name: 'System Monitor',
+    icon: Activity,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileMonitorApp,
+    description: 'System Monitor mobile port',
+  },
+  {
+    id: 'ubuntu',
+    name: 'Ubuntu Subsystem',
+    icon: Command,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileUbuntuTerminalApp,
+    description: 'Ubuntu Subsystem mobile port',
+  },
+  {
+    id: 'wallpaper',
+    name: 'Wallpaper Gen',
+    icon: Image,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileWallpaperApp,
+    description: 'Wallpaper Gen mobile port',
+  },
+  {
+    id: 'fileprops',
+    name: 'Properties',
+    icon: Database,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileFilePropertiesApp,
+    description: 'Properties mobile port',
+  },
+  {
+    id: 'task_manager',
+    name: 'Task Manager',
+    icon: MonitorDot,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileTaskManagerApp,
+    description: 'Task Manager mobile port',
+  },
+  {
+    id: 'device_manager',
+    name: 'Device Manager',
+    icon: Server,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileDeviceManagerApp,
+    description: 'Device Manager mobile port',
+  },
+  {
+    id: 'native_zip',
+    name: 'Archiver',
+    icon: FileArchive,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileNativeZipApp,
+    description: 'Archiver mobile port',
+  },
+  {
+    id: 'recycle_bin',
+    name: 'Recycle Bin',
+    icon: Trash2,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileRecycleBinApp,
+    description: 'Recycle Bin mobile port',
+  },
+  {
+    id: 'notifications',
+    name: 'Notifications',
+    icon: Bell,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileNotificationCenterApp,
+    description: 'Notifications mobile port',
+  },
+  {
+    id: 'image_viewer',
+    name: 'Gallery',
+    icon: Image,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileImageViewerApp,
+    description: 'Gallery mobile port',
+  },
+  {
+    id: 'rich_editor',
+    name: 'Rich Editor',
+    icon: Pen,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileRichEditorApp,
+    description: 'Rich Editor mobile port',
+  },
+  {
+    id: 'daemon_journal',
+    name: 'DAEMON Journal',
+    icon: BookOpen,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileDaemonJournalApp,
+    description: 'DAEMON Journal mobile port',
+  },
+  {
+    id: 'paint',
+    name: 'Paint',
+    icon: Palette,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobilePaintApp,
+    description: 'Paint mobile port',
+  },
+  {
+    id: 'video_player',
+    name: 'Video Player',
+    icon: Video,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileVideoPlayerApp,
+    description: 'Video Player mobile port',
+  },
+  {
+    id: 'snippets',
+    name: 'Snippets',
+    icon: FileCode,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileSnippetsApp,
+    description: 'Snippets mobile port',
+  },
+  {
+    id: 'rss',
+    name: 'RSS Feed',
+    icon: Rss,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileRSSReaderApp,
+    description: 'RSS Feed mobile port',
+  },
+  {
+    id: 'accessibility',
+    name: 'Accessibility',
+    icon: Accessibility,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileAccessibilityPanel,
+    description: 'Accessibility mobile port',
+  },
+  {
+    id: 'screenshot',
+    name: 'Screenshot',
+    icon: Camera,
+    iconBg: 'linear-gradient(135deg, #1f2937 0%, #4b5563 100%)',
+    component: MobileScreenshotToolApp,
+    description: 'Screenshot mobile port',
   },
 ];
 
