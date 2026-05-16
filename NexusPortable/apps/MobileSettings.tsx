@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, User, Palette, Cpu, Bell, Shield, Info,
-  Moon, Wifi, Volume2, Zap, Key, Globe, Database, RotateCcw
+  Moon, Wifi, Volume2, Zap, Key, Globe, Database, RotateCcw, Save, Trash2, Check, ExternalLink
 } from 'lucide-react';
 import type { MobileAppProps } from '../types';
 import { useMobile } from '../store/mobileStore';
+import { PROVIDER_PRESETS, aiGateway } from '../../services/aiProviders';
 
-type Section = 'main' | 'appearance' | 'daemon' | 'notifications' | 'security' | 'about';
+type Section = 'main' | 'appearance' | 'daemon' | 'notifications' | 'security' | 'about' | 'ai-keys';
 
 interface SettingRow {
   icon: React.ElementType;
@@ -25,7 +26,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       style={{
         background: value ? 'var(--nx-accent)' : 'rgba(255,255,255,0.15)',
       }}
-      onClick={() => onChange(!value)}
+      onClick={(e) => { e.stopPropagation(); onChange(!value); }}
     >
       <div
         className="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-200"
@@ -38,14 +39,51 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 export default function MobileSettings({ onBack }: MobileAppProps) {
   const { kernelRules, updateKernelRules, accentColor, setAccentColor, addNotification, logout } = useMobile();
   const [section, setSection] = useState<Section>('main');
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('nx_anthropic_key') ?? '');
+  
+  // Local state for API keys to avoid excessive writes
+  const [providers, setProviders] = useState(() => aiGateway.getProviders());
+  const [activeProviderId, setActiveProviderId] = useState(() => aiGateway.getActiveProviderId());
+
+  // Initialize providers if missing (sync with latest presets)
+  useEffect(() => {
+    const currentProviders = aiGateway.getProviders();
+    let changed = false;
+    
+    PROVIDER_PRESETS.forEach(preset => {
+      if (!currentProviders.find(p => p.id === preset.id)) {
+        aiGateway.addProvider({
+          ...preset,
+          apiKey: localStorage.getItem(`nx_${preset.id}_key`) || '',
+          enabled: !!localStorage.getItem(`nx_${preset.id}_key`),
+        });
+        changed = true;
+      }
+    });
+
+    if (changed || providers.length === 0) {
+      setProviders(aiGateway.getProviders());
+    }
+  }, []);
+
+  const updateKey = (id: string, key: string) => {
+    setProviders(prev => prev.map(p => p.id === id ? { ...p, apiKey: key, enabled: key.length > 0 } : p));
+  };
+
+  const saveAllKeys = () => {
+    providers.forEach(p => {
+      aiGateway.addProvider(p);
+      if (p.apiKey) {
+        localStorage.setItem(`nx_${p.id}_key`, p.apiKey);
+        // Legacy support for some apps that check direct keys
+        if (p.id === 'anthropic') localStorage.setItem('nx_anthropic_key', p.apiKey);
+      }
+    });
+    aiGateway.setActiveProvider(activeProviderId);
+    addNotification({ title: 'AI Infrastructure', message: 'Neural links updated and saved.', type: 'success' });
+    setSection('daemon');
+  };
 
   const accentColors = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#8b5cf6', '#f97316'];
-
-  const saveApiKey = () => {
-    localStorage.setItem('nx_anthropic_key', apiKey);
-    addNotification({ title: 'Settings', message: 'API key saved.', type: 'success' });
-  };
 
   const sectionTitle: Record<Section, string> = {
     main: 'Settings',
@@ -54,6 +92,7 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
     notifications: 'Notifications',
     security: 'Security',
     about: 'About',
+    'ai-keys': 'API Configuration',
   };
 
   const mainRows: SettingRow[] = [
@@ -61,7 +100,7 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
     { icon: Cpu, iconBg: 'linear-gradient(135deg,#10b981,#059669)', label: 'DAEMON AI', sub: 'Neural engine, model, API keys', section: 'daemon' },
     { icon: Bell, iconBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', label: 'Notifications', sub: 'Alerts, sounds', section: 'notifications' },
     { icon: Shield, iconBg: 'linear-gradient(135deg,#ef4444,#dc2626)', label: 'Security', sub: 'PIN, lock, privacy', section: 'security' },
-    { icon: Info, iconBg: 'linear-gradient(135deg,#64748b,#475569)', label: 'About', sub: 'NexusOS v1.0.0', section: 'about' },
+    { icon: Info, iconBg: 'linear-gradient(135deg,#64748b,#475569)', label: 'About', sub: 'NexusOS v2.1.2', section: 'about' },
   ];
 
   const renderRow = (row: SettingRow, i: number) => (
@@ -95,11 +134,20 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,5,8,0.9)' }}>
         <button
           className="p-1.5 rounded-xl active:bg-white/10"
-          onClick={section === 'main' ? onBack : () => setSection('main')}
+          onClick={() => {
+            if (section === 'main') onBack();
+            else if (section === 'ai-keys') setSection('daemon');
+            else setSection('main');
+          }}
         >
           <ChevronLeft size={22} className="text-white" />
         </button>
-        <h1 className="text-white font-semibold text-[16px]">{sectionTitle[section]}</h1>
+        <h1 className="text-white font-semibold text-[16px] flex-1">{sectionTitle[section]}</h1>
+        {section === 'ai-keys' && (
+          <button onClick={saveAllKeys} className="p-2 text-emerald-400 active:scale-90 transition-all">
+            <Save size={20} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -152,37 +200,60 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
           <div className="px-4 pt-4 pb-6 space-y-4">
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
               {renderRow({ icon: Zap, iconBg: 'linear-gradient(135deg,#10b981,#059669)', label: 'Autonomy', sub: 'Let DAEMON act independently', right: <Toggle value={kernelRules.autonomyEnabled} onChange={v => updateKernelRules({ autonomyEnabled: v })} /> }, 0)}
-            </div>
-
-            <div>
-              <p className="section-header pl-0">Anthropic API Key</p>
-              <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <input
-                  className="mobile-input"
-                  type="password"
-                  placeholder="sk-ant-api03-..."
-                  value={apiKey}
-                  onChange={e => setApiKey(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-                <button className="btn-primary w-full" onClick={saveApiKey}>
-                  <Key size={15} />
-                  Save Key
-                </button>
-              </div>
+              {renderRow({ icon: Key, iconBg: 'linear-gradient(135deg,#8b5cf6,#6366f1)', label: 'AI Providers', sub: 'Mistral, OpenAI, Anthropic...', section: 'ai-keys' }, 1)}
             </div>
 
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
               {[
+                { label: 'Active Provider', value: activeProviderId.toUpperCase() },
                 { label: 'Model', value: kernelRules.modelId || 'claude-sonnet-4-6' },
                 { label: 'Tone', value: kernelRules.tone },
-                { label: 'Creativity', value: `${kernelRules.creativity}/10` },
+                { label: 'Creativity', value: `${kernelRules.creativity * 10}/10` },
               ].map((row, i) => (
                 <div key={i} className="list-item" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <p className="text-white/60 text-[14px] flex-1">{row.label}</p>
                   <p className="text-white text-[14px] font-medium">{row.value}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {section === 'ai-keys' && (
+          <div className="px-4 pt-4 pb-6 space-y-6">
+            <p className="text-white/40 text-[13px] leading-relaxed">
+              Configure your API keys here. Your keys are stored locally on this device.
+            </p>
+            
+            <div className="space-y-4">
+              {providers.filter(p => p.id !== 'custom').map(p => (
+                <div key={p.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-white/60 text-[12px] uppercase font-bold tracking-widest">{p.name}</p>
+                    {p.id === 'lmstudio' || p.id === 'ollama' ? (
+                       <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full font-mono uppercase">Local</span>
+                    ) : null}
+                  </div>
+                  <div className="relative">
+                    <input
+                      className="mobile-input pr-10"
+                      type="password"
+                      placeholder={p.id === 'lmstudio' || p.id === 'ollama' ? p.baseUrl : 'Enter API Key...'}
+                      value={p.apiKey}
+                      onChange={e => updateKey(p.id, e.target.value)}
+                      disabled={p.id === 'lmstudio' || p.id === 'ollama'}
+                      style={{ fontSize: '13px', background: 'rgba(255,255,255,0.03)' }}
+                    />
+                    {p.apiKey && <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4">
+               <button className="btn-primary w-full" onClick={saveAllKeys}>
+                 <Save size={16} /> Save Changes
+               </button>
             </div>
           </div>
         )}
@@ -213,15 +284,15 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
                 <Cpu size={32} className="text-emerald-400" strokeWidth={1.5} />
               </div>
               <h2 className="text-white text-xl font-bold">NexusOS</h2>
-              <p className="text-white/40 text-[13px]">Mobile Edition · v1.0.0</p>
+              <p className="text-white/40 text-[13px]">Mobile Edition · v2.1.2</p>
             </div>
 
             <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
               {[
-                ['Version', '1.0.0'],
-                ['Platform', 'Mobile / PWA'],
-                ['Neural Engine', '2.0.0'],
-                ['Build', 'production'],
+                ['Version', '2.1.2'],
+                ['Platform', 'Mobile / Android / PWA'],
+                ['Neural Engine', '3.5.0-Triadic'],
+                ['Build', 'Optimized'],
               ].map(([k, v], i) => (
                 <div key={i} className="list-item" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <p className="text-white/60 text-[14px] flex-1">{k}</p>
