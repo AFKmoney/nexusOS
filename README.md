@@ -18,11 +18,9 @@
 
 ## Abstract
 
-NexusOS is a desktop-class operating environment that runs in a single browser context (or as an Electron application) and treats large language models as a kernel-resident component rather than as an external service. It provides a virtual file system, a window-manager shell, a Unix-style command engine, an event bus, a permission model, a process manager, and an autonomy engine that can observe system state, make decisions against a mission pool, and execute kernel-level actions on the user's behalf.
+NexusOS is a desktop-class operating environment that runs in a single browser context (or as an Electron application) and treats large language models as a kernel-resident component rather than as an external service. It provides a virtual file system, a window-manager shell, a Unix-style command engine, an event bus, a permission model, a process manager, and an autonomy engine.
 
-The project's hypothesis is that a software environment whose primary control surface is natural language requires a different software architecture than a conventional desktop. Conventional desktops were designed for a human operator clicking on widgets; an AI operator interacts with the system through structured action tokens, requires bounded autonomy, and benefits from machine-readable system state. NexusOS is an attempt to design that environment from first principles.
-
-This repository contains the full source: the React 19 shell, the TypeScript kernel, the local and remote inference services, the Electron host bridge, and the build pipeline that produces a Windows installer.
+**New in v2.1.0:** **NexusPortable** — A fully optimized mobile edition. Unlike basic responsive websites, NexusPortable is a complete rewrite of the OS shell for touch devices, featuring a stack-based navigation system and 27 touch-native application ports. It runs as a high-performance PWA or a native Android APK.
 
 ---
 
