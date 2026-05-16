@@ -147,6 +147,8 @@ export const useOS = create<OSState>()(
   )
 );
 
+(window as any).__OS_STORE__ = useOS;
+
 export async function hydrateOSRegistry(): Promise<void> {
   try {
     const { SYSTEM_APPS } = await import('../appRegistry');
