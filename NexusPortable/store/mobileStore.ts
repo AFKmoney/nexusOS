@@ -297,6 +297,8 @@ export const useMobile = create<MobileState>()(
   )
 );
 
+(window as any).__MOBILE_STORE__ = useMobile;
+
 export function getMobileApp(id: string): AppManifest | undefined {
   return useMobile.getState().registry.find(a => a.id === id);
 }

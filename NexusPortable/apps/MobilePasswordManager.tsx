@@ -1,19 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, Shield, Plus, Eye, EyeOff, Copy, Trash2, Lock, Key, Check } from 'lucide-react';
 import type { MobileAppProps } from '../types';
+import { uuid } from '../../utils/uuid';
 
 interface VaultEntry {
   id: string;
   site: string;
   username: string;
-  password: string;
+  pass: string;
+  url?: string;
   note?: string;
-  color: string;
+  color?: string;
 }
 
-const STORAGE_KEY = 'nx_vault_entries';
-const load = (): VaultEntry[] => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); } catch { return []; } };
-const save = (e: VaultEntry[]) => localStorage.setItem(STORAGE_KEY, JSON.stringify(e));
+const LS_KEY = 'nexus_vault_v3';
+const SALT_KEY = 'nexus_vault_salt';
+
+// ─── AES-GCM helpers ──────────────────────────────────────────────────────────
+async function getKey(): Promise<CryptoKey> {
+  let salt = localStorage.getItem(SALT_KEY);
+  if (!salt) {
+    salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(SALT_KEY, salt);
+  }
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(salt), { name: 'PBKDF2' }, false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('nexusos-vault'), iterations: 100_000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptText(text: string, key: CryptoKey): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptText(ciphertext: string, key: CryptoKey): Promise<string> {
+  try {
+    const data = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const iv = data.slice(0, 12);
+    const ct = data.slice(12);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(pt);
+  } catch {
+    return '••••••••'; // failed to decrypt — probably legacy entry
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#06b6d4'];
 
@@ -25,23 +67,58 @@ function genPassword(len = 16): string {
 export default function MobilePasswordManager({ onBack }: MobileAppProps) {
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState('');
-  const [entries, setEntries] = useState<VaultEntry[]>(load);
+  
+  const [cryptoKey, setCryptoKey] = useState<CryptoKey | null>(null);
+  const [entries, setEntries] = useState<VaultEntry[]>([]);
+  const [decryptedPasswords, setDecryptedPasswords] = useState<Record<string, string>>({});
+  
   const [adding, setAdding] = useState(false);
-  const [visible, setVisible] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
-  const [form, setForm] = useState({ site: '', username: '', password: '', note: '', color: '#10b981' });
+  const [form, setForm] = useState({ site: '', username: '', pass: '', color: '#10b981' });
+
+  // Initialize crypto key and load entries
+  useEffect(() => {
+    getKey().then(k => {
+      setCryptoKey(k);
+      try {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) setEntries(JSON.parse(saved));
+      } catch {}
+    });
+  }, []);
 
   const copy = (text: string, id: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
     setCopied(id); setTimeout(() => setCopied(null), 1500);
   };
 
-  const upd = (e: VaultEntry[]) => { setEntries(e); save(e); };
-  const addEntry = () => {
-    if (!form.site.trim()) return;
-    upd([...entries, { ...form, id: Date.now().toString() }]);
-    setAdding(false); setForm({ site: '', username: '', password: '', note: '', color: '#10b981' });
+  const upd = (e: VaultEntry[]) => { 
+    setEntries(e); 
+    localStorage.setItem(LS_KEY, JSON.stringify(e)); 
   };
+
+  const addEntry = async () => {
+    if (!form.site.trim() || !cryptoKey) return;
+    const encryptedPass = await encryptText(form.pass, cryptoKey);
+    const newEntry: VaultEntry = { ...form, pass: encryptedPass, id: uuid() };
+    upd([newEntry, ...entries]);
+    setAdding(false); 
+    setForm({ site: '', username: '', pass: '', color: '#10b981' });
+  };
+
+  const deleteEntry = (id: string) => {
+    upd(entries.filter(e => e.id !== id));
+  };
+
+  const revealPassword = useCallback(async (id: string, ciphertext: string) => {
+    if (!cryptoKey) return;
+    if (decryptedPasswords[id]) {
+      setDecryptedPasswords(prev => { const n = { ...prev }; delete n[id]; return n; });
+    } else {
+      const plain = await decryptText(ciphertext, cryptoKey);
+      setDecryptedPasswords(prev => ({ ...prev, [id]: plain }));
+    }
+  }, [cryptoKey, decryptedPasswords]);
 
   if (!unlocked) {
     return (
@@ -104,20 +181,20 @@ export default function MobilePasswordManager({ onBack }: MobileAppProps) {
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {adding && (
           <div className="p-4 rounded-2xl space-y-3" style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-            {[['site','Website / App','text'],['username','Username / Email','email'],['password','Password','password'],['note','Note (optional)','text']].map(([k='',p='',t='']) => (
+            {[['site','Website / App','text'],['username','Username / Email','email'],['pass','Password','password']].map(([k='',p='',t='']) => (
               <input key={k} className="mobile-input" type={t} placeholder={p}
                 value={(form as any)[k]} onChange={e => setForm(f => ({...f, [k]: e.target.value}))}
                 style={{ fontSize: '14px', padding: '10px 14px' }} />
             ))}
-            <button className="text-indigo-400/70 text-[13px] flex items-center gap-1.5"
-              onClick={() => setForm(f => ({...f, password: genPassword()}))}>
+            <button className="text-indigo-400/70 text-[13px] flex items-center gap-1.5 py-1"
+              onClick={() => setForm(f => ({...f, pass: genPassword()}))}>
               <Key size={13} /> Generate password
             </button>
-            <div className="flex gap-2">
+            <div className="flex gap-2 py-2">
               {COLORS.map(c => <button key={c} className="w-6 h-6 rounded-full border-2" style={{ background: c, borderColor: form.color===c?'white':'transparent' }} onClick={() => setForm(f=>({...f,color:c}))} />)}
             </div>
             <div className="flex gap-2">
-              <button className="btn-primary flex-1" style={{ background: '#6366f1' }} onClick={addEntry}>Save Entry</button>
+              <button className="btn-primary flex-1" style={{ background: '#6366f1' }} onClick={addEntry}>Save Encrypted</button>
               <button className="btn-secondary px-4" onClick={() => setAdding(false)}>Cancel</button>
             </div>
           </div>
@@ -129,10 +206,10 @@ export default function MobilePasswordManager({ onBack }: MobileAppProps) {
             <p className="text-[14px]">No saved credentials</p>
           </div>
         ) : entries.map(e => (
-          <div key={e.id} className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${e.color}20` }}>
+          <div key={e.id} className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${e.color || '#6366f1'}20` }}>
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: e.color+'20' }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: (e.color || '#6366f1')+'20' }}>
                   <span className="text-white font-bold text-[13px]">{e.site[0]?.toUpperCase()}</span>
                 </div>
                 <div>
@@ -140,18 +217,18 @@ export default function MobilePasswordManager({ onBack }: MobileAppProps) {
                   <p className="text-white/40 text-[12px]">{e.username}</p>
                 </div>
               </div>
-              <button className="p-1 active:opacity-60" onClick={() => upd(entries.filter(x=>x.id!==e.id))}>
+              <button className="p-1 active:opacity-60" onClick={() => deleteEntry(e.id)}>
                 <Trash2 size={14} className="text-white/25" />
               </button>
             </div>
             <div className="flex items-center gap-2 mt-2 p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <span className="flex-1 font-mono text-[13px] text-white/60">
-                {visible.has(e.id) ? e.password : '••••••••••••'}
+              <span className="flex-1 font-mono text-[13px] text-white/60 truncate">
+                {decryptedPasswords[e.id] ? decryptedPasswords[e.id] : '••••••••••••'}
               </span>
-              <button onClick={() => setVisible(s => { const n=new Set(s); s.has(e.id)?n.delete(e.id):n.add(e.id); return n; })}>
-                {visible.has(e.id) ? <EyeOff size={15} className="text-white/40" /> : <Eye size={15} className="text-white/40" />}
+              <button onClick={() => revealPassword(e.id, e.pass)}>
+                {decryptedPasswords[e.id] ? <EyeOff size={15} className="text-white/40" /> : <Eye size={15} className="text-white/40" />}
               </button>
-              <button onClick={() => copy(e.password, e.id)}>
+              <button onClick={() => copy(decryptedPasswords[e.id] || e.pass, e.id)}>
                 {copied===e.id ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} className="text-white/40" />}
               </button>
             </div>

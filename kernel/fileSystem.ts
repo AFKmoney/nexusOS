@@ -224,9 +224,15 @@ export class VirtualFileSystem {
   }
 
   private getHomeDir(): string {
-    const store = (window as Window & typeof globalThis & { __OS_STORE__?: { getState: () => { currentUser?: { id?: string } } } }).__OS_STORE__;
-    const state = store?.getState();
-    const user = state?.currentUser?.id || 'admin';
+    const desktopStore = (window as any).__OS_STORE__;
+    const mobileStore = (window as any).__MOBILE_STORE__;
+    
+    let user = 'admin';
+    if (desktopStore) {
+      user = desktopStore.getState()?.currentUser?.id || 'admin';
+    } else if (mobileStore) {
+      user = mobileStore.getState()?.currentUser?.id || 'admin';
+    }
     return `/home/${user}`;
   }
 
@@ -313,9 +319,17 @@ export class VirtualFileSystem {
       console.warn(`[Sandbox Enforcer] Missing appId for permission check (${req})`);
       return false;
     }
-    const state = (window as Window & typeof globalThis & { __OS_STORE__?: { getState: () => { registry?: Array<{ id?: string; permissions?: string[] }> } } }).__OS_STORE__?.getState();
-    if (!state) return appId === SYSTEM_VFS_APP_ID;
-    const app = state.registry?.find((a) => a.id === appId);
+    
+    const desktopStore = (window as any).__OS_STORE__;
+    const mobileStore = (window as any).__MOBILE_STORE__;
+    
+    let registry = null;
+    if (desktopStore) registry = desktopStore.getState()?.registry;
+    else if (mobileStore) registry = mobileStore.getState()?.registry;
+    
+    if (!registry) return appId === SYSTEM_VFS_APP_ID;
+    
+    const app = registry.find((a: any) => a.id === appId);
     if (!app) return false;
     return Array.isArray(app.permissions) && app.permissions.includes(req);
   }
