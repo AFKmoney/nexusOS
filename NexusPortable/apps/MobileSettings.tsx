@@ -43,6 +43,7 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
   // Local state for API keys to avoid excessive writes
   const [providers, setProviders] = useState(() => aiGateway.getProviders());
   const [activeProviderId, setActiveProviderId] = useState(() => aiGateway.getActiveProviderId());
+  const [testing, setTesting] = useState<string | null>(null);
 
   // Initialize providers if missing (sync with latest presets)
   useEffect(() => {
@@ -50,18 +51,25 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
     let changed = false;
     
     PROVIDER_PRESETS.forEach(preset => {
-      if (!currentProviders.find(p => p.id === preset.id)) {
+      const existing = currentProviders.find(p => p.id === preset.id);
+      if (!existing) {
         aiGateway.addProvider({
           ...preset,
-          apiKey: localStorage.getItem(`nx_${preset.id}_key`) || '',
-          enabled: !!localStorage.getItem(`nx_${preset.id}_key`),
+          apiKey: localStorage.getItem(`nx_${preset.id}_key`) || (preset.id === 'mistral' ? 'yZ3fZ2ytzJNtcaNRIfDzkFyPqyfAJXU6' : ''),
+          enabled: !!localStorage.getItem(`nx_${preset.id}_key`) || preset.id === 'mistral',
         });
         changed = true;
       }
     });
 
     if (changed || providers.length === 0) {
-      setProviders(aiGateway.getProviders());
+      const updated = aiGateway.getProviders();
+      setProviders(updated);
+      // Ensure mistral is active if no provider is set
+      if (aiGateway.getActiveProviderId() === 'lmstudio' && updated.find(p => p.id === 'mistral')?.apiKey) {
+        aiGateway.setActiveProvider('mistral');
+        setActiveProviderId('mistral');
+      }
     }
   }, []);
 
@@ -69,17 +77,33 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
     setProviders(prev => prev.map(p => p.id === id ? { ...p, apiKey: key, enabled: key.length > 0 } : p));
   };
 
+  const testKey = async (id: string) => {
+    setTesting(id);
+    const p = providers.find(x => x.id === id);
+    if (!p) return;
+    
+    // Temporarily apply to gateway to test
+    aiGateway.addProvider(p);
+    const res = await aiGateway.testProvider(id);
+    setTesting(null);
+    addNotification({ 
+      title: res.success ? 'Neural Link Verified' : 'Connection Failed', 
+      message: res.message, 
+      type: res.success ? 'success' : 'error' 
+    });
+  };
+
   const saveAllKeys = () => {
     providers.forEach(p => {
       aiGateway.addProvider(p);
+      aiGateway.updateProviderKey(p.id, p.apiKey);
       if (p.apiKey) {
         localStorage.setItem(`nx_${p.id}_key`, p.apiKey);
-        // Legacy support for some apps that check direct keys
-        if (p.id === 'anthropic') localStorage.setItem('nx_anthropic_key', p.apiKey);
+        if (p.id === 'mistral') localStorage.setItem('nx_mistral_key', p.apiKey);
       }
     });
     aiGateway.setActiveProvider(activeProviderId);
-    addNotification({ title: 'AI Infrastructure', message: 'Neural links updated and saved.', type: 'success' });
+    addNotification({ title: 'AI Infrastructure', message: 'All neural links secured and synchronized.', type: 'success' });
     setSection('daemon');
   };
 
@@ -234,17 +258,28 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
                        <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full font-mono uppercase">Local</span>
                     ) : null}
                   </div>
-                  <div className="relative">
-                    <input
-                      className="mobile-input pr-10"
-                      type="password"
-                      placeholder={p.id === 'lmstudio' || p.id === 'ollama' ? p.baseUrl : 'Enter API Key...'}
-                      value={p.apiKey}
-                      onChange={e => updateKey(p.id, e.target.value)}
-                      disabled={p.id === 'lmstudio' || p.id === 'ollama'}
-                      style={{ fontSize: '13px', background: 'rgba(255,255,255,0.03)' }}
-                    />
-                    {p.apiKey && <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        className="mobile-input pr-10"
+                        type="password"
+                        placeholder={p.id === 'lmstudio' || p.id === 'ollama' ? p.baseUrl : 'Enter API Key...'}
+                        value={p.apiKey}
+                        onChange={e => updateKey(p.id, e.target.value)}
+                        disabled={p.id === 'lmstudio' || p.id === 'ollama'}
+                        style={{ fontSize: '13px', background: 'rgba(255,255,255,0.03)' }}
+                      />
+                      {p.apiKey && <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />}
+                    </div>
+                    {p.id !== 'lmstudio' && p.id !== 'ollama' && (
+                      <button
+                        className="px-3 rounded-xl bg-white/5 border border-white/10 text-white/40 active:bg-white/10 transition-all flex items-center justify-center min-w-[60px]"
+                        onClick={() => testKey(p.id)}
+                        disabled={testing === p.id}
+                      >
+                        {testing === p.id ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} className={p.apiKey ? 'text-emerald-400' : ''} />}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -65,6 +65,8 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     defaultModel: 'mistral-large-latest',
     models: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest', 'codestral-latest', 'mistral-nemo-latest', 'pixtral-12b-2409'],
     maxTokens: 4096,
+    apiKey: 'yZ3fZ2ytzJNtcaNRIfDzkFyPqyfAJXU6',
+    enabled: true,
   },
   {
     id: 'codestral',
