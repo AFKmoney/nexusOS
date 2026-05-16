@@ -95,6 +95,7 @@ export default function MobileFractalVisualizerApp({ onBack }: MobileFractalVisu
                 const nodeA = nodes[i];
                 for (let j = i + 1; j < nodes.length; j++) {
                     const nodeB = nodes[j];
+                    if (!nodeA || !nodeB) continue;
                     const dx = nodeA.x - nodeB.x;
                     const dy = nodeA.y - nodeB.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);

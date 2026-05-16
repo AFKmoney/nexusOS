@@ -82,20 +82,9 @@ export default function DaemonChat() {
     const daemonMsg: Message = { id: uuid(), role: 'daemon', content: '', timestamp: Date.now(), isStreaming: true };
     setMessages(prev => [...prev, daemonMsg]);
 
-    const systemCtx = `[SYSTEM]: You are DAEMON, the AI engine of NexusOS. Current time: ${new Date().toLocaleString()}. OS: NexusOS v2.0 / Vite+React+TypeScript. Be intelligent, technically precise, and helpful. Adapt your tone and depth to the user's expertise level.
-
-CRITICAL FEATURE: You are a SELF-CODING TERMINAL. If you want to create a script, pipeline, or app inside the OS, you can inject it directly into the Virtual File System by outputting EXACTLY this format anywhere in your reply:
-<vfs_write path="/system/autocode/example.js">
-file content here
-</vfs_write>
-
-Only use this when specifically asked to code or create a file.
-
-[USER]: ${content}`;
-
     try {
       let buf = '';
-      await aiService.streamChat(systemCtx, { ...kernelRules, creativity: 0.9 }, (token) => {
+      await aiService.streamChat(content, { ...kernelRules, creativity: 0.9 }, (token) => {
         buf += token;
         setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: buf, isStreaming: true } : m));
       });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useMobile } from './store/mobileStore';
+import { toolForge } from '../kernel/toolForge';
 
 import BootScreen from './components/BootScreen';
 import LoginScreen from './components/LoginScreen';
@@ -31,6 +32,8 @@ export default function App() {
     setNotificationPanelOpen,
     setControlCenterOpen,
     setRecentAppsOpen,
+    openApp,
+    addNotification
   } = useMobile();
 
   const [locked, setLocked] = useState(false);
@@ -43,6 +46,37 @@ export default function App() {
       document.documentElement.style.setProperty('--nx-accent-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
     }
   }, [accentColor]);
+
+  // Bind OS actions to mobile store
+  useEffect(() => {
+    toolForge.bindOsActions(async (action) => {
+      switch (action.type) {
+        case 'OPEN_APP': {
+          const [appId] = action.args;
+          if (!appId) return '[OS::OPEN_APP] -> skipped (missing app id)';
+          openApp(appId);
+          return `[OS::OPEN_APP] -> ✅ "${appId}" opened`;
+        }
+        case 'NOTIFY': {
+          const [title, msg] = action.args;
+          addNotification({ title: title || 'DAEMON', message: msg || '', type: 'info' });
+          return `[OS::NOTIFY] -> ✅ Notification sent`;
+        }
+        case 'BUILD_APP': {
+          const [desc] = action.args;
+          openApp('forge');
+          return `[OS::BUILD_APP] -> ✅ NeuralForge launched for: "${desc}"`;
+        }
+        case 'OPEN_URL': {
+          const [url] = action.args;
+          openApp('netrunner');
+          return `[OS::OPEN_URL] -> ✅ NetRunner opening: ${url}`;
+        }
+        default:
+          return `[OS::${action.type}] -> handled internally`;
+      }
+    });
+  }, [openApp, addNotification]);
 
   // Boot timeout failsafe
   useEffect(() => {
