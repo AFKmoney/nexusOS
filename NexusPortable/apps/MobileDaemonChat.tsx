@@ -75,46 +75,13 @@ export default function MobileDaemonChat({ onBack }: MobileAppProps) {
     const daemonMsg: Message = { id: uuid(), role: 'daemon', content: '', timestamp: Date.now(), isStreaming: true };
     setMessages(prev => [...prev, daemonMsg]);
 
-    const systemCtx = `[SYSTEM]: You are DAEMON, the AI engine of NexusOS Mobile. Current time: ${new Date().toLocaleString()}. Be intelligent, technically precise, and helpful.
-
-CRITICAL FEATURE: You can output EXACTLY this format to write files:
-<vfs_write path="/system/autocode/example.js">
-file content here
-</vfs_write>
-
-[USER]: ${content}`;
-
     try {
       let buf = '';
-      await aiService.streamChat(systemCtx, { ...kernelRules, creativity: 0.9 }, (token) => {
+      await aiService.streamChat(content, { ...kernelRules, creativity: 0.9 }, (token) => {
         buf += token;
         setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: buf, isStreaming: true } : m));
       });
       setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, isStreaming: false } : m));
-
-      // Parse <vfs_write> tags to inject code autonomously!
-      const vfsRegex = /<vfs_write path="([^"]+)">([\s\S]*?)<\/vfs_write>/g;
-      let match;
-      while ((match = vfsRegex.exec(buf)) !== null) {
-        const path = match[1];
-        const code = match[2]?.trim();
-        if (path && code) {
-          try {
-            const parts = path.split('/').filter(Boolean);
-            let current = '/';
-            for (let i = 0; i < parts.length - 1; i++) {
-                current += parts[i] + '/';
-                if (!vfs.resolveNode(current)) {
-                    try { vfs.createDir(current); } catch {}
-                }
-            }
-            vfs.writeFile(path, code);
-            addNotification({ title: 'DAEMON Auto-Code', message: `Injected pipeline: ${path}`, type: 'success' });
-          } catch (e: any) {
-             console.error('Failed to auto-write VFS', e);
-          }
-        }
-      }
 
     } catch (e: any) {
       setMessages(prev => prev.map(m => m.id === daemonMsg.id ? { ...m, content: `[ERROR] ${e.message}`, isStreaming: false } : m));

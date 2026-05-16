@@ -14,7 +14,7 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
   const { kernelRules, windows, registerCustomApp, addNotification, openWindow } = useOS();
   const win = windows.find(w => w.id === windowId);
 
-  const [prompt, setPrompt] = useState(win?.data?.autoPrompt || '');
+  const [prompt, setPrompt] = useState((win?.data?.prompt as string) || (win?.data?.autoPrompt as string) || '');
   const [code, setCode] = useState(win?.data?.content || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [view, setView] = useState<'code' | 'preview'>('preview');
@@ -38,6 +38,13 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
   const codeRef = useRef('');
   const lastUpdateRef = useRef(0);
   const hasAutoStarted = useRef(false);
+
+  useEffect(() => {
+    if (prompt && !hasAutoStarted.current && status === 'IDLE') {
+      hasAutoStarted.current = true;
+      handleSynthesize();
+    }
+  }, [prompt]);
 
   const updatePreview = (html: string) => {
     if (previewRef.current?.contentDocument) {
