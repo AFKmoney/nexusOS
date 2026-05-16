@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Play, Save, FolderOpen, Plus, X, Code } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Play, Save, FolderOpen, Plus, X, Code, FileIcon } from 'lucide-react';
 import type { MobileAppProps } from '../types';
+import { vfs } from '../../kernel/fileSystem';
+import { getDesktopPath } from '../../appShellConstants';
+import { useMobile } from '../store/mobileStore';
 
 const STARTER = `// NexusOS HyperIDE — Mobile Edition
-// A lightweight in-browser code editor
+// A powerful in-browser code editor linked to VFS
 
 function greet(name: string): string {
   return \`Hello, \${name}! Welcome to NexusOS.\`;
@@ -11,8 +14,6 @@ function greet(name: string): string {
 
 const message = greet('DAEMON');
 console.log(message);
-
-// Try editing this code and pressing Run ▶
 `;
 
 const LANG_MAP: Record<string, string> = {
@@ -20,20 +21,49 @@ const LANG_MAP: Record<string, string> = {
   html: 'HTML', css: 'CSS', json: 'JSON', md: 'Markdown',
 };
 
-interface FileTab { id: string; name: string; content: string; lang: string; }
+interface FileTab { id: string; name: string; content: string; lang: string; path?: string; }
 
 export default function MobileHyperIDE({ onBack }: MobileAppProps) {
+  const { currentUser } = useMobile();
+  const desktopPath = getDesktopPath(currentUser?.id ?? null);
+  
   const [tabs, setTabs] = useState<FileTab[]>([
     { id: '1', name: 'main.ts', content: STARTER, lang: 'ts' },
   ]);
   const [activeTab, setActiveTab] = useState('1');
   const [output, setOutput] = useState('');
   const [showOutput, setShowOutput] = useState(false);
+  const [isVfsBrowserOpen, setIsVfsBrowserOpen] = useState(false);
 
   const active = tabs.find(t => t.id === activeTab)!;
 
   const updateContent = (content: string) =>
     setTabs(ts => ts.map(t => t.id === activeTab ? { ...t, content } : t));
+
+  const saveFile = () => {
+    if (!active) return;
+    const path = active.path || `${desktopPath}/${active.name}`;
+    vfs.writeFile(path, active.content);
+    setTabs(ts => ts.map(t => t.id === activeTab ? { ...t, path } : t));
+    alert(`Saved to: ${path}`);
+  };
+
+  const openFromVfs = (path: string) => {
+    const name = path.split('/').pop() || 'file';
+    const content = vfs.readFile(path) || '';
+    const lang = name.split('.').pop() || 'ts';
+    
+    // Check if already open
+    const existing = tabs.find(t => t.path === path);
+    if (existing) {
+      setActiveTab(existing.id);
+    } else {
+      const id = Date.now().toString();
+      setTabs(ts => [...ts, { id, name, content, lang, path }]);
+      setActiveTab(id);
+    }
+    setIsVfsBrowserOpen(false);
+  };
 
   const newTab = () => {
     const id = Date.now().toString();
@@ -75,6 +105,13 @@ export default function MobileHyperIDE({ onBack }: MobileAppProps) {
         </button>
         <Code size={16} className="text-emerald-400" />
         <span className="text-white/70 text-[13px] font-medium flex-1">HyperIDE Mobile</span>
+        
+        <button className="p-1.5 rounded-lg active:bg-white/10" onClick={() => setIsVfsBrowserOpen(true)}>
+          <FolderOpen size={16} className="text-white/50" />
+        </button>
+        <button className="p-1.5 rounded-lg active:bg-white/10" onClick={saveFile}>
+          <Save size={16} className="text-white/50" />
+        </button>
         <button className="p-1.5 rounded-lg active:bg-white/10" onClick={newTab}>
           <Plus size={16} className="text-white/50" />
         </button>
@@ -141,6 +178,32 @@ export default function MobileHyperIDE({ onBack }: MobileAppProps) {
           {LANG_MAP[active?.lang ?? 'ts'] ?? 'Code'}
         </div>
       </div>
+
+      {/* VFS Browser Overlay */}
+      {isVfsBrowserOpen && (
+        <div className="absolute inset-0 z-50 bg-[#0d0d12] flex flex-col animate-in slide-in-from-bottom duration-300">
+           <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-black/40">
+             <button onClick={() => setIsVfsBrowserOpen(false)}><ChevronLeft size={20} /></button>
+             <h2 className="text-sm font-bold uppercase tracking-widest text-emerald-400">VFS Browser</h2>
+           </div>
+           <div className="flex-1 overflow-y-auto p-4 space-y-2">
+             <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">Desktop Files</p>
+             {(vfs.listDir(desktopPath) || []).map(name => (
+               <button 
+                 key={name}
+                 className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 active:bg-white/10 transition-colors"
+                 onClick={() => openFromVfs(`${desktopPath}/${name}`)}
+               >
+                 <FileIcon size={16} className="text-emerald-400/60" />
+                 <span className="text-sm text-white/80">{name}</span>
+               </button>
+             ))}
+             {vfs.listDir(desktopPath)?.length === 0 && (
+               <p className="text-xs text-zinc-600 text-center py-10 italic">Desktop is empty.</p>
+             )}
+           </div>
+        </div>
+      )}
 
       {/* Output panel */}
       {showOutput && (

@@ -156,8 +156,38 @@ function PageDots({ total, current }: { total: number; current: number }) {
   );
 }
 
+function WidgetSection() {
+  const { governance, installedApps } = useMobile();
+  const [battery, setBattery] = useState(87);
+  
+  return (
+    <div className="px-6 grid grid-cols-2 gap-3 mb-8">
+      <div className="bg-white/[0.03] backdrop-blur-md border border-white/5 p-4 rounded-3xl flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-emerald-400">
+          <Brain size={14} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Neural Health</span>
+        </div>
+        <div className="text-2xl font-light text-white">{(governance.confidenceScore * 100).toFixed(0)}%</div>
+        <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+          <div className="h-full bg-emerald-500" style={{ width: `${governance.confidenceScore * 100}%` }} />
+        </div>
+      </div>
+      
+      <div className="bg-white/[0.03] backdrop-blur-md border border-white/5 p-4 rounded-3xl flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-cyan-400">
+          <Database size={14} />
+          <span className="text-[10px] font-black uppercase tracking-widest">System Load</span>
+        </div>
+        <div className="text-2xl font-light text-white">{installedApps.length} <span className="text-xs text-zinc-500 uppercase">Apps</span></div>
+        <div className="text-[9px] text-zinc-600 font-mono">NOMINAL SYNC ACTIVE</div>
+      </div>
+    </div>
+  );
+}
+
 export default function MobileHomeScreen() {
   const { homeConfig, currentHomePage, setCurrentHomePage, openApp, setSearchOpen, updateHomeConfig, setAppDrawerOpen } = useMobile();
+  // ... rest of component (add <WidgetSection /> before search)
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -242,6 +272,8 @@ export default function MobileHomeScreen() {
   return (
     <div className="h-full flex flex-col" style={{ background: 'transparent' }}>
       <TimeDisplay isEditing={isEditing} onDone={() => setIsEditing(false)} />
+
+      {!isEditing && <WidgetSection />}
 
       {!isEditing && (
         <div className="px-4 mb-3">
