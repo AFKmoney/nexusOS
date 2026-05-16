@@ -124,15 +124,15 @@ async function executeAction(action: AIAction): Promise<string> {
     }
     case 'OPEN_APP': {
       store.openWindow(action.appId, action.data);
-      return `App ouverte: ${action.appId}`;
+      return `App opened: ${action.appId}`;
     }
     case 'CLOSE_APP': {
       const windowToClose = store.windows.find(win => win.appId === action.appId);
       if (windowToClose) {
         store.closeWindow(windowToClose.id);
-        return `App fermée: ${action.appId}`;
+        return `App closed: ${action.appId}`;
       }
-      return `Aucune instance ouverte pour ${action.appId}`;
+      return `No open instance found for ${action.appId}`;
     }
     case 'CODE': {
       store.openWindow('hyperide', {
@@ -140,22 +140,22 @@ async function executeAction(action: AIAction): Promise<string> {
         prompt: action.prompt,
         files: action.files
       });
-      return `Session de code lancée pour ${action.files.join(', ')}`;
+      return `Code session launched for ${action.files.join(', ')}`;
     }
     case 'INSPECT': {
       store.openWindow('web_runner', {
         path: action.target
       });
-      return `Inspection lancée: ${action.target}`;
+      return `Inspection launched: ${action.target}`;
     }
     case 'MULTITASK': {
       const results = await Promise.all(action.tasks.map(executeAction));
       return results.join(' | ');
     }
     default:
-      return 'Action inconnue';
-  }
-}
+      return 'Unknown action';
+    }
+    }
 
 export const aiPipelineBridge: AIPipelineBridgeState = {
   get activeTask() {
