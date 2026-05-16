@@ -82,6 +82,20 @@ interface MobileState {
   currentObjective: string;
   autonomyState: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING';
 
+  governance: {
+    overrideMode: 'active' | 'paused' | 'safe-mode' | 'disabled';
+    healthStatus: 'healthy' | 'degraded' | 'critical' | 'disabled';
+    confidenceScore: number;
+    pendingApprovals: number;
+    totalProposals: number;
+    totalRollbacks: number;
+    stagedArtifactCount: number;
+    lastDeployStatus: 'none' | 'success' | 'failed' | 'reverted';
+    activeTrustTierOverride: string | null;
+  };
+
+  installedApps: string[];
+
   setBooted: (v: boolean) => void;
   login: (profileId: string) => void;
   logout: () => void;
@@ -91,7 +105,11 @@ interface MobileState {
   closeAllApps: () => void;
   goBack: () => void;
 
+  installApp: (appId: string) => void;
+  uninstallApp: (appId: string) => void;
+
   setAppDrawerOpen: (v: boolean) => void;
+  // ... rest of methods
   setNotificationPanelOpen: (v: boolean) => void;
   setControlCenterOpen: (v: boolean) => void;
   setRecentAppsOpen: (v: boolean) => void;
@@ -157,7 +175,51 @@ export const useMobile = create<MobileState>()(
       currentObjective: 'System Monitoring',
       autonomyState: 'IDLE',
 
+      governance: {
+        overrideMode: 'active',
+        healthStatus: 'healthy',
+        confidenceScore: 1.0,
+        pendingApprovals: 0,
+        totalProposals: 0,
+        totalRollbacks: 0,
+        stagedArtifactCount: 0,
+        lastDeployStatus: 'none',
+        activeTrustTierOverride: null,
+      },
+
+      installedApps: DEFAULT_HOME.pages.flat(),
+
       setBooted: (v) => set({ booted: v }),
+      
+      // ... (after logout)
+      installApp: (appId) => {
+        if (!get().installedApps.includes(appId)) {
+          set(state => {
+            const nextPages = [...state.homeConfig.pages];
+            // Find first page with space (max 12 per page)
+            let pageIdx = nextPages.findIndex(p => p.length < 12);
+            if (pageIdx === -1) {
+              nextPages.push([appId]);
+            } else {
+              nextPages[pageIdx] = [...nextPages[pageIdx], appId];
+            }
+            return {
+              installedApps: [...state.installedApps, appId],
+              homeConfig: { ...state.homeConfig, pages: nextPages }
+            };
+          });
+        }
+      },
+
+      uninstallApp: (appId) => {
+        set(state => ({
+          installedApps: state.installedApps.filter(id => id !== appId),
+          homeConfig: {
+            ...state.homeConfig,
+            pages: state.homeConfig.pages.map(p => p.filter(id => id !== appId)).filter(p => p.length > 0)
+          }
+        }));
+      },
 
       login: (profileId) => {
         const profile = get().profiles.find(p => p.id === profileId) ?? get().profiles[0] ?? null;

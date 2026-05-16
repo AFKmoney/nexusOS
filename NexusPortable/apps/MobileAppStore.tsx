@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Search, Download, Star, Zap, Shield, Cpu, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Search, Download, Star, Zap, Shield, Cpu, Globe, Trash2, CheckCircle2 } from 'lucide-react';
 import type { MobileAppProps } from '../types';
-
-const FEATURED = [
-  { id: 'a1', name: 'NeuralForge', desc: 'AI app builder', cat: 'Dev Tools', rating: 4.9, icon: Cpu, color: '#10b981', free: true },
-  { id: 'a2', name: 'SecureVault', desc: 'Encrypted password manager', cat: 'Security', rating: 4.7, icon: Shield, color: '#6366f1', free: false },
-  { id: 'a3', name: 'NetRunner', desc: 'Advanced web browser', cat: 'Productivity', rating: 4.5, icon: Globe, color: '#06b6d4', free: true },
-  { id: 'a4', name: 'ZapFlow', desc: 'Task automation engine', cat: 'Productivity', rating: 4.8, icon: Zap, color: '#f59e0b', free: false },
-];
+import { useMobile } from '../store/mobileStore';
 
 const CATEGORIES = ['All', 'Productivity', 'Dev Tools', 'Security', 'Media', 'Utilities'];
 
 export default function MobileAppStore({ onBack }: MobileAppProps) {
+  const { registry, installedApps, installApp, uninstallApp, openApp } = useMobile();
   const [cat, setCat] = useState('All');
   const [query, setQuery] = useState('');
-  const [installed, setInstalled] = useState<Set<string>>(new Set());
 
-  const filtered = FEATURED.filter(a =>
-    (cat === 'All' || a.cat === cat) &&
-    (a.name.toLowerCase().includes(query.toLowerCase()) || a.desc.toLowerCase().includes(query.toLowerCase()))
+  const filtered = registry.filter(a =>
+    (cat === 'All' || (a as any).category === cat) &&
+    (a.name.toLowerCase().includes(query.toLowerCase()) || (a.description || '').toLowerCase().includes(query.toLowerCase()))
   );
 
   return (
@@ -42,12 +36,13 @@ export default function MobileAppStore({ onBack }: MobileAppProps) {
       </div>
 
       {/* Categories */}
-      <div className="flex gap-2 px-4 pb-3 overflow-x-auto flex-shrink-0" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex gap-2 px-4 pb-3 overflow-x-auto flex-shrink-0 scrollbar-hide">
         {CATEGORIES.map(c => (
-          <button key={c} className="flex-none px-4 py-1.5 rounded-full text-[13px] font-medium transition-all"
+          <button key={c} className="flex-none px-4 py-1.5 rounded-full text-[13px] font-medium transition-all border border-transparent"
             style={{
               background: cat === c ? 'var(--nx-accent)' : 'rgba(255,255,255,0.07)',
               color: cat === c ? '#000' : 'rgba(255,255,255,0.5)',
+              borderColor: cat === c ? 'white' : 'transparent'
             }}
             onClick={() => setCat(c)}>
             {c}
@@ -55,41 +50,63 @@ export default function MobileAppStore({ onBack }: MobileAppProps) {
         ))}
       </div>
 
-      {/* Featured */}
+      {/* App List */}
       <div className="flex-1 overflow-y-auto px-4 pb-6">
-        <p className="section-header pl-0">Featured Apps</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Available Applications</p>
+          <span className="text-[10px] text-zinc-600 bg-white/5 px-2 py-0.5 rounded-full">{filtered.length} Apps</span>
+        </div>
+        
         <div className="space-y-3">
           {filtered.map(app => {
             const Icon = app.icon;
-            const inst = installed.has(app.id);
+            const isInstalled = installedApps.includes(app.id);
+            const iconBg = (app as any).iconBg || 'linear-gradient(135deg, #374151 0%, #111827 100%)';
+            
             return (
-              <div key={app.id} className="flex items-center gap-4 p-4 rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0"
-                  style={{ background: app.color + '20', border: `1px solid ${app.color}30` }}>
-                  <Icon size={26} style={{ color: app.color }} strokeWidth={1.8} />
+              <div key={app.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] active:bg-white/[0.05] transition-all">
+                <div className="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0 shadow-lg"
+                  style={{ background: iconBg }}>
+                  <Icon size={26} className="text-white" strokeWidth={1.8} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-[15px]">{app.name}</p>
-                  <p className="text-white/50 text-[12px] mt-0.5">{app.desc}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Star size={11} className="text-yellow-400" fill="currentColor" />
-                    <span className="text-white/40 text-[11px]">{app.rating}</span>
-                    <span className="text-white/20 text-[11px]">·</span>
-                    <span className="text-white/40 text-[11px]">{app.cat}</span>
+                  <p className="text-white font-bold text-[15px] truncate">{app.name}</p>
+                  <p className="text-white/40 text-[11px] mt-0.5 line-clamp-1">{app.description || 'Neural OS Application'}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center text-emerald-400/60">
+                      <Star size={10} fill="currentColor" />
+                      <span className="text-[10px] font-bold ml-1">4.9</span>
+                    </div>
+                    <span className="text-white/10 text-[10px]">|</span>
+                    <span className="text-[10px] text-zinc-500 font-medium">SYSTEM CORE</span>
                   </div>
                 </div>
-                <button
-                  className="px-4 py-2 rounded-xl text-[13px] font-semibold flex-shrink-0 active:scale-95 transition-all"
-                  style={{
-                    background: inst ? 'rgba(255,255,255,0.08)' : `${app.color}20`,
-                    color: inst ? 'rgba(255,255,255,0.4)' : app.color,
-                    border: `1px solid ${inst ? 'rgba(255,255,255,0.1)' : app.color + '40'}`,
-                  }}
-                  onClick={() => setInstalled(s => { const n = new Set(s); inst ? n.delete(app.id) : n.add(app.id); return n; })}
-                >
-                  {inst ? 'Open' : app.free ? 'Get' : '$2.99'}
-                </button>
+                
+                <div className="flex flex-col gap-2">
+                  {!isInstalled ? (
+                    <button
+                      className="px-4 py-2 rounded-xl text-[12px] font-black uppercase tracking-widest bg-emerald-500 text-black active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      onClick={() => installApp(app.id)}
+                    >
+                      Install
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 active:bg-white/10"
+                        onClick={() => openApp(app.id)}
+                      >
+                        <CheckCircle2 size={18} className="text-emerald-400" />
+                      </button>
+                      <button
+                        className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 active:bg-rose-500/20"
+                        onClick={() => uninstallApp(app.id)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
