@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, X, ChevronLeft, ChevronRight, Plus, Check, Box } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Plus, Check, Box, Brain, Database } from 'lucide-react';
 import { useMobile } from '../store/mobileStore';
 import { MOBILE_APPS } from '../appRegistry';
 
