@@ -37,25 +37,30 @@ export default function MobileModelManager({ onBack }: MobileAppProps) {
 
   // Group PROVIDER_PRESETS into the mobile-friendly format
   const providers = PROVIDER_PRESETS.map(preset => {
-    const meta = PROVIDER_METADATA[preset.id] || { icon: '🤖', color: '#94a3b8' };
+    const id = preset.id || 'custom';
+    const meta = PROVIDER_METADATA[id] || { icon: '🤖', color: '#94a3b8' };
+    const modelsList = preset.models || (preset.defaultModel ? [preset.defaultModel] : []);
+    
     return {
-      id: preset.id,
-      name: preset.name,
+      id,
+      name: preset.name || 'Unknown',
       icon: meta.icon,
       color: meta.color,
-      models: (preset.models || [preset.defaultModel]).map(mId => {
+      models: modelsList.map(mId => {
+        if (!mId) return null;
         // Simple heuristic for tiering
         let tier = 'standard';
-        if (mId.includes('opus') || mId.includes('pro') || mId.includes('large') || mId.includes('gpt-4o') || mId.includes('70b') || mId.includes('r1')) tier = 'premium';
-        if (mId.includes('haiku') || mId.includes('flash') || mId.includes('mini') || mId.includes('8b') || mId.includes('small')) tier = 'fast';
+        const low = mId.toLowerCase();
+        if (low.includes('opus') || low.includes('pro') || low.includes('large') || low.includes('gpt-4o') || low.includes('70b') || low.includes('r1')) tier = 'premium';
+        if (low.includes('haiku') || low.includes('flash') || low.includes('mini') || low.includes('8b') || low.includes('small')) tier = 'fast';
         
         return {
           id: mId,
           name: mId.split('/').pop() || mId, // Simplified name
-          desc: preset.id === 'openrouter' ? `Via OpenRouter: ${mId}` : `Neural model by ${preset.name}`,
+          desc: id === 'openrouter' ? `Via OpenRouter: ${mId}` : `Neural model by ${preset.name}`,
           tier
         };
-      })
+      }).filter(Boolean) as any[]
     };
   });
 
@@ -101,7 +106,7 @@ export default function MobileModelManager({ onBack }: MobileAppProps) {
             {/* Models */}
             {expandedProvider === provider.id && provider.models.map((model) => {
               const isActive = kernelRules.modelId === model.id;
-              const badge = TIER_BADGE[model.tier]!;
+              const badge = TIER_BADGE[model.tier] || TIER_BADGE.standard;
               return (
                 <button
                   key={model.id}

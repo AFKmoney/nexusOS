@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, User, Palette, Cpu, Bell, Shield, Info,
-  Moon, Wifi, Volume2, Zap, Key, Globe, Database, RotateCcw, Save, Trash2, Check, ExternalLink
+  Moon, Wifi, Volume2, Zap, Key, Globe, Database, RotateCcw, Save, Trash2, Check, ExternalLink, RefreshCw
 } from 'lucide-react';
 import type { MobileAppProps } from '../types';
 import { useMobile } from '../store/mobileStore';
@@ -44,6 +44,24 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
   const [providers] = useState(() => aiGateway.getProviders());
   const [activeProviderId, setActiveProviderId] = useState(() => aiGateway.getActiveProviderId());
   const [testing, setTesting] = useState<string | null>(null);
+
+  const testKey = async (id: string) => {
+    setTesting(id);
+    const key = apiKeys[id] || '';
+    if (!key) {
+      addNotification({ title: 'Key Missing', message: 'Please enter an API key first.', type: 'error' });
+      setTesting(null);
+      return;
+    }
+    aiGateway.updateProviderKey(id, key);
+    const res = await aiGateway.testProvider(id);
+    setTesting(null);
+    addNotification({ 
+      title: res.success ? 'Neural Link Verified' : 'Connection Failed', 
+      message: res.message, 
+      type: res.success ? 'success' : 'error' 
+    });
+  };
 
   const saveAllKeys = () => {
     providers.forEach(p => {
