@@ -37,70 +37,18 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 }
 
 export default function MobileSettings({ onBack }: MobileAppProps) {
-  const { kernelRules, updateKernelRules, accentColor, setAccentColor, addNotification, logout } = useMobile();
+  const { kernelRules, updateKernelRules, accentColor, setAccentColor, addNotification, logout, apiKeys, setApiKey } = useMobile();
   const [section, setSection] = useState<Section>('main');
   
-  // Local state for API keys to avoid excessive writes
-  const [providers, setProviders] = useState(() => aiGateway.getProviders());
+  // Local state for UI only (providers list)
+  const [providers] = useState(() => aiGateway.getProviders());
   const [activeProviderId, setActiveProviderId] = useState(() => aiGateway.getActiveProviderId());
   const [testing, setTesting] = useState<string | null>(null);
 
-  // Initialize providers if missing (sync with latest presets)
-  useEffect(() => {
-    const currentProviders = aiGateway.getProviders();
-    let changed = false;
-    
-    PROVIDER_PRESETS.forEach(preset => {
-      const existing = currentProviders.find(p => p.id === preset.id);
-      if (!existing) {
-        aiGateway.addProvider({
-          ...preset,
-          apiKey: localStorage.getItem(`nx_${preset.id}_key`) || (preset.id === 'mistral' ? 'REDACTED' : ''),
-          enabled: !!localStorage.getItem(`nx_${preset.id}_key`) || preset.id === 'mistral',
-        });
-        changed = true;
-      }
-    });
-
-    if (changed || providers.length === 0) {
-      const updated = aiGateway.getProviders();
-      setProviders(updated);
-      // Ensure mistral is active if no provider is set
-      if (aiGateway.getActiveProviderId() === 'lmstudio' && updated.find(p => p.id === 'mistral')?.apiKey) {
-        aiGateway.setActiveProvider('mistral');
-        setActiveProviderId('mistral');
-      }
-    }
-  }, []);
-
-  const updateKey = (id: string, key: string) => {
-    setProviders(prev => prev.map(p => p.id === id ? { ...p, apiKey: key, enabled: key.length > 0 } : p));
-  };
-
-  const testKey = async (id: string) => {
-    setTesting(id);
-    const p = providers.find(x => x.id === id);
-    if (!p) return;
-    
-    // Temporarily apply to gateway to test
-    aiGateway.addProvider(p);
-    const res = await aiGateway.testProvider(id);
-    setTesting(null);
-    addNotification({ 
-      title: res.success ? 'Neural Link Verified' : 'Connection Failed', 
-      message: res.message, 
-      type: res.success ? 'success' : 'error' 
-    });
-  };
-
   const saveAllKeys = () => {
     providers.forEach(p => {
-      aiGateway.addProvider(p);
-      aiGateway.updateProviderKey(p.id, p.apiKey);
-      if (p.apiKey) {
-        localStorage.setItem(`nx_${p.id}_key`, p.apiKey);
-        if (p.id === 'mistral') localStorage.setItem('nx_mistral_key', p.apiKey);
-      }
+      const key = apiKeys[p.id] || '';
+      aiGateway.updateProviderKey(p.id, key);
     });
     aiGateway.setActiveProvider(activeProviderId);
     addNotification({ title: 'AI Infrastructure', message: 'All neural links secured and synchronized.', type: 'success' });
@@ -264,12 +212,12 @@ export default function MobileSettings({ onBack }: MobileAppProps) {
                         className="mobile-input pr-10"
                         type="password"
                         placeholder={p.id === 'lmstudio' || p.id === 'ollama' ? p.baseUrl : 'Enter API Key...'}
-                        value={p.apiKey}
-                        onChange={e => updateKey(p.id, e.target.value)}
+                        value={apiKeys[p.id] || ''}
+                        onChange={e => setApiKey(p.id, e.target.value)}
                         disabled={p.id === 'lmstudio' || p.id === 'ollama'}
                         style={{ fontSize: '13px', background: 'rgba(255,255,255,0.03)' }}
                       />
-                      {p.apiKey && <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />}
+                      {(apiKeys[p.id]) && <Check size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />}
                     </div>
                     {p.id !== 'lmstudio' && p.id !== 'ollama' && (
                       <button

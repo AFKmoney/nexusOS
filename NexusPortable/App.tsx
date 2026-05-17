@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMobile } from './store/mobileStore';
 import { toolForge } from '../kernel/toolForge';
+import { aiGateway } from '../services/aiProviders';
 
 import BootScreen from './components/BootScreen';
 import LoginScreen from './components/LoginScreen';
@@ -33,8 +34,23 @@ export default function App() {
     setControlCenterOpen,
     setRecentAppsOpen,
     openApp,
-    addNotification
+    addNotification,
+    apiKeys
   } = useMobile();
+
+  // Synchronize API keys from mobile store to AI gateway
+  useEffect(() => {
+    Object.entries(apiKeys).forEach(([id, key]) => {
+      if (key) {
+        aiGateway.updateProviderKey(id, key);
+        console.log(`[AI_SYNC] Neural link synchronized: ${id}`);
+      }
+    });
+    // Auto-select Mistral if key is present and nothing else is selected
+    if (apiKeys.mistral && aiGateway.getActiveProviderId() === 'lmstudio') {
+       aiGateway.setActiveProvider('mistral');
+    }
+  }, [apiKeys]);
 
   const [locked, setLocked] = useState(false);
 
