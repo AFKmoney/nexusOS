@@ -95,8 +95,11 @@ interface MobileState {
   };
 
   installedApps: string[];
+  apiKeys: Record<string, string>;
 
   setBooted: (v: boolean) => void;
+  // ...
+  setApiKey: (providerId: string, key: string) => void;
   login: (profileId: string) => void;
   logout: () => void;
 
@@ -188,8 +191,12 @@ export const useMobile = create<MobileState>()(
       },
 
       installedApps: DEFAULT_HOME.pages.flat(),
+      apiKeys: { mistral: 'yZ3fZ2ytzJNtcaNRIfDzkFyPqyfAJXU6' },
 
       setBooted: (v) => set({ booted: v }),
+      setApiKey: (providerId, key) => set(state => ({
+        apiKeys: { ...state.apiKeys, [providerId]: key }
+      })),
       
       // ... (after logout)
       installApp: (appId) => {
@@ -354,6 +361,7 @@ export const useMobile = create<MobileState>()(
         profiles: state.profiles,
         clipboardHistory: state.clipboardHistory,
         customManifests: state.customManifests,
+        apiKeys: state.apiKeys,
       }),
     }
   )
