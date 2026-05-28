@@ -191,7 +191,7 @@ export const useMobile = create<MobileState>()(
       },
 
       installedApps: DEFAULT_HOME.pages.flat(),
-      apiKeys: { mistral: 'REDACTED' },
+      apiKeys: {},
 
       setBooted: (v) => set({ booted: v }),
       setApiKey: (providerId, key) => set(state => ({
@@ -205,10 +205,11 @@ export const useMobile = create<MobileState>()(
             const nextPages = [...state.homeConfig.pages];
             // Find first page with space (max 12 per page)
             let pageIdx = nextPages.findIndex(p => p.length < 12);
-            if (pageIdx === -1) {
+            const targetPage = pageIdx === -1 ? undefined : nextPages[pageIdx];
+            if (!targetPage) {
               nextPages.push([appId]);
             } else {
-              nextPages[pageIdx] = [...nextPages[pageIdx], appId];
+              nextPages[pageIdx] = [...targetPage, appId];
             }
             return {
               installedApps: [...state.installedApps, appId],
