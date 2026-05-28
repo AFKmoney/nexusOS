@@ -25,9 +25,11 @@ const PROVIDER_METADATA: Record<string, { icon: string; color: string }> = {
   custom: { icon: '🛠️', color: '#94a3b8' },
 };
 
-const TIER_BADGE: Record<string, { label: string; color: string }> = {
+type TierBadge = { label: string; color: string };
+const DEFAULT_BADGE: TierBadge = { label: 'Standard', color: '#10b981' };
+const TIER_BADGE: Record<string, TierBadge> = {
   premium: { label: 'Premium', color: '#f59e0b' },
-  standard: { label: 'Standard', color: '#10b981' },
+  standard: DEFAULT_BADGE,
   fast: { label: 'Fast', color: '#6366f1' },
 };
 
@@ -106,7 +108,7 @@ export default function MobileModelManager({ onBack }: MobileAppProps) {
             {/* Models */}
             {expandedProvider === provider.id && provider.models.map((model) => {
               const isActive = kernelRules.modelId === model.id;
-              const badge = TIER_BADGE[model.tier] || TIER_BADGE.standard;
+              const badge = TIER_BADGE[model.tier] ?? DEFAULT_BADGE;
               return (
                 <button
                   key={model.id}
