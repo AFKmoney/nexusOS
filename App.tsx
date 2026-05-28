@@ -5,7 +5,7 @@ import TaskSwitcher from './components/TaskSwitcher';
 import ContextMenu from './components/ContextMenu';
 import StartMenu from './components/StartMenu';
 import Taskbar from './components/Taskbar';
-import { vfs } from './kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from './kernel/fileSystem';
 import { getSmartIcon } from './utils/smartIcons';
 import { Bell, X, Info, Trash2, ArrowRight, Lock, Sparkles, Cpu, Activity, Zap, Users } from 'lucide-react';
 import { bindOsStore } from './services/puterService';
@@ -120,7 +120,7 @@ function DesktopIconGrid({
       onDrop={handleDesktopDrop}
     >
       <div className="grid grid-cols-[repeat(auto-fill,100px)] grid-rows-[repeat(auto-fill,100px)] gap-4 h-full">
-        {(vfs.listDir(desktopPath) || []).map(name => {
+        {(vfs.listDir(desktopPath, SYSTEM_VFS_APP_ID) || []).map(name => {
           const itemPath = `${desktopPath}/${name}`;
           return (
             <div
