@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ComponentType } from 'react';
+import React, { Suspense, useEffect, useState, type ComponentType } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Minus, Square, Minimize2, Box, Pin, PinOff, Droplet } from 'lucide-react';
 import { useOS } from '../store/osStore';
@@ -141,7 +141,16 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
         >
           {AppComponent ? (
             <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
-              <AppComponent windowId={windowState.id} />
+              <Suspense
+                fallback={
+                  <div className="h-full w-full flex flex-col items-center justify-center text-zinc-700">
+                    <Box size={40} className="opacity-20 mb-3 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Linking Node…</span>
+                  </div>
+                }
+              >
+                <AppComponent windowId={windowState.id} />
+              </Suspense>
             </ErrorBoundary>
           ) : (
             <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800">

@@ -2,8 +2,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { hydrateOSRegistry } from './store/osStore';
+import { hydrateOSRegistry, useOS } from './store/osStore';
 import { vfs } from './kernel/fileSystem';
+
+// Expose the OS store as a global debug/automation handle so end-to-end
+// harnesses (and devtools) can drive the OS — open apps, inspect state — without
+// scraping the DOM. Harmless in production: it is a read/write view of state the
+// user already controls in their own browser tab.
+(window as any).__NEXUS_OS__ = useOS;
 
 // CRITICAL: Hydrate app registry before first render
 hydrateOSRegistry().catch(e => console.error('[SYSTEM] Registry hydration failed:', e));
