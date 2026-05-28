@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { PROCEDURAL_WALLPAPERS } from '../appShellConstants';
 import {
   Power,
@@ -49,7 +49,7 @@ export default function StartMenu() {
 
   const recentFiles = useMemo(() => {
     if (!isStartMenuOpen) return [];
-    const list = vfs.listDir('/home/user/Desktop');
+    const list = vfs.listDir('/home/user/Desktop', SYSTEM_VFS_APP_ID);
     return (list || [])
       .map(f => {
         const fullPath = `/home/user/Desktop/${f}`;
