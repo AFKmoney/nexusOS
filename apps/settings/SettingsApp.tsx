@@ -19,7 +19,9 @@ export default function SettingsApp() {
     setUiScale,
     uiScale,
     addNotification,
-    setWallpaper
+    setWallpaper,
+    wallpaperMotionStrength,
+    setWallpaperMotionStrength
   } = useOS();
 
   const [tab, setTab] = useState<'profile' | 'system' | 'appearance' | 'daemon' | 'ai' | 'models' | 'providers'>('profile');
@@ -327,6 +329,28 @@ export default function SettingsApp() {
                         <div className="text-[9px] text-zinc-600 uppercase mt-1">Procedural Map</div>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] text-zinc-500 uppercase font-black mb-4 tracking-widest">Motion Parallax</div>
+                  <div className="p-4 rounded-2xl bg-black/30 border border-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-white">Cursor Reactivity</div>
+                        <div className="text-xs text-zinc-500">How strongly the live wallpaper shifts with your cursor</div>
+                      </div>
+                      <div className="text-xs font-mono text-emerald-400">{Math.round(wallpaperMotionStrength * 100)}%</div>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={wallpaperMotionStrength}
+                      onChange={(e) => setWallpaperMotionStrength(parseFloat(e.target.value))}
+                      className="w-full accent-emerald-500 cursor-pointer"
+                    />
                   </div>
                 </div>
               </div>

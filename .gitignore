@@ -11,6 +11,8 @@ out/
 *.dll
 *.so
 *.dylib
+*.apk
+*.tsbuildinfo
 
 # AI Models & Large Binaries
 *.gguf

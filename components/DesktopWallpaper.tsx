@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { PROCEDURAL_WALLPAPERS } from '../appShellConstants';
 import { vfs } from '../kernel/fileSystem';
+import { useOS } from '../store/osStore';
+
+// Maximum parallax shift, in pixels, at full motion strength.
+const MAX_PARALLAX_PX = 26;
 
 type DesktopWallpaperProps = {
   wallpaper: string;
@@ -46,6 +50,9 @@ function withPointerBridge(html: string): string {
 
 export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const motionStrength = useOS(state => state.wallpaperMotionStrength);
+  const motionRef = useRef(motionStrength);
+  motionRef.current = motionStrength;
 
   // Resolve the wallpaper value into either an HTML document string (animated)
   // or an image URL (static). Returns null when nothing renders.
@@ -79,11 +86,20 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
 
     const post = (kind: 'mousemove' | 'click', e: MouseEvent) => {
       const win = iframeRef.current?.contentWindow;
-      if (!win) return;
-      win.postMessage({ __nexusPointer: true, kind, x: e.clientX, y: e.clientY }, '*');
+      if (win) win.postMessage({ __nexusPointer: true, kind, x: e.clientX, y: e.clientY }, '*');
     };
 
-    const onMove = (e: MouseEvent) => post('mousemove', e);
+    // Apply generic parallax to the wallpaper surface, scaled by motion strength.
+    const applyParallax = (e: MouseEvent) => {
+      const el = iframeRef.current;
+      if (!el) return;
+      const strength = motionRef.current ?? 0;
+      const offsetX = ((e.clientX / window.innerWidth) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
+      const offsetY = ((e.clientY / window.innerHeight) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
+      el.style.transform = `scale(1.06) translate(${-offsetX}px, ${-offsetY}px)`;
+    };
+
+    const onMove = (e: MouseEvent) => { post('mousemove', e); applyParallax(e); };
     const onClick = (e: MouseEvent) => post('click', e);
 
     window.addEventListener('mousemove', onMove, { passive: true });
@@ -102,6 +118,7 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
         ref={iframeRef}
         srcDoc={resolved.doc}
         className="absolute inset-0 w-full h-full border-none pointer-events-none"
+        style={{ transform: 'scale(1.06)', transition: 'transform 0.18s ease-out', willChange: 'transform' }}
         sandbox="allow-scripts"
         title="wallpaper"
       />
