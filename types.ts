@@ -1,11 +1,17 @@
 import type { LucideIcon } from 'lucide-react';
+import type { ComponentType, LazyExoticComponent } from 'react';
 
 export type AppComponentProps =
   | { id: string }
   | { windowId: string }
   | { windowId: string; initPath?: string };
 
-export type AppComponent = (...args: any[]) => unknown;
+// A component may be eagerly imported (a function/class component) or
+// code-split via React.lazy (a LazyExoticComponent). Both are accepted so the
+// app registry can defer loading heavy app bundles until a window is opened.
+export type AppComponent =
+  | ComponentType<any>
+  | LazyExoticComponent<ComponentType<any>>;
 
 export interface WindowState {
   id: string;

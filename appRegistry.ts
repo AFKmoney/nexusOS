@@ -1,61 +1,62 @@
+import { lazy } from 'react';
 import { AppManifest } from './types';
 
 // System Apps
-import TerminalApp from './apps/Terminal';
-import NotepadApp from './apps/Notepad';
-import MonitorApp from './apps/SystemMonitor';
-import AppStoreApp from './apps/AppStore';
-import NexusPrimeApp from './apps/AionAgent';
-import NeuralForgeApp from './apps/NeuralForge';
-import FileExplorerApp from './apps/FileExplorer';
-import NetRunnerApp from './apps/NetRunner';
-import WallpaperApp from './apps/WallpaperGen';
-import FilePropertiesApp from './apps/FileProperties';
-import SilenceApp from './apps/Silence';
-import HyperIDEApp from './apps/HyperIDE';
-import UbuntuTerminalApp from './apps/UbuntuTerminal';
-import SettingsApp from './apps/Settings';
-import ModelManagerApp from './apps/ModelManager';
-import NFRApp from './apps/NFRCompressor';
-import DaemonChatApp from './apps/DaemonChat';
-import WebRunnerApp from './apps/WebRunner';
-import DashboardApp from './apps/Dashboard';
-import DaemonJournalApp from './apps/DaemonJournal';
-import WelcomeApp from './apps/WelcomeApp';
+const TerminalApp = lazy(() => import('./apps/Terminal'));
+const NotepadApp = lazy(() => import('./apps/Notepad'));
+const MonitorApp = lazy(() => import('./apps/SystemMonitor'));
+const AppStoreApp = lazy(() => import('./apps/AppStore'));
+const NexusPrimeApp = lazy(() => import('./apps/AionAgent'));
+const NeuralForgeApp = lazy(() => import('./apps/NeuralForge'));
+const FileExplorerApp = lazy(() => import('./apps/FileExplorer'));
+const NetRunnerApp = lazy(() => import('./apps/NetRunner'));
+const WallpaperApp = lazy(() => import('./apps/WallpaperGen'));
+const FilePropertiesApp = lazy(() => import('./apps/FileProperties'));
+const SilenceApp = lazy(() => import('./apps/Silence'));
+const HyperIDEApp = lazy(() => import('./apps/HyperIDE'));
+const UbuntuTerminalApp = lazy(() => import('./apps/UbuntuTerminal'));
+const SettingsApp = lazy(() => import('./apps/Settings'));
+const ModelManagerApp = lazy(() => import('./apps/ModelManager'));
+const NFRApp = lazy(() => import('./apps/NFRCompressor'));
+const DaemonChatApp = lazy(() => import('./apps/DaemonChat'));
+const WebRunnerApp = lazy(() => import('./apps/WebRunner'));
+const DashboardApp = lazy(() => import('./apps/Dashboard'));
+const DaemonJournalApp = lazy(() => import('./apps/DaemonJournal'));
+const WelcomeApp = lazy(() => import('./apps/WelcomeApp'));
 
 // ── NEW APPS (BATCH 1) ────────────────────────────────────────────────────────
-import PaintApp from './apps/PaintApp';
-import VideoPlayerApp from './apps/VideoPlayer';
-import WeatherApp from './apps/WeatherApp';
-import SystemInfoApp from './apps/SystemInfo';
-import SnippetsApp from './apps/SnippetsApp';
-import ContactsApp from './apps/ContactsApp';
-import PomodoroApp from './apps/PomodoroApp';
-import KanbanApp from './apps/KanbanApp';
+const PaintApp = lazy(() => import('./apps/PaintApp'));
+const VideoPlayerApp = lazy(() => import('./apps/VideoPlayer'));
+const WeatherApp = lazy(() => import('./apps/WeatherApp'));
+const SystemInfoApp = lazy(() => import('./apps/SystemInfo'));
+const SnippetsApp = lazy(() => import('./apps/SnippetsApp'));
+const ContactsApp = lazy(() => import('./apps/ContactsApp'));
+const PomodoroApp = lazy(() => import('./apps/PomodoroApp'));
+const KanbanApp = lazy(() => import('./apps/KanbanApp'));
 
 // ── NEW APPS (BATCH 2 & EXTRAS) ───────────────────────────────────────────────
-import PasswordManagerApp from './apps/PasswordManager';
-import VoiceRecorderApp from './apps/VoiceRecorder';
-import MarkdownPreviewApp from './apps/MarkdownPreview';
-import RSSReaderApp from './apps/RSSReader';
-import AccessibilityPanel from './apps/AccessibilityPanel';
-import HabitTrackerApp from './apps/HabitTracker';
-import ScreenshotToolApp from './apps/ScreenshotTool';
-import FractalVisualizerApp from './apps/FractalVisualizer';
+const PasswordManagerApp = lazy(() => import('./apps/PasswordManager'));
+const VoiceRecorderApp = lazy(() => import('./apps/VoiceRecorder'));
+const MarkdownPreviewApp = lazy(() => import('./apps/MarkdownPreview'));
+const RSSReaderApp = lazy(() => import('./apps/RSSReader'));
+const AccessibilityPanel = lazy(() => import('./apps/AccessibilityPanel'));
+const HabitTrackerApp = lazy(() => import('./apps/HabitTracker'));
+const ScreenshotToolApp = lazy(() => import('./apps/ScreenshotTool'));
+const FractalVisualizerApp = lazy(() => import('./apps/FractalVisualizer'));
 
-import TaskManagerApp from './apps/TaskManager';
-import DeviceManagerApp from './apps/DeviceManagerApp';
-import NativeZipApp from './apps/NativeZipApp';
-import RecycleBinApp from './apps/RecycleBinApp';
-import NotificationCenterApp from './apps/NotificationCenter';
-import ClipboardManagerApp from './apps/ClipboardManager';
-import StickyNotesApp from './apps/StickyNotes';
-import CalculatorProApp from './apps/CalculatorPro';
-import CalendarApp from './apps/CalendarApp';
-import ImageViewerApp from './apps/ImageViewer';
-import MusicPlayerApp from './apps/MusicPlayer';
-import RichEditorApp from './apps/RichEditor';
-import GovernanceDashboardApp from './apps/GovernanceDashboard';
+const TaskManagerApp = lazy(() => import('./apps/TaskManager'));
+const DeviceManagerApp = lazy(() => import('./apps/DeviceManagerApp'));
+const NativeZipApp = lazy(() => import('./apps/NativeZipApp'));
+const RecycleBinApp = lazy(() => import('./apps/RecycleBinApp'));
+const NotificationCenterApp = lazy(() => import('./apps/NotificationCenter'));
+const ClipboardManagerApp = lazy(() => import('./apps/ClipboardManager'));
+const StickyNotesApp = lazy(() => import('./apps/StickyNotes'));
+const CalculatorProApp = lazy(() => import('./apps/CalculatorPro'));
+const CalendarApp = lazy(() => import('./apps/CalendarApp'));
+const ImageViewerApp = lazy(() => import('./apps/ImageViewer'));
+const MusicPlayerApp = lazy(() => import('./apps/MusicPlayer'));
+const RichEditorApp = lazy(() => import('./apps/RichEditor'));
+const GovernanceDashboardApp = lazy(() => import('./apps/GovernanceDashboard'));
 
 import {
   Terminal, FileText, Activity, Grid, Image, Cpu, FolderOpen, Globe,
