@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useOS } from '../store/osStore';
 import { vfs } from '../kernel/fileSystem';
+import { PROCEDURAL_WALLPAPERS } from '../appShellConstants';
 import {
   Power,
   Search,
@@ -32,9 +33,11 @@ export default function StartMenu() {
     logout,
     openContextMenu,
     toggleStartMenu,
+    wallpaper,
     wallpaperEffect,
     themePreset,
     aiManagedStoreEnabled,
+    setWallpaper,
     setWallpaperEffect,
     setThemePreset,
     setAiManagedStoreEnabled,
@@ -137,12 +140,21 @@ export default function StartMenu() {
         {showControls && (
           <div className="px-6 pb-2">
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={() => setWallpaperEffect(wallpaperEffect === 'nebula' ? 'aurora' : 'nebula')}
+              <button onClick={() => {
+                  // Cycle the live procedural wallpaper and keep the effect label in sync.
+                  const keys = Object.keys(PROCEDURAL_WALLPAPERS);
+                  if (keys.length === 0) return;
+                  const idx = keys.indexOf(wallpaper);
+                  const next = keys[(idx + 1) % keys.length]!;
+                  setWallpaper(next);
+                  const label = next.split('/').pop();
+                  if (label === 'aurora' || label === 'nebula') setWallpaperEffect(label);
+                }}
                 className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
                 <Wallpaper size={14} className="text-accent" />
                 <div>
                   <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Effect</div>
-                  <div className="text-[8px] text-zinc-500 truncate">Cycle surface</div>
+                  <div className="text-[8px] text-zinc-500 truncate">{wallpaperEffect === 'aurora' ? 'Aurora' : 'Cycle surface'}</div>
                 </div>
               </button>
               <button onClick={() => setThemePreset(themePreset === 'neo-emerald' ? 'midnight-cyan' : 'neo-emerald')}
