@@ -37,7 +37,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",
     "axios": "^1.16.1",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.3",
     "dotenv": "^17.3.1",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
