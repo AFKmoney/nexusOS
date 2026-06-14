@@ -34,17 +34,17 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.23",
     "axios": "^1.16.1",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.3",
     "dotenv": "^17.3.1",
     "electron": "^41.1.0",
     "electron-builder": "^26.8.1",
     "postcss": "^8.5.13",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
-    "vite": "^6.4.2",
+    "vite": "^8.0.16",
     "wait-on": "^9.0.4"
   }
 }
