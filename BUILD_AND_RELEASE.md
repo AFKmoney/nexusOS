@@ -1,6 +1,6 @@
 # NexusOS — Build and Release Reference
 
-This document describes the build pipeline, the Electron packaging configuration, the NexusPortable mobile build pipeline, and the release-validation procedure as implemented in the repository at version 2.0.6. The desktop pipeline is manual; the Android APK is built automatically by GitHub Actions on every version tag.
+This document describes the build pipeline, the Electron packaging configuration, and the release-validation procedure as implemented in the repository at version 2.0.6. The desktop pipeline is manual.
 
 ---
 
@@ -110,7 +110,7 @@ nsis:
 1. `npm run build` — produces `dist/`.
 2. `electron-builder` — packages `dist/` plus `electron-main.cjs`, `preload.cjs`, `daemon-bridge-server.cjs`, and configured assets into an NSIS installer.
 
-The installer name is derived from `package.json` version: `NexusOS_Setup_2.0.5.exe`. The release readiness test (`kernel/tests/releaseReadiness.test.ts`) asserts that the version regex, the artifact name, and the README references are aligned.
+The installer name is derived from `package.json` version: `NexusOS_Setup_2.0.6.exe`. The release readiness test (`kernel/tests/releaseReadiness.test.ts`) asserts that the version regex, the artifact name, and the README references are aligned.
 
 ### 4.3 Code signing
 
@@ -197,7 +197,6 @@ The repository does not currently provide:
 - Code signing for the Windows installer.
 - macOS or Linux installers. Both are supported by `electron-builder` but are not configured.
 - A release checklist enforced by tooling. The desktop procedure above is manual.
-- The Android APK CI pipeline exists (`.github/workflows/build-android-apk.yml`) but the signed release APK requires the keystore secrets to be configured in the repository settings.
 
 These gaps are tracked in `docs/TOOLING_CLEANUP_PLAN.md` and addressed incrementally.
 
@@ -213,90 +212,6 @@ These gaps are tracked in `docs/TOOLING_CLEANUP_PLAN.md` and addressed increment
 
 ---
 
-## 8. NexusPortable — Mobile PWA and Android APK
+## 8. Release history note
 
-NexusPortable is a standalone React 19 + Vite 6 PWA located in `NexusPortable/`. It shares no Electron dependencies and runs in any modern mobile browser or as a native Android app via Capacitor.
-
-### 8.1 Build entry points
-
-| Command | Working directory | Purpose | Output |
-|---|---|---|---|
-| `npm run dev` | `NexusPortable/` | Vite dev server | `http://localhost:5173` |
-| `npm run build` | `NexusPortable/` | Production web bundle | `NexusPortable/dist/` |
-| `npx cap sync android` | `NexusPortable/` | Sync web assets to Android project | `NexusPortable/android/` |
-| `./gradlew assembleDebug` | `NexusPortable/android/` | Build unsigned debug APK | `android/app/build/outputs/apk/debug/` |
-| `./gradlew assembleRelease` | `NexusPortable/android/` | Build signed release APK | `android/app/build/outputs/apk/release/` |
-
-### 8.2 Local APK build (requires Android Studio)
-
-1. Install Android Studio and accept the SDK licenses for API 36.
-2. Clone the repository and install dependencies:
-   ```bash
-   cd NexusPortable
-   npm install
-   npm run build
-   npx cap sync android
-   ```
-3. Open `NexusPortable/android/` in Android Studio, or build from the command line:
-   ```bash
-   cd NexusPortable/android
-   ./gradlew assembleDebug
-   ```
-4. The APK is output to `app/build/outputs/apk/debug/app-debug.apk`.
-5. Install on a device with `adb install app-debug.apk`, or transfer and open on the device directly.
-
-### 8.3 Automated APK build (GitHub Actions)
-
-The workflow `.github/workflows/build-android-apk.yml` runs on every version tag push:
-
-```
-git tag v2.0.6
-git push origin v2.0.6
-```
-
-It produces:
-- **Debug APK** — always built; attached as an Actions artifact (30-day retention).
-- **Signed release APK** — built only when the following repository secrets are configured:
-
-| Secret | Value |
-|---|---|
-| `KEYSTORE_BASE64` | Base64-encoded `.jks` or `.keystore` file |
-| `STORE_PASSWORD` | Keystore password |
-| `KEY_ALIAS` | Key alias |
-| `KEY_PASSWORD` | Key password |
-
-To generate a keystore for the first time:
-```bash
-keytool -genkey -v -keystore nexusos-release.jks \
-  -alias nexusos -keyalg RSA -keysize 2048 -validity 10000
-base64 -w 0 nexusos-release.jks   # paste output into KEYSTORE_BASE64 secret
-```
-
-### 8.4 Capacitor configuration
-
-`NexusPortable/capacitor.config.ts` controls the Android build:
-
-- `appId: 'com.daemon.nexusos'` — stable across releases; changing it produces a new install.
-- `webDir: 'dist'` — always run `npm run build` before `cap sync`.
-- `server.androidScheme: 'https'` — required for `localStorage` and `IndexedDB` to work in WebView.
-- `android.allowMixedContent: false` — enforced for security.
-
-### 8.5 Mobile-specific requirements
-
-- **Safe-area insets** — `env(safe-area-inset-*)` CSS variables are applied throughout `index.css`; the HTML `<meta name="viewport">` includes `viewport-fit=cover`.
-- **Input font size** — all inputs use `font-size: 16px` to prevent iOS Safari from auto-zooming.
-- **Touch optimization** — `touch-action: manipulation` on all interactive elements; `-webkit-tap-highlight-color: transparent` on the shell root.
-- **PWA manifest** — `NexusPortable/manifest.json` declares `display: standalone`, `orientation: portrait`, and shortcuts for DAEMON Chat and Terminal.
-
-### 8.6 Bundle size
-
-Current NexusPortable production bundle (gzipped):
-
-| Asset | Raw | Gzipped |
-|---|---|---|
-| `index.css` | 28.5 KB | 6.7 KB |
-| `lucide-*.js` | 40.6 KB | 8.7 KB |
-| `index-*.js` | 351.5 KB | 96.7 KB |
-| **Total** | **~421 KB** | **~112 KB** |
-
-The bundle fits comfortably within Capacitor's WebView; no lazy-loading is required at this scale.
+The mobile PWA + Android APK edition previously shipped in this repository has been removed. The desktop (browser + Electron) build pipeline above is the only supported target. Older release artifacts may still be visible on the GitHub Releases page.

@@ -3,6 +3,7 @@
 
 import { uuid } from '../utils/uuid';
 import { eventBus } from './eventBus';
+import { kernelLog } from './log';
 
 const STORAGE_KEY = 'nexus_cron_v2';
 
@@ -36,7 +37,7 @@ class CronScheduler {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(this.jobs.values())));
     } catch (e) {
-      console.warn('[CronScheduler] Save failed:', e);
+      kernelLog.warn('[CronScheduler] Save failed:', e);
     }
   }
 
@@ -53,7 +54,7 @@ class CronScheduler {
         });
       }
     } catch (e) {
-      console.warn('[CronScheduler] Load failed:', e);
+      kernelLog.warn('[CronScheduler] Load failed:', e);
     }
     this.isLoaded = true;
   }

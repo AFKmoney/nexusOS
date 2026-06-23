@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
-import { useMobile } from '../NexusPortable/store/mobileStore';
 import { Loader2, AlertTriangle, RefreshCw, Code, Eye, ChevronLeft } from 'lucide-react';
 
 export default function CustomAppRunner({ windowId, onBack, appId }: { windowId: string, onBack?: () => void, appId?: string }) {
-  // Try desktop store first, then mobile store
   const desktopState = useOS();
-  const mobileState = useMobile();
-  
-  // Find app manifest in either store
-  const registry = [...desktopState.registry, ...mobileState.registry];
+
+  // Find app manifest in the desktop registry
+  const registry = desktopState.registry;
   const windows = desktopState.windows;
   
-  // For mobile, appId is passed directly. For desktop, it's in the window state.
+  // For desktop, the appId is resolved from the window state when not passed directly.
   const targetAppId = appId || windows.find(w => w.id === windowId)?.appId;
   const app = registry.find(a => a.id === targetAppId);
   const sourcePath = app?.sourcePath;

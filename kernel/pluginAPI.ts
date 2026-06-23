@@ -3,6 +3,7 @@
  */
 
 import { eventBus } from './eventBus';
+import { kernelLog } from './log';
 
 export interface PluginHook {
   id: string;
@@ -60,7 +61,7 @@ class PluginAPI {
   executeHooks(hookName: string, context: any): any[] {
     const hooks = this.hooks.get(hookName) || [];
     return hooks.map(h => {
-      try { return h.handler(context); } catch (e) { console.error(`[Plugin] Hook ${h.hookName} failed:`, e); return null; }
+      try { return h.handler(context); } catch (e) { kernelLog.error(`[Plugin] Hook ${h.hookName} failed:`, e); return null; }
     }).filter(Boolean);
   }
 

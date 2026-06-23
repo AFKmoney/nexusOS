@@ -1,5 +1,6 @@
 import { FileNode } from '../types';
 import { eventBus } from './eventBus';
+import { kernelLog } from './log';
 
 const VFS_STORAGE_KEY = 'nexus_vfs_v1';
 export const SYSTEM_VFS_APP_ID = '__system__';
@@ -181,13 +182,13 @@ export class VirtualFileSystem {
         await this.saveAsync();
       }
     } catch (e) {
-      console.error("[VFS] Failed to initialize IndexedDB:", e);
+      kernelLog.error('[VFS] Failed to initialize IndexedDB:', e);
       // Ultimate fallback
       const saved = localStorage.getItem(VFS_STORAGE_KEY);
       if (saved) this.root = JSON.parse(saved);
     }
     this.isInitialized = true;
-    console.log("[VFS] Virtual File System Initialized via IndexedDB.");
+    kernelLog.info('[VFS] Virtual File System Initialized via IndexedDB.');
   }
 
   public batch(fn: () => void) {
@@ -214,11 +215,11 @@ export class VirtualFileSystem {
     try {
       await idbPut(this.root);
     } catch (e) {
-      console.warn("[VFS] IndexedDB save failed, falling back to LocalStorage:", e);
+      kernelLog.warn('[VFS] IndexedDB save failed, falling back to LocalStorage:', e);
       try {
         localStorage.setItem(VFS_STORAGE_KEY, JSON.stringify(this.root));
       } catch (e2) {
-        console.error("[VFS] CRITICAL: Storage Quota Exceeded!", e2);
+        kernelLog.error('[VFS] CRITICAL: Storage Quota Exceeded!', e2);
       }
     }
   }
@@ -295,7 +296,7 @@ export class VirtualFileSystem {
 
   public listDir(path: string, appId?: string): string[] {
     if (!this.checkPermission(appId, 'vfs.read')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
       return [];
     }
     const node = this.resolveNode(path);
@@ -305,7 +306,7 @@ export class VirtualFileSystem {
 
   public readFile(path: string, appId?: string): string | null {
     if (!this.checkPermission(appId, 'vfs.read')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from reading ${path}`);
       return null;
     }
     const node = this.resolveNode(path);
@@ -316,7 +317,7 @@ export class VirtualFileSystem {
   private checkPermission(appId: string | undefined, req: string): boolean {
     if (appId === SYSTEM_VFS_APP_ID) return true;
     if (!appId) {
-      console.warn(`[Sandbox Enforcer] Missing appId for permission check (${req})`);
+      kernelLog.warn(`[Sandbox Enforcer] Missing appId for permission check (${req})`);
       return false;
     }
     
@@ -336,7 +337,7 @@ export class VirtualFileSystem {
 
   public writeFile(path: string, content: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from writing to ${path}`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from writing to ${path}`);
       return false;
     }
     const info = this.getParent(path);
@@ -357,7 +358,7 @@ export class VirtualFileSystem {
 
   public createDir(path: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from creating dir ${path}`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from creating dir ${path}`);
       return false;
     }
     const info = this.getParent(path);
@@ -392,7 +393,7 @@ export class VirtualFileSystem {
 
   public delete(path: string, appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from deleting ${path}`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from deleting ${path}`);
       return false;
     }
     const info = this.getParent(path);
@@ -411,7 +412,7 @@ export class VirtualFileSystem {
 
   public moveMany(moves: { oldPath: string, newPath: string }[], appId?: string): boolean {
     if (!this.checkPermission(appId, 'vfs.write')) {
-      console.error(`[Sandbox Enforcer] Blocked ${appId} from performing moveMany`);
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from performing moveMany`);
       return false;
     }
 

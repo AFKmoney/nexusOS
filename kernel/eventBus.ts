@@ -2,6 +2,8 @@
  * EVENT BUS — Centralized pub/sub system for inter-app communication
  */
 
+import { kernelLog } from './log';
+
 export type EventHandler = (payload: unknown) => void;
 
 class EventBus {
@@ -27,7 +29,7 @@ class EventBus {
     this.history.push({ event, payload, timestamp: Date.now() });
     if (this.history.length > this.maxHistory) this.history.shift();
     this.listeners.get(event)?.forEach(handler => {
-      try { handler(payload); } catch (e) { console.error(`[EventBus] Error in handler for "${event}":`, e); }
+      try { handler(payload); } catch (e) { kernelLog.error(`[EventBus] Error in handler for "${event}":`, e); }
     });
     this.listeners.get('*')?.forEach(handler => {
       try { handler({ event, payload }); } catch (e) {}
