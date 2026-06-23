@@ -109,7 +109,7 @@ export default function MonitorApp() {
                 )}
              </div>
              <div className="text-xs text-zinc-600 pt-2 border-t border-zinc-800/50 mt-2">
-                 Kernel Integration: v2.0.0 // Active-Loop: 25s
+                 Kernel Integration: v2.0.6 // Active-Loop: 25s
              </div>
           </div>
 
@@ -177,7 +177,7 @@ export default function MonitorApp() {
       </div>
 
       <div className="mt-4 flex justify-between items-center text-sm text-zinc-600 shrink-0">
-          <div>NEXUS OS KERNEL v2.0.0</div>
+          <div>NEXUS OS KERNEL v2.0.6</div>
           <div className="flex gap-4">
               <button onClick={() => systemReset(false)} className="hover:text-white transition-colors flex items-center gap-1">
                   <RefreshCw size={14} /> WARM_BOOT

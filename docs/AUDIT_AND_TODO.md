@@ -1,42 +1,91 @@
-# NexusOS: Audit & Future Roadmap
+# NexusOS — Audit & Roadmap
 
-## Current Status
-**Version:** 2.0.3
-**Core Health:** Stable
-**VFS Architecture:** Fully persistent (LocalStorage/IndexedDB).
-**App Forge:** Operational. Saves custom apps as isolated HTML files.
-**Wallpapers:** Procedural and static wallpapers are successfully decoupled and loaded from VFS.
-**Security:** Electron IPC channels (`native-exec`) are hardened with mandatory user-confirmation dialogs. `DOMPurify` protects terminal outputs and markdown rendering.
+> **Status:** Version 2.0.6 — audit pass performed June 2026.
+> This document replaces the original v2.0.3 audit log, which had drifted
+> out of sync with the actual repository state.
 
-## What's Left to Do (TODO)
+## Current status
 
-### 1. File System Limitations (High Priority) [RESOLVED]
-- **Issue**: The current VFS stores entire file contents inside a single `osStore` state object or LocalStorage string. This will eventually hit browser quota limits (typically 5MB-10MB).
-- **Fix**: The `vfs.content` storage has been migrated to `IndexedDB` as an asynchronous massive storage layer, while preserving the synchronous memory-mapped execution layer. The 5MB-10MB quota is bypassed.
+**Version:** 2.0.6
+**Build:** green (`npm run typecheck`, `npm test`, `npm run build` all pass)
+**Test suite:** 90/90 tests passing across 14 test files
+**VFS:** IndexedDB-backed with `localStorage` fallback, permission-gated by `appId`
+**App Forge:** Operational; saves custom apps as isolated HTML files in the VFS
+**Wallpapers:** Procedural and static, decoupled and loaded from the VFS
+**Security:** Electron IPC channels hardened; `native-exec` requires explicit
+user confirmation dialog before executing host commands (see
+`electron-main.cjs:180+`); `DOMPurify` protects terminal outputs and
+markdown rendering
 
-### 6. App Functional Bugs — Audit Pass 1 (v2.0.2) [RESOLVED]
-- **WeatherApp**: Was using hardcoded mock data. Now calls real **Open-Meteo API** (geocoding + 5-day forecast, no API key required).
-- **RSSReader**: Was using hardcoded fake articles. Now fetches live RSS feeds via **AllOrigins CORS proxy** with XML DOMParser.
-- **PasswordManager**: Labelled 'AES-GCM Encrypted' but stored passwords in **plain text**. Now uses real **Web Crypto API** (PBKDF2 key derivation + AES-GCM-256 encrypt/decrypt per entry).
-- **VideoPlayer**: Volume and mute state were not wired to the native `<video>` element. Fixed via `useEffect` sync.
-- **WelcomeApp**: Contained duplicate feature card and incorrect version label. Both fixed.
+## Recently resolved
 
-### 7. AI Gateway & LLM Integration (v2.0.3) [RESOLVED]
-- **Clod API**: Integrated the `api.clod.io/v1` endpoint properly. Pulled the real list of 42 available models (including `gpt-5`, `grok-4`, `claude-opus-4-7`).
-- **Free Tier Support**: Set default Clod model to `trinity-mini`, which has been verified to work on the free tier (bypassing the 'Team quota exceeded' errors).
-- **Context Limit**: Increased max tokens to 32768 for the Clod provider to ensure full app generation without truncation.
+### NexusPortable cleanup (2026)
+The mobile PWA + Android APK edition (previously under `NexusPortable/`)
+has been fully removed from this repository. The desktop (browser +
+Electron) build is the only supported target. All references in code,
+docs, scripts, and GitHub workflows have been deleted.
 
-- **Issue**: Profiles are currently local and unencrypted.
-- **Fix**: Implement a backend (e.g., Supabase or Puter SDK) to sync VFS nodes and user profiles. Add AES encryption to the VFS.
+### Build pipeline (v2.0.6)
+- `vite.config.ts` migrated from Vite 6.4 (rollup) to Vite 8 (rolldown):
+  `manualChunks` converted from object form to function form (required
+  by rolldown).
+- `puppeteer` moved from `dependencies` to `devDependencies` (it was
+  shipped to end users for no reason — only the e2e harness uses it).
 
-### 3. App Component Refactoring
-- **Issue**: `App.tsx` is over 600 lines long and handles desktop drag-and-drop, global shortcuts, contextual menus, and rendering.
-- **Fix**: Split `App.tsx` into smaller orchestrator components: `ShortcutOrchestrator`, `DesktopGrid`, `DesktopBackground`.
+### Version drift (v2.0.6)
+- `index.tsx`, `apps/WelcomeApp.tsx`, `apps/SystemMonitor.tsx` now all
+  display `v2.0.6` (were stuck at `v2.0.3` / `v2.0.0`).
+- `BUILD_AND_RELEASE.md` example installer name aligned with
+  `package.json` version.
 
-### 4. Background Daemon (Missing Bridge) [RESOLVED]
-- **Issue**: `electron-main.cjs` has `startBridgeServer()` commented out because `daemon-bridge-server.cjs` is missing.
-- **Fix**: The `daemon-bridge-server.cjs` has been re-implemented with a robust `ws` WebSocket layer, allowing DAEMON AI to execute background commands and push updates seamlessly to the UI.
+### Logging hygiene (v2.0.6)
+- All kernel, store, and service `console.log` / `console.error` calls
+  now go through `kernel/log.ts` (`kernelLog`), a single point of truth
+  that can be silenced in production via `kernelLog.setProduction(true)`.
+- 11 production `console.log` calls in boot paths, VFS init, AI
+  pipeline, and event bus have been migrated.
 
-### 5. Dependency Cleanup
-- **Issue**: The `node_modules` folder was manually copied over from a previous deployment.
-- **Fix**: Perform a clean `npm ci` after cleaning up `package.json` to ensure exact version matching across environments.
+### Documentation accuracy (v2.0.6)
+- `docs/ARCHITECTURE.md`, `docs/BUILD_AND_RELEASE.md`, `docs/TESTING.md`
+  were stale stubs that contradicted their canonical root counterparts.
+  They are now pointers to the root docs.
+- `README.md` badges aligned: Vite 8, no Android APK badge, correct
+  source-file count, PWA icon MIME type corrected in `manifest.json`.
+
+## Outstanding work
+
+### High priority
+1. **Rotate the leaked Mistral API key** still present in git history
+   (commit `eeb16f6` removed it from the working tree but did not
+   rewrite history). See `SECURITY.md` for the procedure. The key must
+   be considered compromised regardless of any future history rewrite.
+2. **Add tests for the four untested governance modules:**
+   `kernel/autonomy.ts` (750 lines, the most complex module),
+   `kernel/policyEngine.ts` (228 lines, deny-by-default policy gate),
+   `kernel/humanOverride.ts` (179 lines, the kill switch),
+   `kernel/autonomyHealthMonitor.ts` (190 lines, auto safe-mode).
+3. **Decompose the largest app components:**
+   `apps/HyperIDE.tsx` (786 lines), `apps/GovernanceDashboard.tsx`
+   (717 lines), `apps/ModelManager.tsx` (598 lines) into sub-components.
+
+### Medium priority
+4. Reduce the 116 `: any` / `as any` casts in the strict-TS codebase.
+5. Code-sign the Windows NSIS installer (see `BUILD_AND_RELEASE.md`
+   section 4.3 for the cert + electron-builder.yml procedure).
+6. Add macOS and Linux installers to `electron-builder.yml` — the
+   release.yml workflow already targets Linux (`AppImage` + `snap`) but
+   `electron-builder.yml` itself is Windows-only.
+7. Replace `compression: store` with `maximum` if installer size
+   becomes a concern (~100 MB today).
+
+### Low priority
+8. Move `apps/Settings.tsx` and `apps/ModelManagerApp.tsx` re-export
+   indirections directly into `appRegistry.ts` (currently 4 and 3 line
+   files that just re-export).
+9. The legacy `docs/index.html` and `docs/screenshots/` directory have
+   been removed (they were unreferenced and outdated). If you want a
+   static doc site, scaffold one with VitePress or Starlight rather
+   than re-adding ad-hoc HTML.
+10. Remove the `kernel/autonomy.ts` header comment that says
+    "DAEMON AUTONOMY ENGINE" — already done in this pass, but watch
+    for new version drift in module headers.

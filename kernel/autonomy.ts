@@ -14,9 +14,10 @@ import type { ActionClass, ActionScope } from './policyEngine';
 import { initGovernanceBridge } from './governanceBridge';
 import { buildGuardianDirective } from './guardianDirective';
 import { usageTracker } from './usageTracker';
+import { kernelLog } from './log';
 
 // ═══════════════════════════════════════════════════════════════════
-// DAEMON AUTONOMY ENGINE v2.0 — Event-Driven Neural Substrate
+// DAEMON AUTONOMY ENGINE — Event-Driven Neural Substrate
 // Context-aware priority queue, mission chaining, self-learning
 // ═══════════════════════════════════════════════════════════════════
 
@@ -299,7 +300,7 @@ export class AutonomyEngine {
     // tick from being scheduled at all.
     this.tick()
       .catch((err) => {
-        console.error('[AUTONOMY] tick() failed:', err);
+        kernelLog.error('[AUTONOMY] tick() failed:', err);
       })
       .finally(() => {
         if (!this.isRunning) return;
