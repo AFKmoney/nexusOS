@@ -4,6 +4,7 @@
  */
 
 import { eventBus } from './eventBus';
+import { kernelLog } from './log';
 
 export interface IPCMessage {
   from: string;      // sender appId/windowId
@@ -53,7 +54,7 @@ class IPCSystem {
       this.handlers.forEach((channels, appId) => {
         const handler = channels.get(channel);
         if (handler && appId !== from) {
-          try { handler(msg); } catch (e) { console.error(`[IPC] Error broadcasting to ${appId}:`, e); }
+          try { handler(msg); } catch (e) { kernelLog.error(`[IPC] Error broadcasting to ${appId}:`, e); }
         }
       });
       return undefined;
@@ -64,7 +65,7 @@ class IPCSystem {
     if (!targetHandlers) return undefined;
     const handler = targetHandlers.get(channel);
     if (!handler) return undefined;
-    try { return handler(msg); } catch (e) { console.error(`[IPC] Error sending to ${to}:`, e); return undefined; }
+    try { return handler(msg); } catch (e) { kernelLog.error(`[IPC] Error sending to ${to}:`, e); return undefined; }
   }
 
   /** Send and await a response (promise-based RPC) */

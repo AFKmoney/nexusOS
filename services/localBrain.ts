@@ -1,4 +1,5 @@
 import { Wllama } from '@wllama/wllama/esm/index.js';
+import { kernelLog } from '../kernel/log';
 
 export interface ModelConfig {
   id: string;
@@ -185,7 +186,7 @@ export class LocalBrain {
         this.activeModelId = DEFAULT_MODEL.id;
         safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
     } catch (e: any) {
-        console.error('[DAEMON_DL_ERR]', e);
+        kernelLog.error('[DAEMON_DL_ERR]', e);
         throw new Error(`Failed to download DAEMON weights: ${e.message}`);
     }
   }
@@ -228,7 +229,7 @@ export class LocalBrain {
     
     this.modelReady = false;
     this.initPromise = null;
-    this.initialize().catch(console.error);
+    this.initialize().catch(e => kernelLog.error('[NEURAL_CORE] init failed:', e));
   }
 
   public async switchModel(id: string, onProgress?: (pct: number, msg: string) => void): Promise<void> {
@@ -289,7 +290,7 @@ export class LocalBrain {
       }
 
       try {
-        console.log('[NEURAL_CORE] Initializing Wllama Node...');
+        kernelLog.info('[NEURAL_CORE] Initializing Wllama Node...');
         this.onLoadProgress?.(5, 'Initializing Wllama engine...');
 
         this.wllama = new Wllama({
@@ -298,9 +299,9 @@ export class LocalBrain {
         }, {
           logger: {
             debug: () => {},
-            log:   (...a) => { console.log('[WLLAMA]', ...a); },
-            warn:  (...a) => console.warn('[WLLAMA_WARN]', ...a),
-            error: (...a) => console.error('[WLLAMA_ERR]', ...a),
+            log:   (...a) => { kernelLog.debug('[WLLAMA]', ...a); },
+            warn:  (...a) => kernelLog.warn('[WLLAMA_WARN]', ...a),
+            error: (...a) => kernelLog.error('[WLLAMA_ERR]', ...a),
           }
         });
 
@@ -319,7 +320,7 @@ export class LocalBrain {
         this.modelReady = true;
         this.onLoadProgress?.(100, 'Neural Core Instantiated.');
       } catch (e) {
-        console.error('[NEURAL_CORE] FATAL NATIVE INITIALIZATION:', e);
+        kernelLog.error('[NEURAL_CORE] FATAL NATIVE INITIALIZATION:', e);
         this.modelReady = false;
         this.initPromise = null;
         throw e;
@@ -379,7 +380,7 @@ export class LocalBrain {
              }
              return content;
          } catch (e) {
-             console.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
+             kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
              // Silently switch to default local model for this request
              model = DEFAULT_MODEL;
              if (!this.wllama) {
@@ -440,7 +441,7 @@ export class LocalBrain {
            }
            return;
          } catch {
-           console.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable during stream, switching.');
+           kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable during stream, switching.');
            model = DEFAULT_MODEL;
            if (!this.wllama) {
                this.activeModelId = DEFAULT_MODEL.id;
@@ -463,7 +464,7 @@ export class LocalBrain {
           onToken(text);
         }
       } catch (e) {
-        console.error('[NEURAL_STREAM]:', e);
+        kernelLog.error('[NEURAL_STREAM]:', e);
         const message = e instanceof Error ? e.message : String(e);
         onToken(`\n[SYSTEM ERROR NATIVE LFM: ${message}]`);
       }
@@ -521,7 +522,7 @@ export class LocalBrain {
         };
       });
     } catch (e) {
-      console.error('[HF_SEARCH_ERR]', e);
+      kernelLog.error('[HF_SEARCH_ERR]', e);
       return [];
     }
   }

@@ -1,6 +1,7 @@
 // ── File Watcher ──────────────────────────────────────────────────────────
 // Watches VFS paths for changes and triggers callbacks
 import { uuid } from '../utils/uuid';
+import { kernelLog } from './log';
 
 export type WatchEvent = 'create' | 'modify' | 'delete';
 
@@ -29,7 +30,7 @@ class FileWatcher {
   notify(event: WatchEvent, filePath: string) {
     this.watchers.forEach(w => {
       if (filePath === w.path || (w.recursive && filePath.startsWith(w.path))) {
-        try { w.callback(event, filePath); } catch (e) { console.error('[FileWatcher] callback error:', e); }
+        try { w.callback(event, filePath); } catch (e) { kernelLog.error('[FileWatcher] callback error:', e); }
       }
     });
   }

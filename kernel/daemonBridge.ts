@@ -18,6 +18,7 @@ import { useOS } from '../store/osStore';
 import { autonomy } from './autonomy';
 import { eventBus } from './eventBus';
 import { uuid } from '../utils/uuid';
+import { kernelLog } from './log';
 
 // ═══════════════════════════════════════════════════════════════════
 // DAEMON CORE STATE — Persisted in localStorage + VFS
@@ -314,7 +315,7 @@ class DaemonBridge {
             });
         });
     } catch (e: any) {
-        console.warn('[DAEMON_BRIDGE] Model weight check skipped or failed:', e.message);
+        kernelLog.warn('[DAEMON_BRIDGE] Model weight check skipped or failed:', e.message);
         // We don't fail the whole install, but DAEMON won't be "intelligent" without weights
     }
 
@@ -423,10 +424,10 @@ class DaemonBridge {
           const os = useOS.getState();
           os.addAutonomyLog(`◈ DAEMON SMART-NODE: Triggered hook in ${parentDir}`);
           // Hook execution is intentionally disabled for safety in this hardened build.
-          console.warn(`[DAEMON SMART-NODE] Hook present at ${hookPath} but execution is disabled for safety.`);
+          kernelLog.warn(`[DAEMON SMART-NODE] Hook present at ${hookPath} but execution is disabled for safety.`);
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error(`[DAEMON SMART-NODE] Hook error in ${hookPath}:`, message);
+          kernelLog.error(`[DAEMON SMART-NODE] Hook error in ${hookPath}:`, message);
         }
       }
     };
@@ -492,7 +493,7 @@ class DaemonBridge {
           emitDaemonEvent('daemon:self-heal', { reason: 'autonomy_down', timestamp: Date.now() });
         }
       } catch (e) {
-        console.error('[DAEMON WATCHDOG ERROR]', e);
+        kernelLog.error('[DAEMON WATCHDOG ERROR]', e);
       }
     }, 120000); // Check every 2 minutes
   }
@@ -525,7 +526,7 @@ class DaemonBridge {
       const existing = vfs.readFile(journalFile, SYSTEM_VFS_APP_ID) || '';
       vfs.writeFile(journalFile, existing + snapshot + '\n', SYSTEM_VFS_APP_ID);
     } catch (e) {
-      console.error('[DAEMON JOURNAL ERROR]', e);
+      kernelLog.error('[DAEMON JOURNAL ERROR]', e);
     }
   }
 
@@ -596,7 +597,7 @@ class DaemonBridge {
           os.addAutonomyLog('◈ GHOST V2: Usage patterns analyzed. System nominal.');
 
       } catch (e) {
-          console.error('[DAEMON GHOST MODE V2 ERROR]', e);
+          kernelLog.error('[DAEMON GHOST MODE V2 ERROR]', e);
       }
   }
 
