@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { aiService } from '../services/puterService';
 import { Paintbrush, Loader2, Check, Wand2, Sparkles, Dices, Zap, Star, Eye, Code, Trash2 } from 'lucide-react';
 import { WALLPAPER_LIBRARY } from '../kernel/wallpaperLibrary';
@@ -20,7 +20,9 @@ export default function WallpaperApp() {
   }, []);
 
   const loadUserWallpapers = () => {
-    const files = vfs.listDir('/home/user/Wallpapers');
+    // Ensure the user wallpapers directory exists before listing it.
+    vfs.createDirRecursive('/home/user/Wallpapers', SYSTEM_VFS_APP_ID);
+    const files = vfs.listDir('/home/user/Wallpapers', SYSTEM_VFS_APP_ID) || [];
     const wallFiles = files.map(name => {
       const path = `/home/user/Wallpapers/${name}`;
       const stat = vfs.stat(path);
@@ -36,12 +38,17 @@ export default function WallpaperApp() {
     setUserWallpapers(wallFiles);
   };
 
+  // System presets are seeded into /system/wallpapers/ at boot by
+  // index.tsx → vfs.seedSystemWallpapers(). Each preset's `code` field
+  // is overwritten with the VFS path so that setWallpaper() stores the
+  // path (short string) instead of the full inline HTML (10KB+).
   const systemPresets = WALLPAPER_LIBRARY.map(wp => {
     const path = `/system/wallpapers/${wp.id}.html`;
-    // If the file exists in system VFS, use the path as code
     if (vfs.resolveNode(path)) {
       return { ...wp, code: path };
     }
+    // Fallback: if VFS seeding hasn't run yet (shouldn't happen after
+    // boot), use the inline HTML so the wallpaper still renders.
     return wp;
   });
 
@@ -80,24 +87,30 @@ export default function WallpaperApp() {
 
       if (cleanCode.includes('<!DOCTYPE') || cleanCode.includes('<html')) {
         const timestamp = Date.now();
-        vfs.createDir('/home/user/Wallpapers');
+        // Ensure /home/user/Wallpapers exists (createDirRecursive is
+        // idempotent — safe to call even if the directory already exists).
+        vfs.createDirRecursive('/home/user/Wallpapers', SYSTEM_VFS_APP_ID);
         const filePath = `/home/user/Wallpapers/Synthesis_${timestamp}.html`;
-        vfs.writeFile(filePath, cleanCode);
+        vfs.writeFile(filePath, cleanCode, SYSTEM_VFS_APP_ID);
         setWallpaper(filePath);
         loadUserWallpapers(); // Refresh list
         addNotification({ title: 'Neural Art', message: `Wallpaper synthesized and saved to ${filePath}`, type: 'success' });
       } else {
-        throw new Error("Invalid generation format");
+        // The AI returned text that isn't an HTML document. This usually
+        // means no AI provider is configured, or the model returned an
+        // error message instead of code.
+        throw new Error(code.slice(0, 200));
       }
-    } catch (e) {
-      addNotification({ title: 'Synthesis Error', message: 'Could not manifest vision.', type: 'error' });
+    } catch (e: any) {
+      const msg = e?.message || 'Could not manifest vision.';
+      addNotification({ title: 'Synthesis Error', message: msg, type: 'error' });
     }
     setIsGenerating(false);
   };
 
   const deleteWallpaper = (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
-    if (vfs.delete(path)) {
+    if (vfs.delete(path, SYSTEM_VFS_APP_ID)) {
       loadUserWallpapers();
       addNotification({ title: 'System', message: 'Wallpaper deleted.', type: 'info' });
     }

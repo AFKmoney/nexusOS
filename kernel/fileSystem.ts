@@ -37,6 +37,14 @@ const INITIAL_FS: { [key: string]: FileNode } = {
               }
             }
           },
+          Wallpapers: {
+            name: 'Wallpapers',
+            type: 'directory',
+            permissions: 'rwx',
+            created: Date.now(),
+            modified: Date.now(),
+            children: {}
+          },
           Trash: {
             name: 'Trash',
             type: 'directory',
@@ -97,6 +105,14 @@ const INITIAL_FS: { [key: string]: FileNode } = {
             modified: Date.now()
           }
         }
+      },
+      wallpapers: {
+        name: 'wallpapers',
+        type: 'directory',
+        permissions: 'r--',
+        created: Date.now(),
+        modified: Date.now(),
+        children: {}
       }
     }
   }
@@ -189,6 +205,40 @@ export class VirtualFileSystem {
     }
     this.isInitialized = true;
     kernelLog.info('[VFS] Virtual File System Initialized via IndexedDB.');
+  }
+
+  // Seed system wallpaper files into /system/wallpapers/ if they are
+  // missing. Called once at boot (after init()) by index.tsx. Idempotent:
+  // existing files are never overwritten, so user modifications to system
+  // wallpapers (if any) are preserved.
+  public seedSystemWallpapers(library: Array<{ id: string; code: string }>): void {
+    if (!this.isInitialized) return;
+    const dir = this.resolveNode('/system/wallpapers');
+    if (!dir || dir.type !== 'directory') {
+      // Should never happen — INITIAL_FS creates /system/wallpapers/ —
+      // but guard defensively in case a future migration changes the tree.
+      kernelLog.warn('[VFS] /system/wallpapers not found, skipping wallpaper seed.');
+      return;
+    }
+    if (!dir.children) dir.children = {};
+    let added = 0;
+    for (const wp of library) {
+      const filename = `${wp.id}.html`;
+      if (dir.children[filename]) continue; // Don't overwrite
+      dir.children[filename] = {
+        name: filename,
+        type: 'file',
+        permissions: 'r--',
+        content: wp.code,
+        created: Date.now(),
+        modified: Date.now(),
+      };
+      added++;
+    }
+    if (added > 0) {
+      this.save();
+      kernelLog.info(`[VFS] Seeded ${added} system wallpapers into /system/wallpapers/`);
+    }
   }
 
   public batch(fn: () => void) {
@@ -369,6 +419,43 @@ export class VirtualFileSystem {
     parent.children[name] = { name, type: 'directory', permissions: 'rwx', children: {}, created: Date.now(), modified: Date.now() };
     this.save();
     eventBus.emit('VFS_DIR_CREATED', { path, appId });
+    return true;
+  }
+
+  // Recursively create a directory and all missing parents. Idempotent —
+  // returns true if the directory exists at the end of the call, whether
+  // it was just created or already existed. Used by the wallpaper system
+  // and any other feature that needs a guaranteed-present nested path.
+  public createDirRecursive(path: string, appId?: string): boolean {
+    if (!this.checkPermission(appId, 'vfs.write')) {
+      kernelLog.error(`[Sandbox Enforcer] Blocked ${appId} from creating dir ${path}`);
+      return false;
+    }
+    const normalized = this.normalizeInputPath(path);
+    if (!normalized || normalized === '/') return true;
+
+    const parts = normalized.split('/').filter(p => p);
+    let current: { [key: string]: FileNode } = this.root;
+
+    for (const part of parts) {
+      if (!current[part]) {
+        current[part] = {
+          name: part,
+          type: 'directory',
+          permissions: 'rwx',
+          children: {},
+          created: Date.now(),
+          modified: Date.now(),
+        };
+      } else if (current[part].type !== 'directory') {
+        return false; // A non-directory file already exists at this path
+      }
+      if (!current[part].children) current[part].children = {};
+      current = current[part].children;
+    }
+
+    this.save();
+    eventBus.emit('VFS_DIR_CREATED', { path: normalized, appId });
     return true;
   }
 

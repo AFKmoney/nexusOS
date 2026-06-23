@@ -176,5 +176,45 @@ export const WALLPAPER_LIBRARY: WallpaperPreset[] = [
     desc: 'Intelligent boid swarm avoids cursor',
     preview: 'from-sky-950 via-black to-cyan-950',
     code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#010408"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,mx=0,my=0,boids=[];function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);boids=[];for(let i=0;i<180;i++)boids.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*2,vy:(Math.random()-.5)*2,hue:180+Math.random()*40});}window.onresize=init;window.onmousemove=e=>{mx=e.clientX;my=e.clientY};init();function draw(){g.fillStyle=\'rgba(1,4,8,0.12)\';g.fillRect(0,0,W,H);boids.forEach(b=>{let ax=0,ay=0,sx=0,sy=0,cx=0,cy=0,cn=0,sn=0;const mdx=b.x-mx,mdy=b.y-my,md=Math.sqrt(mdx*mdx+mdy*mdy);if(md<150&&md>0){ax+=mdx/md*(150-md)*.04;ay+=mdy/md*(150-md)*.04;}boids.forEach(o=>{if(o===b)return;const dx=o.x-b.x,dy=o.y-b.y,d=Math.sqrt(dx*dx+dy*dy);if(d<80&&d>0){if(d<25){sx-=dx/d;sy-=dy/d;sn++;}cx+=o.x;cy+=o.y;cn++;ax+=o.vx*.02;ay+=o.vy*.02;}});if(cn>0){ax+=(cx/cn-b.x)*.003;ay+=(cy/cn-b.y)*.003;}if(sn>0){ax+=sx/sn*.1;ay+=sy/sn*.1;}b.vx=(b.vx+ax)*.97;b.vy=(b.vy+ay)*.97;const spd=Math.sqrt(b.vx*b.vx+b.vy*b.vy);if(spd>4){b.vx*=4/spd;b.vy*=4/spd;}if(spd<.5){b.vx+=(Math.random()-.5)*.3;b.vy+=(Math.random()-.5)*.3;}b.x+=b.vx;b.y+=b.vy;if(b.x<0)b.x=W;if(b.x>W)b.x=0;if(b.y<0)b.y=H;if(b.y>H)b.y=0;const angle=Math.atan2(b.vy,b.vx);g.save();g.translate(b.x,b.y);g.rotate(angle);g.fillStyle=\'hsla(\'+b.hue+\',100%,70%,0.8)\';g.beginPath();g.moveTo(5,0);g.lineTo(-3,2.5);g.lineTo(-3,-2.5);g.closePath();g.fill();g.restore();});requestAnimationFrame(draw);}draw();</script></body></html>'
+  },
+  {
+    id: 'PLASMA_BLOOM',
+    name: 'Plasma Bloom',
+    category: 'Abstract',
+    desc: 'Organic plasma fields with color drift',
+    preview: 'from-fuchsia-950 via-black to-violet-950',
+    code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#050008"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,t=0;function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);}window.onresize=init;init();function draw(){g.fillStyle=\'rgba(5,0,8,0.03)\';g.fillRect(0,0,W,H);t+=0.008;for(let i=0;i<6;i++){const x=W*(0.5+Math.sin(t*0.3+i*1.5)*0.3);const y=H*(0.5+Math.cos(t*0.4+i*1.2)*0.3);const r=80+Math.sin(t+i)*40+Math.cos(t*1.3+i)*30;const hue=(t*20+i*60)%360;const grd=g.createRadialGradient(x,y,0,x,y,r);grd.addColorStop(0,\'hsla(\'+hue+\',100%,60%,0.12)\');grd.addColorStop(0.5,\'hsla(\'+(hue+30)%360+\',100%,50%,0.06)\');grd.addColorStop(1,\'transparent\');g.fillStyle=grd;g.fillRect(0,0,W,H);}requestAnimationFrame(draw);}draw();</script></body></html>'
+  },
+  {
+    id: 'CONSTELLATION',
+    name: 'Constellation',
+    category: 'Space',
+    desc: 'Star chart with reactive connective lines',
+    preview: 'from-indigo-950 via-black to-slate-950',
+    code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#010108"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,mx=0,my=0,stars=[],t=0;function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.5+0.5,tw:Math.random()*6.28,speed:Math.random()*0.3+0.1});}window.onresize=init;window.onmousemove=e=>{mx=e.clientX;my=e.clientY};init();function draw(){g.fillStyle=\'rgba(1,1,8,0.2)\';g.fillRect(0,0,W,H);t+=0.01;stars.forEach(s=>{s.x+=s.speed;if(s.x>W)s.x=0;const tw=Math.sin(t*s.tw*2)*0.5+0.5;g.beginPath();g.arc(s.x,s.y,s.r,0,6.28);g.fillStyle=\'rgba(200,220,255,\'+(0.3+tw*0.7)+\')\';g.fill();});for(let i=0;i<stars.length;i++){for(let j=i+1;j<stars.length;j++){const dx=stars[j].x-stars[i].x,dy=stars[j].y-stars[i].y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){const a=(1-d/100)*0.15;g.beginPath();g.moveTo(stars[i].x,stars[i].y);g.lineTo(stars[j].x,stars[j].y);g.strokeStyle=\'rgba(100,150,255,\'+a+\')\';g.lineWidth=0.5;g.stroke();}}const mdx=stars[i].x-mx,mdy=stars[i].y-my,md=Math.sqrt(mdx*mdx+mdy*mdy);if(md<200){g.beginPath();g.moveTo(stars[i].x,stars[i].y);g.lineTo(mx,my);g.strokeStyle=\'rgba(180,200,255,\'+(1-md/200)*0.3+\')\';g.lineWidth=0.8;g.stroke();}}requestAnimationFrame(draw);}draw();</script></body></html>'
+  },
+  {
+    id: 'VORTEX_SPIRAL',
+    name: 'Vortex Spiral',
+    category: 'Abstract',
+    desc: 'Hypnotic particle spiral with color shift',
+    preview: 'from-purple-950 via-black to-pink-950',
+    code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#040008"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,t=0;function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);}window.onresize=init;init();function draw(){g.fillStyle=\'rgba(4,0,8,0.08)\';g.fillRect(0,0,W,H);t+=0.006;const cx=W/2,cy=H/2;for(let i=0;i<300;i++){const angle=t+i*0.15;const radius=i*1.8+Math.sin(t*2+i*0.1)*20;const x=cx+Math.cos(angle)*radius;const y=cy+Math.sin(angle)*radius;const hue=(i*1.2+t*30)%360;const size=2+Math.sin(t+i*0.05)*1.5;g.beginPath();g.arc(x,y,Math.max(0.5,size),0,6.28);g.fillStyle=\'hsla(\'+hue+\',90%,65%,0.7)\';g.fill();}requestAnimationFrame(draw);}draw();</script></body></html>'
+  },
+  {
+    id: 'GLITCH_MATRIX',
+    name: 'Glitch Matrix',
+    category: 'Cyberpunk',
+    desc: 'Digital rain with RGB chromatic aberration',
+    preview: 'from-green-950 via-black to-emerald-950',
+    code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#000300"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,cols,drops=[];const chars="01ｱｲｳｴｵｶｷｸｹｺ#$%&@!?";function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);cols=Math.floor(W/16);drops=[];for(let i=0;i<cols;i++)drops.push({y:Math.random()*-H,speed:2+Math.random()*4,glitch:Math.random()});}window.onresize=init;init();function draw(){g.fillStyle=\'rgba(0,3,0,0.05)\';g.fillRect(0,0,W,H);drops.forEach((d,i)=>{d.y+=d.speed;if(d.y>H&&Math.random()>0.97){d.y=0;d.glitch=Math.random();}const x=i*16;const char=chars[Math.floor(Math.random()*chars.length)];g.font=\'14px monospace\';if(d.glitch>0.7){g.fillStyle=\'rgba(255,0,80,0.6)\';g.fillText(char,x-2,d.y);g.fillStyle=\'rgba(0,255,200,0.6)\';g.fillText(char,x+2,d.y);}g.fillStyle=\'rgba(180,255,200,0.95)\';g.fillText(char,x,d.y);for(let j=1;j<12;j++){const cy=d.y-j*16;if(cy<0)break;g.fillStyle="rgba(0,255,"+Math.floor(120-j*8)+","+(0.8-j*0.06)+")";g.fillText(chars[Math.floor(Math.random()*chars.length)],x,cy);}});requestAnimationFrame(draw);}draw();</script></body></html>'
+  },
+  {
+    id: 'AURORA_WAVES',
+    name: 'Aurora Waves',
+    category: 'Space',
+    desc: 'Layered aurora borealis with starfield',
+    preview: 'from-teal-950 via-black to-emerald-950',
+    code: '<!DOCTYPE html><html><body style="margin:0;overflow:hidden;background:#01030a"><canvas id="c"></canvas><script>const c=document.getElementById(\'c\'),g=c.getContext(\'2d\');let W,H,t=0,stars=[];function init(){W=innerWidth;H=innerHeight;c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;c.style.width=W+\'px\';c.style.height=H+\'px\';g.scale(devicePixelRatio,devicePixelRatio);stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*W,y:Math.random()*H*0.5,r:Math.random()*1.2,a:Math.random()});}window.onresize=init;init();const bands=[{hue:160,phase:0,speed:1},{hue:180,phase:2,speed:1.4},{hue:280,phase:4,speed:0.8},{hue:140,phase:1,speed:1.6}];function draw(){g.fillStyle=\'rgba(1,3,10,0.12)\';g.fillRect(0,0,W,H);t+=0.008;stars.forEach(s=>{g.beginPath();g.arc(s.x,s.y,s.r,0,6.28);g.fillStyle=\'rgba(255,255,255,\'+(s.a*(0.4+Math.sin(t*s.r*5)*0.4))+\')\';g.fill();});bands.forEach(b=>{g.beginPath();for(let x=0;x<=W;x+=3){const y=H*0.35+Math.sin(x*0.003+t*b.speed+b.phase)*H*0.1+Math.sin(x*0.008-t)*H*0.05;g.lineTo(x,y);}g.lineTo(W,H);g.lineTo(0,H);g.closePath();const grd=g.createLinearGradient(0,H*0.3,0,H*0.7);grd.addColorStop(0,\'transparent\');grd.addColorStop(0.3,\'hsla(\'+b.hue+\',100%,55%,0.08)\');grd.addColorStop(0.6,\'hsla(\'+b.hue+\',100%,45%,0.15)\');grd.addColorStop(1,\'transparent\');g.fillStyle=grd;g.fill();g.strokeStyle=\'hsla(\'+b.hue+\',100%,70%,0.3)\';g.lineWidth=1;g.stroke();});requestAnimationFrame(draw);}draw();</script></body></html>'
   }
 ];

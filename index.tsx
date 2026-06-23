@@ -5,6 +5,7 @@ import './index.css';
 import { hydrateOSRegistry, useOS } from './store/osStore';
 import { vfs } from './kernel/fileSystem';
 import { kernelLog } from './kernel/log';
+import { WALLPAPER_LIBRARY } from './kernel/wallpaperLibrary';
 
 // Expose the OS store as a global debug/automation handle so end-to-end
 // harnesses (and devtools) can drive the OS — open apps, inspect state — without
@@ -79,7 +80,10 @@ async function bootSystem() {
   try {
     kernelLog.info('[SYSTEM] Initializing Storage Architecture (VFS)...');
     await vfs.init();
-    
+    // Seed system wallpapers into /system/wallpapers/ so they are
+    // addressable by VFS path (cheaper to persist than inline HTML).
+    vfs.seedSystemWallpapers(WALLPAPER_LIBRARY);
+
     kernelLog.info('[SYSTEM] Mounting React Root...');
     root.render(<App />);
     kernelLog.info('[SYSTEM] React Mount Requested.');
