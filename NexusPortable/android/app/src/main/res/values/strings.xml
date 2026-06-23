@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">NexusOS</string>
-    <string name="title_activity_main">NexusOS</string>
-    <string name="package_name">com.daemon.nexusos</string>
-    <string name="custom_url_scheme">com.daemon.nexusos</string>
-</resources>
