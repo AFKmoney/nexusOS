@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOS } from '../store/osStore';
 import {
   RefreshCw, AlertTriangle, ExternalLink, ArrowLeft, ArrowRight,
@@ -6,16 +6,22 @@ import {
 } from 'lucide-react';
 import { aiPipelineBridge } from '../kernel/aiPipelineBridge';
 import { vfs } from '../kernel/fileSystem';
+import { browserBridge, type BrowserCommand, type BrowserExtractResult, type BrowserState } from '../kernel/browserBridge';
 
 /**
  * WebRunner — NexusOS Embedded Web Browser
- * 
+ *
  * Two rendering strategies:
  * 1. PROXY MODE (default): Fetches page HTML via CORS proxy, renders in srcdoc iframe.
  *    Works with most sites since we bypass X-Frame-Options entirely.
- * 2. DIRECT MODE: Standard iframe src=url. Only works for frame-friendly sites.
- * 
- * Users can toggle between modes or open in system browser as fallback.
+ * 2. NATIVE MODE (Electron only): When window.electron is available and the
+ *    'browser-navigate' IPC channel is registered, WebRunner delegates
+ *    rendering to a real Chromium BrowserView owned by the main process.
+ *    This gives the AI true Chromium-level DOM access for BROWSE_EXTRACT,
+ *    BROWSE_CLICK, and BROWSE_INPUT.
+ *
+ * In both modes, WebRunner registers itself with the browserBridge so that
+ * AI-issued OS::BROWSE_* actions are routed here.
  */
 
 const CORS_PROXIES = [
@@ -50,9 +56,146 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
   const [isSecure, setIsSecure] = useState(false);
   const [hasAutoNavigated, setHasAutoNavigated] = useState(false);
 
+  // Iframe ref — used for BROWSE_EXTRACT / BROWSE_CLICK / BROWSE_INPUT
+  // in proxy mode. In native mode, the main-process BrowserView owns
+  // the DOM and we delegate via IPC.
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Whether we have a real Chromium BrowserView in the main process.
+  const isNativeMode = typeof window !== 'undefined'
+    && !!(window as any).electron
+    && typeof (window as any).electron.invoke === 'function';
+
   useEffect(() => {
     setIsSecure(currentUrl.startsWith('https://'));
   }, [currentUrl]);
+
+  // ─── Browser bridge registration ───────────────────────────────────
+  // Register this WebRunner instance as the active browser surface so
+  // that AI-issued OS::BROWSE_* commands are routed here. Unregister on
+  // unmount so a different browser window can become active.
+  useEffect(() => {
+    const surfaceId = `webrunner-${windowId}-${Date.now()}`;
+
+    const executeCommand = async (cmd: BrowserCommand): Promise<unknown> => {
+      switch (cmd.kind) {
+        case 'navigate':
+          navigate(cmd.url);
+          return undefined;
+        case 'back':
+          goBack();
+          return undefined;
+        case 'forward':
+          goForward();
+          return undefined;
+        case 'reload':
+          refresh();
+          return undefined;
+        case 'scroll':
+          return executeInIframe((win) => {
+            win.scrollBy(cmd.deltaX, cmd.deltaY);
+            return true;
+          });
+        case 'click':
+          return executeInIframe((win) => {
+            const el = win.document.querySelector(cmd.selector);
+            if (el instanceof HTMLElement) { el.click(); return true; }
+            return false;
+          });
+        case 'input':
+          return executeInIframe((win) => {
+            const el = win.document.querySelector(cmd.selector);
+            const EventCtor = (win as any).Event ?? Event;
+            if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+              el.value = cmd.value;
+              el.dispatchEvent(new EventCtor('input', { bubbles: true }));
+              el.dispatchEvent(new EventCtor('change', { bubbles: true }));
+              return true;
+            }
+            return false;
+          });
+        case 'extract':
+          return extractFromIframe(cmd.selector ?? 'body', cmd.maxChars ?? 8000);
+        default:
+          throw new Error(`Unknown browser command: ${(cmd as BrowserCommand).kind}`);
+      }
+    };
+
+    const getState = (): BrowserState => ({
+      url: currentUrl,
+      title: hostname,
+      isLoading,
+      canGoBack: backStack.length > 0,
+      canGoForward: fwdStack.length > 0,
+      isNative: isNativeMode,
+    });
+
+    const unregister = browserBridge.register({
+      id: surfaceId,
+      execute: executeCommand,
+      getState,
+    });
+
+    return () => {
+      unregister();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowId, currentUrl, isLoading, backStack, fwdStack]);
+
+  // Report state to the bridge whenever it changes so the AI sees fresh data.
+  useEffect(() => {
+    browserBridge.reportState({
+      url: currentUrl,
+      title: hostname,
+      isLoading,
+      canGoBack: backStack.length > 0,
+      canGoForward: fwdStack.length > 0,
+      isNative: isNativeMode,
+    });
+  }, [currentUrl, isLoading, backStack, fwdStack, isNativeMode]);
+
+  // ─── Iframe DOM access helpers (proxy mode) ────────────────────────
+  // These run a callback inside the iframe's contentWindow. Returns null
+  // when the iframe is cross-origin (proxy mode usually gives us
+  // same-origin via srcDoc, but some pages redirect to their real origin).
+  const executeInIframe = <T,>(fn: (win: Window) => T): T | null => {
+    const iframe = iframeRef.current;
+    if (!iframe) return null;
+    try {
+      const win = iframe.contentWindow;
+      if (!win) return null;
+      return fn(win);
+    } catch {
+      // Cross-origin — can't access. This is expected for some proxied pages.
+      return null;
+    }
+  };
+
+  const extractFromIframe = (selector: string, maxChars: number): BrowserExtractResult => {
+    const fallback: BrowserExtractResult = {
+      url: currentUrl,
+      title: hostname,
+      text: '',
+      html: '',
+      links: [],
+    };
+    const result = executeInIframe((win) => {
+      const doc = win.document;
+      const root = doc.querySelector(selector) ?? doc.body;
+      if (!root) return fallback;
+      const text = (root.textContent || '').replace(/\s+/g, ' ').trim().slice(0, maxChars);
+      const html = root.innerHTML.slice(0, maxChars * 4);
+      const links: { text: string; href: string }[] = [];
+      doc.querySelectorAll('a[href]').forEach((a, i) => {
+        if (i >= 50) return;
+        const href = (a as HTMLAnchorElement).href;
+        if (!href || href.startsWith('javascript:')) return;
+        links.push({ text: (a.textContent || '').trim().slice(0, 100), href });
+      });
+      return { url: currentUrl, title: doc.title || hostname, text, html, links };
+    });
+    return result ?? fallback;
+  };
 
   // Auto-navigate on mount or when prop URL changes
   useEffect(() => {
@@ -428,6 +571,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
           </div>
         ) : pageHtml ? (
           <iframe
+            ref={iframeRef}
             srcDoc={pageHtml}
             className="w-full h-full border-none bg-white"
             sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"

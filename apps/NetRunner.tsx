@@ -21,6 +21,7 @@ import {
 import { aiService } from '../services/puterService';
 import DOMPurify from 'dompurify';
 import WebRunnerApp from './WebRunner';
+import { browserBridge, type BrowserState } from '../kernel/browserBridge';
 
 const QUICK_LINKS = [
   { icon: '🔍', label: 'Google', url: 'https://www.google.com' },
@@ -62,6 +63,59 @@ export default function NetRunnerApp({ windowId }: { windowId: string }) {
   useEffect(() => {
     chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMsgs]);
+
+  // ─── Browser bridge registration (AI mode only) ───────────────────
+  // When NetRunner is in AI mode, it is the active browser surface.
+  // When in Chromium mode, the embedded WebRunner registers itself.
+  // We only register in AI mode to avoid double-registration conflicts.
+  useEffect(() => {
+    if (mode !== 'ai') return;
+    const surfaceId = `netrunner-ai-${windowId}-${Date.now()}`;
+
+    const unregister = browserBridge.register({
+      id: surfaceId,
+      getState: (): BrowserState => ({
+        url,
+        title: url ? new URL(url.startsWith('http') ? url : `https://${url}`).hostname : '',
+        isLoading,
+        canGoBack: backStack.length > 0,
+        canGoForward: fwdStack.length > 0,
+        isNative: false,
+      }),
+      execute: async (cmd) => {
+        switch (cmd.kind) {
+          case 'navigate':
+            await navigate(cmd.url);
+            return undefined;
+          case 'back':
+            goBack();
+            return undefined;
+          case 'forward':
+            goFwd();
+            return undefined;
+          case 'reload':
+            if (url) void navigate(url);
+            return undefined;
+          // extract / click / input / scroll are not meaningful in AI
+          // snapshot mode — the AI renders content as HTML text, not a
+          // live DOM. Return a helpful message.
+          case 'extract':
+            return {
+              url,
+              title: '',
+              text: aiContent.replace(/<[^>]+>/g, ' ').slice(0, cmd.maxChars ?? 8000),
+              html: aiContent,
+              links: aiSources.map(s => ({ text: s.title, href: s.url })),
+            };
+          default:
+            throw new Error(`Command ${cmd.kind} not supported in AI mode. Switch to Chromium mode.`);
+        }
+      },
+    });
+
+    return () => unregister();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, windowId, url, isLoading, backStack, fwdStack, aiContent, aiSources]);
 
   const normalizeUrl = useCallback((target: string) => {
     const finalTarget = target.trim();

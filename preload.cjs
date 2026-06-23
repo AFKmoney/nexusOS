@@ -9,14 +9,21 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['download-progress'];
+    let validChannels = ['download-progress', 'browser-event'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
   },
   // Real Native Hardware & Host Access
   invoke: async (channel, data) => {
-    const validChannels = ['get-os-info', 'native-unzip', 'native-search', 'native-exec', 'native-download', 'native-capture-screen'];
+    const validChannels = [
+      'get-os-info', 'native-unzip', 'native-search', 'native-exec',
+      'native-download', 'native-capture-screen',
+      // Browser (Chromium WebContentsView) control surface
+      'browser-create', 'browser-navigate', 'browser-go-back',
+      'browser-go-forward', 'browser-reload', 'browser-execute',
+      'browser-destroy', 'browser-resize', 'browser-get-url',
+    ];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);
     }

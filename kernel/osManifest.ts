@@ -63,10 +63,21 @@ OS::OPEN_URL:<url>
 OS::NOTIFY:<title>:<msg>
 OS::REMEMBER:<info>
 OS::RUN_COMMAND:<cmd>
+OS::RUN_NATIVE:<cmd>
 OS::EXECUTE_JS:<code>
 OS::MINIMIZE_ALL
 OS::SET_WALLPAPER:<id>
-OS::SCHEDULE_TASK:<sec>:<cmd>`;
+OS::SCHEDULE_TASK:<sec>:<cmd>
+OS::EMIT_EVENT:<name>:<json>
+OS::BROWSE_NAVIGATE:<url>
+OS::BROWSE_BACK
+OS::BROWSE_FORWARD
+OS::BROWSE_RELOAD
+OS::BROWSE_EXTRACT[:<selector>[:<maxChars>]]
+OS::BROWSE_CLICK:<selector>
+OS::BROWSE_INPUT:<selector>:<value>
+OS::BROWSE_SCROLL:<deltaX>:<deltaY>
+OS::BROWSE_STATE`;
 
 // ═══════════════════════════════════════════════════════════════
 // TIER 3: APP INDEX — Compressed (one line per app, ~200 tokens)

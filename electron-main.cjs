@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain, protocol, net, desktopCapturer, dialog } = require('electron');
+const { app, BrowserWindow, WebContentsView, session, ipcMain, protocol, net, desktopCapturer, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { spawn, exec } = require('child_process');
@@ -6,6 +6,153 @@ const os = require('os');
 
 const isDev = !app.isPackaged;
 let bridgeProcess = null;
+
+// ─── Browser View Manager ─────────────────────────────────────────
+// Maintains a map of windowId → WebContentsView so the renderer can
+// request a real Chromium browser surface for a given window. The view
+// is attached to the parent BrowserWindow and resized to cover the
+// content area. The renderer communicates via IPC:
+//   - 'browser-create'  → create a view for this windowId
+//   - 'browser-navigate' → load a URL in the view
+//   - 'browser-execute'  → execute JS in the view and return the result
+//   - 'browser-destroy'  → destroy the view
+//   - 'browser-resize'   → resize the view (called on window resize)
+const browserViews = new Map(); // windowId → { view, parentWin }
+
+function getBrowserViewEntry(windowId) {
+  return browserViews.get(windowId) || null;
+}
+
+function createBrowserView(parentWin, windowId) {
+  if (!parentWin) return { success: false, error: 'no parent window' };
+  // Remove existing view if any
+  destroyBrowserView(windowId);
+
+  const view = new WebContentsView({
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+  parentWin.contentView.addChildView(view);
+  browserViews.set(windowId, { view, parentWin });
+
+  // Default bounds: full content area. The renderer will send a resize
+  // command once it knows the actual content rect (below the toolbar).
+  const [w, h] = parentWin.getContentSize();
+  view.setBounds({ x: 0, y: 40, width: w, height: Math.max(0, h - 40) });
+
+  // Report navigation events back to the renderer so WebRunner can
+  // update its URL bar and history.
+  view.webContents.on('did-navigate', (_e, url) => {
+    parentWin.webContents.send('browser-event', { windowId, kind: 'navigate', url });
+  });
+  view.webContents.on('did-navigate-in-page', (_e, url) => {
+    parentWin.webContents.send('browser-event', { windowId, kind: 'navigate-in-page', url });
+  });
+  view.webContents.on('page-title-updated', (_e, title) => {
+    parentWin.webContents.send('browser-event', { windowId, kind: 'title', title });
+  });
+  view.webContents.on('did-start-loading', () => {
+    parentWin.webContents.send('browser-event', { windowId, kind: 'loading', isLoading: true });
+  });
+  view.webContents.on('did-stop-loading', () => {
+    parentWin.webContents.send('browser-event', { windowId, kind: 'loading', isLoading: false });
+  });
+
+  return { success: true };
+}
+
+function destroyBrowserView(windowId) {
+  const entry = browserViews.get(windowId);
+  if (!entry) return;
+  try {
+    entry.parentWin.contentView.removeChildView(entry.view);
+  } catch { /* window may already be gone */ }
+  try {
+    entry.view.webContents.destroy();
+  } catch { /* ignore */ }
+  browserViews.delete(windowId);
+}
+
+function resizeBrowserView(windowId, bounds) {
+  const entry = browserViews.get(windowId);
+  if (!entry) return;
+  try {
+    entry.view.setBounds(bounds);
+  } catch { /* ignore */ }
+}
+
+ipcMain.handle('browser-create', async (event, { windowId }) => {
+  const parentWin = BrowserWindow.fromWebContents(event.sender);
+  return createBrowserView(parentWin, windowId);
+});
+
+ipcMain.handle('browser-navigate', async (event, { windowId, url }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view for this windowId' };
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+    return { success: false, error: 'URL must start with http(s)://' };
+  }
+  entry.view.webContents.loadURL(url);
+  return { success: true };
+});
+
+ipcMain.handle('browser-go-back', async (event, { windowId }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view' };
+  entry.view.webContents.goBack();
+  return { success: true };
+});
+
+ipcMain.handle('browser-go-forward', async (event, { windowId }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view' };
+  entry.view.webContents.goForward();
+  return { success: true };
+});
+
+ipcMain.handle('browser-reload', async (event, { windowId }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view' };
+  entry.view.webContents.reload();
+  return { success: true };
+});
+
+ipcMain.handle('browser-execute', async (event, { windowId, code }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view' };
+  if (typeof code !== 'string' || code.length > 10_000) {
+    return { success: false, error: 'invalid code' };
+  }
+  try {
+    const result = await entry.view.webContents.executeJavaScript(code, true);
+    return { success: true, result };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('browser-destroy', async (event, { windowId }) => {
+  destroyBrowserView(windowId);
+  return { success: true };
+});
+
+ipcMain.handle('browser-resize', async (event, { windowId, bounds }) => {
+  resizeBrowserView(windowId, bounds);
+  return { success: true };
+});
+
+ipcMain.handle('browser-get-url', async (event, { windowId }) => {
+  const entry = getBrowserViewEntry(windowId);
+  if (!entry) return { success: false, error: 'no browser view' };
+  return { success: true, url: entry.view.webContents.getURL() };
+});
+
+// Clean up browser views when their parent window closes.
+app.on('browser-window-blur', () => { /* no-op */ });
+
 
 // Register custom protocol for local model files
 protocol.registerSchemesAsPrivileged([

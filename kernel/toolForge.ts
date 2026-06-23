@@ -570,6 +570,143 @@ export class ToolForge {
           break;
         }
 
+        case 'BROWSE_NAVIGATE': {
+          const url = clampLength(toStringArg(actionArgs[0]), 2_048);
+          if (url) {
+            try {
+              const { browserBridge } = await import('./browserBridge');
+              await browserBridge.navigate(url);
+              result = `[OS::BROWSE_NAVIGATE] → ✅ Navigating to ${url}`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::BROWSE_NAVIGATE] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+
+        case 'BROWSE_BACK': {
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            await browserBridge.back();
+            result = `[OS::BROWSE_BACK] → ✅ Navigated back`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_BACK] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        case 'BROWSE_FORWARD': {
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            await browserBridge.forward();
+            result = `[OS::BROWSE_FORWARD] → ✅ Navigated forward`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_FORWARD] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        case 'BROWSE_RELOAD': {
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            await browserBridge.reload();
+            result = `[OS::BROWSE_RELOAD] → ✅ Page reloaded`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_RELOAD] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        case 'BROWSE_EXTRACT': {
+          // Optional first arg = CSS selector (default: 'body')
+          // Optional second arg = max chars (default: 8000)
+          const selector = clampLength(toStringArg(actionArgs[0] ?? 'body'), 256) || 'body';
+          const maxCharsArg = parseInt(toStringArg(actionArgs[1] ?? '8000'), 10);
+          const maxChars = Number.isFinite(maxCharsArg) && maxCharsArg > 0 ? Math.min(maxCharsArg, 50_000) : 8000;
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            const extracted = await browserBridge.extract(selector, maxChars);
+            result = `[OS::BROWSE_EXTRACT: ${selector}] → URL: ${extracted.url}\nTITLE: ${extracted.title}\nTEXT (${extracted.text.length} chars):\n${extracted.text.slice(0, maxChars)}\nLINKS: ${extracted.links.slice(0, 20).map(l => l.href).join(' | ') || '(none)'}`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_EXTRACT] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        case 'BROWSE_CLICK': {
+          const selector = clampLength(toStringArg(actionArgs[0]), 256);
+          if (selector) {
+            try {
+              const { browserBridge } = await import('./browserBridge');
+              await browserBridge.click(selector);
+              result = `[OS::BROWSE_CLICK: ${selector}] → ✅ Clicked`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::BROWSE_CLICK: ${selector}] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+
+        case 'BROWSE_INPUT': {
+          // Format: OS::BROWSE_INPUT:<selector>:<value>
+          // The selector is the first colon-delimited token; the value is
+          // everything after (so values can contain colons).
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const selector = clampLength(rawArgs.slice(0, colonIdx), 256);
+            const value = clampLength(rawArgs.slice(colonIdx + 1), 4_096);
+            if (selector && value) {
+              try {
+                const { browserBridge } = await import('./browserBridge');
+                await browserBridge.input(selector, value);
+                result = `[OS::BROWSE_INPUT: ${selector}] → ✅ Input "${value.slice(0, 50)}${value.length > 50 ? '…' : ''}"`;
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                result = `[OS::BROWSE_INPUT: ${selector}] → ⚠ ${message}`;
+              }
+            }
+          } else {
+            result = `[OS::BROWSE_INPUT] → ⚠ Format: OS::BROWSE_INPUT:<selector>:<value>`;
+          }
+          break;
+        }
+
+        case 'BROWSE_SCROLL': {
+          // Format: OS::BROWSE_SCROLL:<deltaX>:<deltaY> (pixels, can be negative)
+          const rawArgs = getArg(actionArgs[0], '');
+          const parts = rawArgs.split(':');
+          const deltaX = parseInt(parts[0] ?? '0', 10) || 0;
+          const deltaY = parseInt(parts[1] ?? '0', 10) || 0;
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            await browserBridge.scroll(deltaX, deltaY);
+            result = `[OS::BROWSE_SCROLL] → ✅ Scrolled by (${deltaX}, ${deltaY})`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_SCROLL] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        case 'BROWSE_STATE': {
+          try {
+            const { browserBridge } = await import('./browserBridge');
+            const state = browserBridge.getState();
+            result = `[OS::BROWSE_STATE] → URL: ${state.url || '(none)'} | TITLE: ${state.title || '(none)'} | LOADING: ${state.isLoading} | CAN_BACK: ${state.canGoBack} | CAN_FWD: ${state.canGoForward} | NATIVE: ${state.isNative}`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::BROWSE_STATE] → ⚠ ${message}`;
+          }
+          break;
+        }
+
         default:
           result = `[OS::${action.type}] → Unknown action type`;
       }

@@ -43,8 +43,12 @@ const ALLOWED_VERBS: ReadonlySet<string> = new Set([
   'LIST_DIR', 'SEARCH_FILES', 'CREATE_FOLDER',
   'OPEN_APP', 'CLOSE_APP', 'CLOSE_WINDOW', 'FOCUS_APP', 'BUILD_APP',
   'OPEN_URL', 'NOTIFY', 'REMEMBER',
-  'RUN_COMMAND', 'EXECUTE_JS',
-  'MINIMIZE_ALL', 'SET_WALLPAPER', 'SCHEDULE_TASK',
+  'RUN_COMMAND', 'RUN_NATIVE', 'EXECUTE_JS',
+  'MINIMIZE_ALL', 'SET_WALLPAPER', 'SCHEDULE_TASK', 'EMIT_EVENT',
+  // Browser-control surface (AI-driven web automation)
+  'BROWSE_NAVIGATE', 'BROWSE_BACK', 'BROWSE_FORWARD', 'BROWSE_RELOAD',
+  'BROWSE_EXTRACT', 'BROWSE_CLICK', 'BROWSE_INPUT', 'BROWSE_SCROLL',
+  'BROWSE_STATE',
 ]);
 
 /**
@@ -246,6 +250,40 @@ function staticPolicy(proposal: ActionProposal, isAdmin: boolean): ValidationRes
       if (!check.ok) return { valid: false, score: 0, reason: check.reason };
       return { valid: true, score: 0.8 };
     }
+
+    case 'BROWSE_NAVIGATE': {
+      const [url] = args;
+      const u = String(url ?? '');
+      // Allow http(s) URLs and bare domains (the browser surface will
+      // normalize them). Refuse anything else to prevent the AI from
+      // navigating to javascript: or data: URIs.
+      if (!u) return { valid: false, score: 0, reason: 'BROWSE_NAVIGATE requires a URL' };
+      if (u.length > 2048) return { valid: false, score: 0, reason: 'BROWSE_NAVIGATE URL too long' };
+      if (/^(javascript|data|file|vbscript):/i.test(u)) {
+        return { valid: false, score: 0, reason: 'BROWSE_NAVIGATE refuses non-http(s) protocols' };
+      }
+      return { valid: true, score: 0.9 };
+    }
+
+    case 'BROWSE_CLICK':
+    case 'BROWSE_INPUT': {
+      const [selector] = args;
+      const s = String(selector ?? '');
+      if (!s || s.length > 256) return { valid: false, score: 0, reason: 'invalid CSS selector' };
+      // Reject selectors that look like JS injection attempts.
+      if (/<\s*script|javascript:/i.test(s)) {
+        return { valid: false, score: 0, reason: 'selector contains forbidden content' };
+      }
+      return { valid: true, score: 0.85 };
+    }
+
+    case 'BROWSE_EXTRACT':
+    case 'BROWSE_SCROLL':
+    case 'BROWSE_BACK':
+    case 'BROWSE_FORWARD':
+    case 'BROWSE_RELOAD':
+    case 'BROWSE_STATE':
+      return { valid: true, score: 0.9 };
 
     default:
       return { valid: false, score: 0, reason: `verb "${verb}" has no policy rule` };
