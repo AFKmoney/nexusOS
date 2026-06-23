@@ -44,10 +44,21 @@ export default defineConfig(({ mode }) => {
           // core index chunk: extracting lucide-react / kernel / services into
           // separate chunks reorders module evaluation and triggers a runtime
           // "Cannot set properties of undefined" crash from circular init order.
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            ui: ['lucide-react', 'zustand'],
-            utils: ['date-fns', 'dompurify']
+          //
+          // Vite 8 (rolldown) requires manualChunks to be a function, not an
+          // object map. We match by module id so behavior is identical to the
+          // previous object form.
+          manualChunks(id) {
+            if (id.includes('node_modules/react-dom/') || id.includes('node_modules/react/')) {
+              return 'vendor';
+            }
+            if (id.includes('node_modules/lucide-react/') || id.includes('node_modules/zustand/')) {
+              return 'ui';
+            }
+            if (id.includes('node_modules/date-fns/') || id.includes('node_modules/dompurify/')) {
+              return 'utils';
+            }
+            return undefined;
           }
         }
       },

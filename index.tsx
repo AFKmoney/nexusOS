@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import { hydrateOSRegistry, useOS } from './store/osStore';
 import { vfs } from './kernel/fileSystem';
+import { kernelLog } from './kernel/log';
 
 // Expose the OS store as a global debug/automation handle so end-to-end
 // harnesses (and devtools) can drive the OS — open apps, inspect state — without
@@ -12,7 +13,7 @@ import { vfs } from './kernel/fileSystem';
 (window as any).__NEXUS_OS__ = useOS;
 
 // CRITICAL: Hydrate app registry before first render
-hydrateOSRegistry().catch(e => console.error('[SYSTEM] Registry hydration failed:', e));
+hydrateOSRegistry().catch(e => kernelLog.error('[SYSTEM] Registry hydration failed:', e));
 
 // CRITICAL DEBUGGING: Global Error Handler
 window.onerror = function (msg, url, line, col, error) {
@@ -32,7 +33,7 @@ window.onerror = function (msg, url, line, col, error) {
                  errStack.includes('phantom');
 
   if (isExtension || isWeb3) {
-    console.warn('[SYSTEM] Ignored external injection error:', msg);
+    kernelLog.warn('[SYSTEM] Ignored external injection error:', msg);
     return true;
   }
 
@@ -63,12 +64,12 @@ localStorage.setItem(LAST_CRASH_TIME, now.toString());
 localStorage.setItem(CRASH_KEY, crashCount.toString());
 
 if (crashCount > 3) {
-  console.error("CRITICAL: Reboot loop detected. Clearing system state...");
+  kernelLog.error('CRITICAL: Reboot loop detected. Clearing system state...');
   localStorage.clear();
   localStorage.setItem(CRASH_KEY, '0');
 }
 
-console.log("%c[SYSTEM] NEXUS_OS_CORE v2.0.3 booting...", "color: #10b981; font-weight: bold;");
+kernelLog.info('%c[SYSTEM] NEXUS_OS_CORE v2.0.6 booting...', "color: #10b981; font-weight: bold;");
 
 
 
@@ -76,14 +77,14 @@ const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 
 async function bootSystem() {
   try {
-    console.log("[SYSTEM] Initializing Storage Architecture (VFS)...");
+    kernelLog.info('[SYSTEM] Initializing Storage Architecture (VFS)...');
     await vfs.init();
     
-    console.log("[SYSTEM] Mounting React Root...");
+    kernelLog.info('[SYSTEM] Mounting React Root...');
     root.render(<App />);
-    console.log("[SYSTEM] React Mount Requested.");
+    kernelLog.info('[SYSTEM] React Mount Requested.');
   } catch (e: any) {
-    console.error("[SYSTEM] BOOT SEQUENCE FAILED:", e);
+    kernelLog.error('[SYSTEM] BOOT SEQUENCE FAILED:', e);
     document.body.innerHTML = `<h1 style="color:red">REACT MOUNT ERROR: ${e.message}</h1>`;
   }
 }

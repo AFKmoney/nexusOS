@@ -3,6 +3,7 @@ import { autonomyHealthMonitor } from './autonomyHealthMonitor';
 import { proposalEngine } from './proposalEngine';
 import { stagingManager } from './stagingManager';
 import { trustTierEngine } from './trustTierEngine';
+import { kernelLog } from './log';
 
 // ═══════════════════════════════════════════════════════════════════
 // GOVERNANCE BRIDGE — Syncs governance singletons to the OS store
@@ -54,5 +55,5 @@ export function initGovernanceBridge(): void {
     trustTierEngine.subscribeOverride(tier => {
       useOS.getState().updateGovernance({ activeTrustTierOverride: tier });
     });
-  }).catch(e => console.warn('[GovernanceBridge] Store import failed:', e));
+  }).catch(e => kernelLog.warn('[GovernanceBridge] Store import failed:', e));
 }

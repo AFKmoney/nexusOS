@@ -3,6 +3,7 @@
  */
 
 import { SYSTEM_APPS } from '../appRegistry';
+import { kernelLog } from './log';
 
 export type Permission = 'vfs.read' | 'vfs.write' | 'network' | 'kernel.modify';
 
@@ -35,7 +36,7 @@ class PermissionSystem {
   enforce(appId: string, permission: Permission, action?: string) {
     if (!this.hasPermission(appId, permission)) {
       const msg = `Permission denied: "${appId}" requires [${permission}]${action ? ` for ${action}` : ''}`;
-      console.warn(`[Permissions] ${msg}`);
+      kernelLog.warn(`[Permissions] ${msg}`);
       throw new Error(msg);
     }
   }

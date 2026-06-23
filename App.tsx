@@ -21,6 +21,7 @@ import { DaemonLockScreen } from './components/DaemonLockScreen';
 import LockScreen from './components/LockScreen';
 import { NeuralHoloUI } from './components/NeuralHoloUI';
 import { getDesktopPath } from './appShellConstants';
+import { kernelLog } from './kernel/log';
 
 // DAEMON Bridge — Auto-initializes on import. If installed, boots silently.
 import './kernel/daemonBridge';
@@ -189,10 +190,10 @@ export default function App() {
   const [bootTimedOut, setBootTimedOut] = useState(false);
 
   useEffect(() => {
-    console.log("[SYSTEM] App component mounted, checking boot state...");
+    kernelLog.info('[SYSTEM] App component mounted, checking boot state...');
     const timeout = setTimeout(() => {
       if (!useOS.getState().booted) {
-        console.warn("[SYSTEM] Boot sequence timed out (3s). Forcing UI mount.");
+        kernelLog.warn('[SYSTEM] Boot sequence timed out (3s). Forcing UI mount.');
         setBootTimedOut(true);
         setBooted(true);
       }
@@ -207,7 +208,7 @@ export default function App() {
     }
     // Safety net: ensure registry is loaded on login
     if (isLoggedIn) {
-      console.log("[SYSTEM] User logged in:", currentUser?.name);
+      kernelLog.info('[SYSTEM] User logged in:', currentUser?.name);
       hydrateOSRegistry().catch(() => {});
     }
   }, [isLoggedIn, hasSeenIntro, currentUser]);

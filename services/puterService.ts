@@ -5,6 +5,7 @@ import { memory } from '../kernel/memory';
 import { toolForge } from '../kernel/toolForge';
 import { generateOSManifest, bindOsStore } from '../kernel/osManifest';
 import { errorGuard } from '../kernel/errorGuard';
+import { kernelLog } from '../kernel/log';
 import { KernelRules, MemoryEntry } from '../types';
 
 // Expose bindOsStore for App.tsx to call on boot
@@ -187,7 +188,7 @@ export class PuterService {
           rawResponse, contextualPrompt, fullSystemPrompt, mode
         );
         if (fixApplied && guardErrors.length > 0) {
-          console.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
+          kernelLog.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
         }
 
         await toolForge.parseAndRegister(response);
@@ -197,7 +198,7 @@ export class PuterService {
           .join('\n');
         return this.cleanResponse(cleanedResponse + osActionResults, mode);
       } catch (cloudErr: any) {
-        console.warn('[AI_GATEWAY] Cloud provider failed, falling back to local:', cloudErr.message);
+        kernelLog.warn('[AI_GATEWAY] Cloud provider failed, falling back to local:', cloudErr.message);
         // Fall through to local inference
       }
     }
@@ -223,7 +224,7 @@ export class PuterService {
         rawResponse, contextualPrompt, fullSystemPrompt, mode
       );
       if (fixApplied && guardErrors.length > 0) {
-        console.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
+        kernelLog.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
       }
 
       await toolForge.parseAndRegister(response);
@@ -233,7 +234,7 @@ export class PuterService {
         .join('\n');
       return this.cleanResponse(cleanedResponse + osActionResults, mode);
     } catch (error: any) {
-      console.error('[AI SERVICE ERROR]:', error);
+      kernelLog.error('[AI SERVICE ERROR]:', error);
       return `[DAEMON CORE]: Neural link severed. ${error?.message || 'Model may not be loaded.'}`;
     }
   }
@@ -281,7 +282,7 @@ export class PuterService {
         }
         return;
       } catch (cloudErr: any) {
-        console.warn(`[Cloud provider error: ${cloudErr.message}. Falling back to local...]`);
+        kernelLog.warn(`[Cloud provider error: ${cloudErr.message}. Falling back to local...]`);
         if (mode === 'chat') {
           onToken(`\n[Cloud provider error: ${cloudErr.message}. Falling back to local...]\n`);
         }
@@ -317,7 +318,7 @@ export class PuterService {
         if (mode === 'chat') {
           onToken(`\n\n🔄 *[ErrorGuard: ${streamCheck.issue} — continuing...]*\n\n`);
         } else {
-          console.log(`[ErrorGuard: ${streamCheck.issue} — continuing...]`);
+          kernelLog.info(`[ErrorGuard: ${streamCheck.issue} — continuing...]`);
         }
         const contPrompt = `${streamCheck.continuationHint}\n\nPrevious output ended with:\n${fullResponse.slice(-300)}`;
         await localBrain.stream(contPrompt, stPrompt, (token) => {
@@ -360,7 +361,7 @@ export class PuterService {
         });
       }
     } catch (error: any) {
-      console.error(`[NEURAL LINK SEVERED: ${error?.message}]`);
+      kernelLog.error(`[NEURAL LINK SEVERED: ${error?.message}]`);
       if (mode === 'chat') {
         onToken(`\n[NEURAL LINK SEVERED: ${error?.message}]`);
       } else {

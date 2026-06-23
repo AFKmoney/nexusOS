@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, ipcMain, protocol, net, desktopCapturer } = require('electron');
+const { app, BrowserWindow, session, ipcMain, protocol, net, desktopCapturer, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { spawn, exec } = require('child_process');
@@ -179,13 +179,46 @@ ipcMain.handle('native-search', async (event, query) => {
 
 ipcMain.handle('native-exec', async (event, command) => {
   return new Promise((resolve) => {
-    // SECURITY WARNING: This is "Hardware Overlord Mode" — by design it gives
-    // the renderer arbitrary host shell access. We still bound the cost
-    // (length cap + timeout) so a stray AI prompt cannot pin the host.
+    // SECURITY: "Hardware Overlord Mode" — gives the renderer arbitrary
+    // host shell access. We bound the cost (length cap + timeout) so a
+    // stray AI prompt cannot pin the host, AND we require explicit user
+    // confirmation via a modal dialog before any command is executed.
+    // The confirmation is the last line of defense against a compromised
+    // or hallucinating AI model running inside the kernel.
     if (typeof command !== 'string' || command.length === 0 || command.length > 4096) {
       resolve({ success: false, stdout: '', stderr: '', error: 'invalid command' });
       return;
     }
+
+    // Suppress the dialog in headless/CI environments where there is no
+    // parent window — but in that case, also refuse to execute, because
+    // silent headless shell execution is exactly what we want to prevent.
+    const parentWindow = BrowserWindow.fromWebContents(event.sender);
+    if (!parentWindow) {
+      resolve({ success: false, stdout: '', stderr: '', error: 'no parent window — headless execution refused' });
+      return;
+    }
+
+    // Show a non-blocking modal. The dialog shows the command verbatim
+    // (truncated to 500 chars for readability) and the user must click
+    // "Execute" to proceed. Default button is "Cancel".
+    const preview = command.length > 500 ? command.slice(0, 500) + '…' : command;
+    const choice = dialog.showMessageBoxSync(parentWindow, {
+      type: 'warning',
+      title: 'NexusOS — Native Command Execution',
+      message: 'The DAEMON AI is requesting to execute a command on your host machine.',
+      detail: `Command:\n\n${preview}\n\nReview carefully. Allow only if you trust the source.`,
+      buttons: ['Cancel', 'Execute'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+
+    if (choice !== 1) {
+      resolve({ success: false, stdout: '', stderr: '', error: 'user denied execution' });
+      return;
+    }
+
     exec(command, { maxBuffer: 1024 * 1024 * 10, timeout: 60_000 }, (error, stdout, stderr) => {
       resolve({
         success: !error,
