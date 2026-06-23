@@ -288,7 +288,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                         </div>
                         <div className="flex-1 flex overflow-hidden">
                             {/* Gutter */}
-                            <div className="w-10 bg-[#050506] text-zinc-700 text-[10px] font-mono text-right pr-3 pt-4 select-none border-r border-white/5">
+                            <div className="w-10 bg-[#050506] text-zinc-600 text-[11px] font-mono text-right pr-3 pt-4 select-none border-r border-white/5">
                                 {activeTab.content.split('\n').map((_, i) => (
                                     <div key={i} className="h-5">{i + 1}</div>
                                 ))}
@@ -311,7 +311,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center opacity-30 select-none">
                         <div className="relative mb-6">
-                            <Cpu size={120} strokeWidth={0.5} className="text-zinc-700 animate-pulse" />
+                            <Cpu size={120} strokeWidth={0.5} className="text-zinc-600 animate-pulse" />
                             <Wand2 size={40} className="absolute bottom-0 right-0 text-purple-500 translate-x-1/2" />
                         </div>
                         <div className="text-center space-y-1">

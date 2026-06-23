@@ -124,13 +124,13 @@ export default function StartMenu() {
         <div className="px-6 pt-3 pb-2 flex gap-2 flex-wrap shrink-0">
            {categoriesList.map(cat => (
              <button key={cat} onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${activeCategory === cat ? 'bg-accent text-black shadow-accent scale-105' : 'text-zinc-500 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}>
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${activeCategory === cat ? 'bg-accent text-black shadow-accent scale-105' : 'text-zinc-500 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}>
               {cat}
              </button>
           ))}
           <button
             onClick={() => setShowControls(!showControls)}
-            className={`ml-auto px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${showControls ? 'bg-accent/20 text-accent border border-accent/30' : 'text-zinc-600 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}
+            className={`ml-auto px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${showControls ? 'bg-accent/20 text-accent border border-accent/30' : 'text-zinc-600 hover:text-zinc-300 bg-white/5 border border-transparent hover:border-white/10'}`}
           >
             <MonitorCog size={12} />
           </button>
@@ -153,32 +153,32 @@ export default function StartMenu() {
                 className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
                 <Wallpaper size={14} className="text-accent" />
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Effect</div>
-                  <div className="text-[8px] text-zinc-500 truncate">{wallpaperEffect === 'aurora' ? 'Aurora' : 'Cycle surface'}</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">Effect</div>
+                  <div className="text-[10px] text-zinc-400 truncate">{wallpaperEffect === 'aurora' ? 'Aurora' : 'Cycle surface'}</div>
                 </div>
               </button>
               <button onClick={() => setThemePreset(themePreset === 'neo-emerald' ? 'midnight-cyan' : 'neo-emerald')}
                 className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
                 <Palette size={14} className="text-accent" />
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Preset</div>
-                  <div className="text-[8px] text-zinc-500 truncate">Swap accent</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">Preset</div>
+                  <div className="text-[10px] text-zinc-400 truncate">Swap accent</div>
                 </div>
               </button>
               <button onClick={() => handleAccentChange('blue', '#3b82f6')}
                 className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left">
                 <Layers3 size={14} className="text-accent" />
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">Accent</div>
-                  <div className="text-[8px] text-zinc-500 truncate">Apply tone</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">Accent</div>
+                  <div className="text-[10px] text-zinc-400 truncate">Apply tone</div>
                 </div>
               </button>
               <button onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left ${aiManagedStoreEnabled ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
                 <LaptopMinimalCheck size={14} className={aiManagedStoreEnabled ? 'text-accent' : 'text-zinc-500'} />
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-200">AI Store</div>
-                  <div className="text-[8px] text-zinc-500">{aiManagedStoreEnabled ? 'Enabled' : 'Disabled'}</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-200">AI Store</div>
+                  <div className="text-[10px] text-zinc-400">{aiManagedStoreEnabled ? 'Enabled' : 'Disabled'}</div>
                 </div>
               </button>
             </div>
@@ -193,7 +193,7 @@ export default function StartMenu() {
              <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex items-center gap-3 mb-3">
                  <div className="p-1 bg-accent/10 rounded text-accent"><Clock size={12} /></div>
-                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em]">Recent Artifacts</span>
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Recent Artifacts</span>
                </div>
               <div className="grid grid-cols-2 gap-3">
                 {recentFiles.slice(0, 2).map(file => (
@@ -202,7 +202,7 @@ export default function StartMenu() {
                      <div className="p-2 bg-black/40 rounded-xl text-zinc-400 group-hover:text-accent transition-all shrink-0 shadow-inner">{getSmartIcon(file.path, 16)}</div>
                      <div className="min-w-0">
                        <div className="text-[11px] font-black text-zinc-200 truncate group-hover:text-white transition-colors tracking-wide">{file.name}</div>
-                       <div className="text-[8px] font-mono text-zinc-600 truncate mt-0.5 uppercase">{new Date(file.modified).toLocaleTimeString()}</div>
+                       <div className="text-[10px] font-mono text-zinc-500 truncate mt-0.5 uppercase">{new Date(file.modified).toLocaleTimeString()}</div>
                      </div>
                   </button>
                  ))}
@@ -212,7 +212,7 @@ export default function StartMenu() {
 
           {/* App Matrix */}
           <div className="flex justify-between items-center mb-4 mt-2">
-            <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em] flex items-center gap-3">
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] flex items-center gap-3">
               <div className="w-1 h-1 rounded-full bg-accent shadow-accent" />
               {activeCategory === 'All' ? 'Neural Core Apps' : activeCategory}
              </span>
@@ -232,7 +232,7 @@ export default function StartMenu() {
                             <Icon size={22} className="text-zinc-300 group-hover:text-white transition-all duration-500 drop-shadow-2xl z-10" />
                             <div className="absolute inset-0 bg-gradient-to-t from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                         </div>
-                         <span className="text-[8px] font-black text-zinc-400 text-center line-clamp-1 w-full px-0.5 group-hover:text-accent transition-colors tracking-tight uppercase">{app.name}</span>
+                         <span className="text-[10px] font-black text-zinc-300 text-center line-clamp-1 w-full px-0.5 group-hover:text-accent transition-colors tracking-tight uppercase">{app.name}</span>
                      </button>
                  )
               })}
@@ -265,7 +265,7 @@ export default function StartMenu() {
                     <span className="text-base font-black text-white tracking-wide group-hover:text-emerald-300 transition-colors uppercase">{currentUser?.name || "System Admin"}</span>
                     <Shield size={12} className="text-emerald-500" />
                   </div>
-                   <span className="text-[9px] text-zinc-500 font-mono tracking-[0.3em] flex items-center gap-2">
+                   <span className="text-[10px] text-zinc-400 font-mono tracking-[0.3em] flex items-center gap-2">
                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
                      DAEMON.AUTH_OK
                    </span>

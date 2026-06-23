@@ -174,7 +174,7 @@ export default function Taskbar() {
           {/* Network + Battery */}
           <div className="flex items-center gap-2 bg-black/35 px-3 h-11 rounded-2xl border border-white/10 shadow-inner cursor-pointer hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 px-2 py-1 rounded-xl">
-              <span className="text-[9px] font-black text-zinc-500 font-mono tracking-tighter uppercase">
+              <span className="text-[10px] font-black text-zinc-400 font-mono tracking-tighter uppercase">
                 {effectiveType ? effectiveType.toUpperCase() : (isOnline ? 'ONLINE' : 'OFFLINE')}
               </span>
               {isOnline ? <Wifi size={14} className="text-accent" /> : <WifiOff size={14} className="text-red-500" />}
@@ -193,7 +193,7 @@ export default function Taskbar() {
             <span className="text-zinc-100 font-black text-sm tracking-widest leading-none group-hover:text-accent transition-colors">
               {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
-            <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-400 transition-colors">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-200 transition-colors">
               {time.toLocaleDateString([], { day: '2-digit', month: 'short' })}
             </span>
           </button>

@@ -29,7 +29,7 @@ export const StagingPanel: React.FC<StagingPanelProps> = ({ artifacts }) => {
               <span className={`shrink-0 ${STAGE_STATUS_CLS[a.status] ?? 'text-zinc-400'}`}>{a.status}</span>
               <span className="text-zinc-400 truncate flex-1">{a.kind}:{a.key}</span>
               <span className="text-zinc-600 shrink-0">v{a.version}</span>
-              <span className="text-zinc-700 shrink-0">{relTime(a.createdAt)}</span>
+              <span className="text-zinc-500 shrink-0">{relTime(a.createdAt)}</span>
             </div>
           ))}
         </div>

@@ -44,8 +44,8 @@ function NeuralThoughtStream() {
       <div className="space-y-2 h-40 overflow-hidden relative">
         <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/40 to-transparent z-10" />
         {autonomyLog.slice(-5).map((log, i) => (
-          <div key={i} className="text-[9px] font-mono text-zinc-500 border-l border-white/10 pl-2">
-            <span className="text-emerald-500/50 mr-2">{">>>"}</span>
+          <div key={i} className="text-[10px] font-mono text-zinc-400 border-l border-white/10 pl-2 leading-relaxed">
+            <span className="text-emerald-500/60 mr-2">{">>>"}</span>
             {log}
           </div>
         ))}

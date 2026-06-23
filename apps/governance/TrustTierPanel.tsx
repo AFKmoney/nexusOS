@@ -34,7 +34,7 @@ export const TrustTierPanel: React.FC = () => {
           const rank = TRUST_TIER_RANK[tier];
           return (
             <div key={tier} className={`flex items-center gap-3 px-3 py-2 rounded-xl border text-xs font-mono ${cls}`}>
-              <span className="text-zinc-700 w-3">{rank}</span>
+              <span className="text-zinc-500 w-3">{rank}</span>
               <span className="font-bold w-20">{tier}</span>
               <span className="text-zinc-500 flex-1 truncate">{policy.approvalGate}</span>
               {policy.requireFullTestSuite && <span className="text-rose-400/70 text-[10px]">full-tests</span>}

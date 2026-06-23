@@ -143,9 +143,9 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
             <ErrorBoundary appId={windowState.appId} windowId={windowState.id}>
               <Suspense
                 fallback={
-                  <div className="h-full w-full flex flex-col items-center justify-center text-zinc-700">
-                    <Box size={40} className="opacity-20 mb-3 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Linking Node…</span>
+                  <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500">
+                    <Box size={40} className="opacity-30 mb-3 animate-pulse" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.4em] animate-pulse">Linking Node…</span>
                   </div>
                 }
               >
