@@ -142,7 +142,26 @@ export default function WallpaperApp() {
         kernelRules,
         'wallpaper'
       );
-      const cleanCode = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      // Extract HTML from the response. Handle:
+      // 1. Raw HTML (starts with <!DOCTYPE or <html)
+      // 2. Markdown-wrapped (```html ... ```)
+      // 3. Preamble before the HTML (Mistral sometimes adds text)
+      let cleanCode = code.trim();
+
+      // Try to extract from markdown code block first
+      const codeBlockMatch = cleanCode.match(/```(?:html)?\s*\n([\s\S]*?)```/i);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        cleanCode = codeBlockMatch[1].trim();
+      } else {
+        // Strip leading/trailing markdown fences if present
+        cleanCode = cleanCode.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+      }
+
+      // If there's still preamble text, find the first <!DOCTYPE or <html
+      const htmlStartIdx = cleanCode.search(/<!DOCTYPE|<html/i);
+      if (htmlStartIdx > 0) {
+        cleanCode = cleanCode.slice(htmlStartIdx);
+      }
 
       if (cleanCode.includes('<!DOCTYPE') || cleanCode.includes('<html')) {
         const timestamp = Date.now();

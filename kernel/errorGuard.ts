@@ -16,14 +16,46 @@
 import { localBrain } from '../services/localBrain';
 
 // ─── Valid App Registry ────────────────────────────────────────────────────────
-const VALID_APP_IDS = new Set([
-  'hyperide', 'terminal', 'netrunner', 'explorer', 'neuralforge',
-  'modelmanager', 'notepad', 'dashboard', 'daemonjournal', 'agent',
-  'settings', 'calculator', 'webrunner', 'terminal-ubuntu', 'wallpaper',
-]);
+// Dynamically populated from the app registry at first use. Falls back
+// to a minimal hardcoded set if the registry can't be loaded (e.g.
+// during early boot or in Node test environments).
+let _validAppIdsCache: Set<string> | null = null;
 
 function getValidAppIds(): Set<string> {
-  return VALID_APP_IDS;
+  if (_validAppIdsCache) return _validAppIdsCache;
+
+  // Try to load from the actual app registry
+  try {
+    // Lazy import to avoid circular dependency at module parse time
+    const { SYSTEM_APPS } = require('../appRegistry');
+    if (SYSTEM_APPS && Array.isArray(SYSTEM_APPS)) {
+      _validAppIdsCache = new Set(SYSTEM_APPS.map((app: any) => app.id.toLowerCase()));
+      return _validAppIdsCache;
+    }
+  } catch {
+    // Registry not available yet — use fallback
+  }
+
+  // Fallback: minimal set of known app IDs
+  _validAppIdsCache = new Set([
+    'hyperide', 'terminal', 'netrunner', 'explorer', 'forge',
+    'model_manager', 'notepad', 'dashboard', 'settings', 'calculator',
+    'webrunner', 'ubuntu', 'wallpaper', 'daemon_chat', 'aion_agent',
+    'monitor', 'paint', 'video_player', 'image_viewer', 'music',
+    'welcome', 'governance', 'nfr', 'fractal', 'appstore', 'silence',
+    'native_zip', 'recycle_bin', 'notifications', 'clipboard',
+    'sticky_notes', 'calendar', 'rich_editor', 'daemon_journal',
+    'snippets', 'rss', 'accessibility', 'habits', 'screenshot',
+    'sysinfo', 'weather', 'contacts', 'pomodoro', 'kanban', 'vault',
+    'voice_recorder', 'markdown', 'task_manager', 'device_manager',
+    'fileprops', 'aion', 'agent',
+  ]);
+  return _validAppIdsCache;
+}
+
+/** Clear the cache — used when apps are installed/uninstalled at runtime. */
+export function invalidateAppIdCache(): void {
+  _validAppIdsCache = null;
 }
 
 export type ErrorType =
@@ -101,6 +133,17 @@ const VALID_OS_ACTIONS = new Set([
   'DELETE_FILE', 'MOVE_FILE', 'COPY_FILE', 'LIST_DIR',
   'CLOSE_APP', 'FOCUS_APP', 'MINIMIZE_ALL', 'SET_WALLPAPER',
   'RUN_COMMAND', 'RUN_NATIVE', 'SCHEDULE_TASK', 'EMIT_EVENT',
+  // Browser control
+  'BROWSE_NAVIGATE', 'BROWSE_BACK', 'BROWSE_FORWARD', 'BROWSE_RELOAD',
+  'BROWSE_EXTRACT', 'BROWSE_CLICK', 'BROWSE_INPUT', 'BROWSE_SCROLL', 'BROWSE_STATE',
+  // Agent pipeline
+  'WEB_SEARCH', 'EXEC_CODE',
+  'GIT_INIT', 'GIT_ADD', 'GIT_ADD_ALL', 'GIT_COMMIT', 'GIT_LOG',
+  'GIT_DIFF', 'GIT_STATUS', 'GIT_BRANCH', 'GIT_CHECKOUT',
+  'SPAWN_AGENT', 'ANALYZE_SCREEN', 'SPEAK', 'LISTEN',
+  'INDEX_DOCS', 'SEARCH_RAG',
+  // Sovereign platform
+  'SELF_EVOLVE', 'CLUSTER_SCAN', 'CLUSTER_STATUS',
 ]);
 
 function validateOsActions(text: string): ValidationError[] {
@@ -172,9 +215,10 @@ function surgicalRepair(text: string, errors: ValidationError[]): string {
       if (fakeMatch) {
         const fakeId = fakeMatch[1];
         if (!fakeId) continue;
+        const validIds = getValidAppIds();
         let bestMatch = 'explorer';
         let bestScore = 0;
-        for (const validId of VALID_APP_IDS) {
+        for (const validId of validIds) {
           const score = [...fakeId].filter(c => validId.includes(c)).length / Math.max(fakeId.length, 1);
           if (score > bestScore) { bestScore = score; bestMatch = validId; }
         }
@@ -279,14 +323,26 @@ export class ErrorGuard {
         return { valid: true, output: repaired, errors: allErrors, retries: attempts, fixApplied: repaired !== currentOutput };
       }
 
-      if (attempts < maxRetries && localBrain.isReady()) {
+      if (attempts < maxRetries) {
         const correctionPrompt = buildCorrectionPrompt(originalPrompt, currentOutput, criticalErrors);
         if (!correctionPrompt) break;
 
         try {
-          const corrected = await localBrain.generate(correctionPrompt, systemPrompt);
-          if (corrected && corrected.trim().length > 20) {
-            currentOutput = corrected.trim();
+          // Use cloud provider if available, otherwise local brain
+          const { aiGateway } = await import('../services/aiProviders');
+          const cloudProvider = aiGateway.getActiveProvider();
+          if (cloudProvider) {
+            const corrected = await aiGateway.generate(systemPrompt, correctionPrompt);
+            if (corrected && corrected.trim().length > 20) {
+              currentOutput = corrected.trim();
+            }
+          } else if (localBrain.isReady()) {
+            const corrected = await localBrain.generate(correctionPrompt, systemPrompt);
+            if (corrected && corrected.trim().length > 20) {
+              currentOutput = corrected.trim();
+            }
+          } else {
+            break; // No AI available for retry
           }
         } catch {
           break;
