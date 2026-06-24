@@ -1,80 +1,71 @@
-# syntax=docker/dockerfile:1
+# ─── NexusOS Dockerfile — Optimized for hosted demo ──────────────────
+# Builds a production Vite bundle served by nginx. The demo boots in
+# < 2 seconds (no Node.js runtime — just static files + nginx).
+#
+# Build:  docker build -t nexusos-demo .
+# Run:    docker run -p 8080:80 nexusos-demo
+# Visit:  http://localhost:8080
 
-FROM node:20-bookworm-slim AS deps
+# ─── Stage 1: Build ──────────────────────────────────────────────────
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    pkg-config \
-    libx11-dev \
-    libxcomposite-dev \
-    libxcursor-dev \
-    libxdamage-dev \
-    libxext-dev \
-    libxfixes-dev \
-    libxi-dev \
-    libxrandr-dev \
-    libxrender-dev \
-    libxss-dev \
-    libxtst-dev \
-    libcups2-dev \
-    libgtk-3-dev \
-    libnss3-dev \
-    libasound2-dev \
-    libgbm-dev \
-    libdrm-dev \
-    libxkbcommon-dev \
-    ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
+# Copy package files first for Docker layer caching
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --omit=dev 2>/dev/null || npm install
 
-FROM node:20-bookworm-slim AS build
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    pkg-config \
-    libx11-dev \
-    libxcomposite-dev \
-    libxcursor-dev \
-    libxdamage-dev \
-    libxext-dev \
-    libxfixes-dev \
-    libxi-dev \
-    libxrandr-dev \
-    libxrender-dev \
-    libxss-dev \
-    libxtst-dev \
-    libcups2-dev \
-    libgtk-3-dev \
-    libnss3-dev \
-    libasound2-dev \
-    libgbm-dev \
-    libdrm-dev \
-    libxkbcommon-dev \
-    ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
-
 RUN npm run build
 
-FROM node:20-bookworm-slim AS runtime
+# ─── Stage 2: Serve ──────────────────────────────────────────────────
+FROM nginx:alpine
 
-WORKDIR /app
+# Copy built assets
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-ENV NODE_ENV=production
+# Copy landing page
+COPY download/landing.html /usr/share/nginx/html/landing.html
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./package.json
+# Custom nginx config: SPA routing + gzip + cache headers
+RUN cat > /etc/nginx/conf.d/default.conf << 'NGINX'
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
 
-CMD ["node", "-e", "console.log('NexusOS container image built successfully. Electron desktop runtime is not started in Docker.')"]
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml image/svg+xml;
+    gzip_min_length 256;
+
+    # Cache static assets aggressively
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA fallback — all routes serve index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Landing page
+    location = /landing {
+        try_files /landing.html =404;
+    }
+
+    # Disable favicon logging
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+        return 204;
+    }
+}
+NGINX
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

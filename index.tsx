@@ -78,15 +78,19 @@ const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 
 async function bootSystem() {
   try {
-    kernelLog.info('[SYSTEM] Initializing Storage Architecture (VFS)...');
-    await vfs.init();
-    // Seed system wallpapers into /system/wallpapers/ so they are
-    // addressable by VFS path (cheaper to persist than inline HTML).
-    vfs.seedSystemWallpapers(WALLPAPER_LIBRARY);
-
-    kernelLog.info('[SYSTEM] Mounting React Root...');
+    // Render React FIRST (shows boot screen immediately), then init VFS
+    // in the background. This cuts perceived boot time from "wait for
+    // IndexedDB → render" to "render instantly → VFS loads async".
     root.render(<App />);
-    kernelLog.info('[SYSTEM] React Mount Requested.');
+
+    // Initialize VFS in parallel with React rendering
+    kernelLog.info('[SYSTEM] Initializing VFS (async)...');
+    vfs.init().then(() => {
+      vfs.seedSystemWallpapers(WALLPAPER_LIBRARY);
+      kernelLog.info('[SYSTEM] VFS ready.');
+    }).catch(e => {
+      kernelLog.error('[SYSTEM] VFS init failed:', e);
+    });
   } catch (e: any) {
     kernelLog.error('[SYSTEM] BOOT SEQUENCE FAILED:', e);
     document.body.innerHTML = `<h1 style="color:red">REACT MOUNT ERROR: ${e.message}</h1>`;

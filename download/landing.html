@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusOS — The AI-Native Operating System</title>
+  <meta name="description" content="NexusOS is an AI-native operating system where the model lives in the kernel. 50 OS:: actions, self-evolving, local-first, sovereign.">
+  <meta property="og:title" content="NexusOS — The AI-Native Operating System">
+  <meta property="og:description" content="An OS where the AI lives in the kernel. It can open apps, write files, commit to Git, browse the web, see the screen, speak, and modify its own code — safely.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://raw.githubusercontent.com/AFKmoney/nexusOS/main/public/nexus_logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="NexusOS — The AI-Native Operating System">
+  <meta name="twitter:description" content="An OS where the AI lives in the kernel. 50 actions. Self-evolving. Local-first.">
+  <link rel="icon" href="https://raw.githubusercontent.com/AFKmoney/nexusOS/main/public/nexus_logo.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #050508;
+      --accent: #10b981;
+      --accent-rgb: 16, 185, 129;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: rgba(255,255,255,0.08);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-logo {
+      width: 100px; height: 100px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; font-weight: 900; color: #000;
+      margin-bottom: 32px;
+      box-shadow: 0 0 60px rgba(var(--accent-rgb), 0.3);
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 16px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent) 0%, #34d399 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(var(--accent-rgb), 0.4); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 60px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      font-size: 2rem; font-weight: 900; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+    /* Features */
+    .features { padding: 100px 0; }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 60px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(var(--accent-rgb), 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: rgba(var(--accent-rgb), 0.1);
+      border: 1px solid rgba(var(--accent-rgb), 0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Code demo */
+    .code-demo {
+      padding: 80px 0;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-block {
+      background: #0a0a0c;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+      margin-top: 32px;
+    }
+    .code-line { color: var(--text-muted); }
+    .code-action { color: var(--accent); font-weight: 600; }
+    .code-comment { color: #475569; font-style: italic; }
+    .code-string { color: #fbbf24; }
+
+    /* Comparison */
+    .comparison { padding: 100px 0; }
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 40px;
+    }
+    .comp-table th, .comp-table td {
+      padding: 14px 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .comp-table th {
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+    }
+    .comp-table th:first-child, .comp-table td:first-child {
+      text-align: left;
+      font-weight: 600;
+    }
+    .comp-table td.yes { color: var(--accent); font-size: 1.2rem; }
+    .comp-table td.no { color: #475569; }
+    .comp-table tr:hover { background: rgba(255,255,255,0.02); }
+    .nexus-col { color: var(--accent) !important; }
+
+    /* CTA */
+    .cta-section {
+      padding: 100px 0;
+      text-align: center;
+    }
+    .cta-box {
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.1) 0%, rgba(var(--accent-rgb),0.02) 100%);
+      border: 1px solid rgba(var(--accent-rgb), 0.2);
+      border-radius: 24px;
+      padding: 60px 40px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .cta-box h2 {
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .cta-box p {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 1.1rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .comp-table { font-size: 0.8rem; }
+      .comp-table th, .comp-table td { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-logo">N</div>
+  <h1>The OS where AI<br><span class="gradient">lives in the kernel</span></h1>
+  <p>NexusOS is not a chatbot bolted onto a desktop. It's a real operating system — VFS, process manager, Unix shell — with a large language model as a kernel-resident service that can control everything through 50 validated actions.</p>
+  <div class="hero-cta">
+    <a href="https://github.com/AFKmoney/nexusOS#installation" class="btn btn-primary">
+      ⬇ Install Free
+    </a>
+    <a href="https://github.com/AFKmoney/nexusOS" class="btn btn-secondary">
+      ★ Star on GitHub
+    </a>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">50</div><div class="stat-label">OS Actions</div></div>
+    <div class="stat"><div class="stat-num">54</div><div class="stat-label">Built-in Apps</div></div>
+    <div class="stat"><div class="stat-num">19</div><div class="stat-label">AI Providers</div></div>
+    <div class="stat"><div class="stat-num">154</div><div class="stat-label">Tests Passing</div></div>
+    <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">License</div></div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features">
+  <div class="container">
+    <h2 class="section-title">Three things nobody else has</h2>
+    <p class="section-sub">NexusOS is not "AI-augmented". It's AI-native from the ground up.</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>Model in the Kernel</h3>
+        <p>Inference, planning, and decision-making are kernel services. There's no privileged "assistant" sidebar — capability flows through the same permission model that gates every app. The AI controls the OS through a validated grammar of 50 actions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Safety by Code, Not Prompts</h3>
+        <p>Every AI action passes through a deny-by-default policy engine, a four-tier trust hierarchy (doc → kernel), isolated staging, validation pipeline, and a human kill switch that survives reloads. Safety lives in TypeScript, not in system prompts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏠</div>
+        <h3>Sovereign & Local-First</h3>
+        <p>Runs GGUF models in-browser via WebAssembly. Connects to LM Studio, Ollama, or 19 cloud providers. Your data never leaves your machine unless you choose to sync. No vendor lock-in. No telemetry. No cloud required.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧬</div>
+        <h3>Self-Evolving</h3>
+        <p>The AI can modify its own source code safely. Propose → policy → trust tier → validation → staging → test → promote (or rollback). This is the only OS where autonomous self-improvement is a kernel feature, not a sci-fi concept.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3>AI Browser Control</h3>
+        <p>The AI can navigate, extract, click, input, and scroll web pages. In Electron mode, it controls a real Chromium BrowserView. In browser mode, it controls embedded iframes. Web automation is a kernel primitive.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔗</div>
+        <h3>Device Clustering</h3>
+        <p>Multiple NexusOS instances discover each other on the local network and share compute. Your desktop's GPU runs the LLM while your laptop connects as a thin client. The most powerful device becomes the compute leader.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Code Demo -->
+<section class="code-demo">
+  <div class="container">
+    <h2 class="section-title">The AI speaks in actions, not English</h2>
+    <p class="section-sub">The model controls the OS by emitting validated <code style="color:var(--accent)">OS::</code> tokens. Here's what a single AI response looks like:</p>
+    <div class="code-block">
+<span class="code-comment">// The user asked: "Open the terminal, search the web for Rust tutorials, and save a note"</span>
+<span class="code-line">Sure! I'll do all three tasks for you.</span>
+
+<span class="code-action">OS::OPEN_APP:terminal</span>
+<span class="code-action">OS::WEB_SEARCH:Rust programming tutorial 2025</span>
+<span class="code-action">OS::WRITE_FILE:/home/user/notes.md:# Rust Resources</span>
+<span class="code-action">OS::NOTIFY:Done:Terminal open, search complete, note saved</span>
+
+<span class="code-comment">// The kernel parses, validates, and dispatches each action.</span>
+<span class="code-comment">// mirrorGuard checks the grammar. policyEngine checks permissions.</span>
+<span class="code-comment">// trustTierEngine routes to the right approval gate.</span>
+<span class="code-comment">// All in TypeScript. All auditable. All bounded by code.</span>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section class="comparison">
+  <div class="container">
+    <h2 class="section-title">How NexusOS compares</h2>
+    <p class="section-sub">It's not a better Cursor. It's a different category entirely.</p>
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Capability</th>
+          <th class="nexus-col">NexusOS</th>
+          <th>Cursor</th>
+          <th>OpenHands</th>
+          <th>Claude CU</th>
+          <th>Replit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Real OS shell (VFS, process mgr, permissions)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>AI in the kernel (not a sidebar)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>50 validated OS:: actions</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Self-governing autonomy (policy + trust tiers + kill switch)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Local-first (GGUF in-browser)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Self-evolving (AI modifies own code)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Device clustering (multi-device compute)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Git integration</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="yes">✓</td>
+          <td class="yes">✓</td>
+          <td class="no">—</td>
+          <td class="yes">✓</td>
+        </tr>
+        <tr>
+          <td>Multi-agent orchestration</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="yes">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Code execution sandbox</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="yes">✓</td>
+          <td class="no">—</td>
+          <td class="yes">✓</td>
+        </tr>
+        <tr>
+          <td>Voice I/O (STT + TTS)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>RAG pipeline</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="yes">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+        <tr>
+          <td>Open source (MIT)</td>
+          <td class="yes nexus-col">✓</td>
+          <td class="no">—</td>
+          <td class="yes">✓</td>
+          <td class="no">—</td>
+          <td class="no">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box">
+      <h2>Try it now</h2>
+      <p>Clone the repo and run <code style="color:var(--accent)">npm install && npm run dev</code> — no backend, no database, no cloud required to boot.</p>
+      <div class="hero-cta" style="justify-content:center">
+        <a href="https://github.com/AFKmoney/nexusOS#installation" class="btn btn-primary">⬇ Get Started</a>
+        <a href="https://github.com/AFKmoney/nexusOS" class="btn btn-secondary">📖 Read the Docs</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>NexusOS v2.0.6 — Designed and maintained by <a href="https://github.com/AFKmoney">Philippe-Antoine Robert</a> — Released under the <a href="https://github.com/AFKmoney/nexusOS/blob/main/LICENSE">MIT License</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
