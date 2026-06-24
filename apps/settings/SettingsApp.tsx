@@ -529,8 +529,13 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
   };
 
   const handleKeyChange = (id: string, key: string) => {
-    aiGateway.updateProviderKey(id, key);
-    setProviders(aiGateway.getProviders());
+    // Update local state immediately for responsive UI
+    setProviders(prev => prev.map(p => p.id === id ? { ...p, apiKey: key, enabled: key.length > 0 } : p));
+    // Debounce the gateway save to avoid localStorage thrashing on every keystroke
+    clearTimeout((handleKeyChange as any)._timer);
+    (handleKeyChange as any)._timer = setTimeout(() => {
+      aiGateway.updateProviderKey(id, key);
+    }, 300);
   };
 
   const handleSetActive = (id: string) => {
@@ -672,6 +677,10 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
                   placeholder={`Enter ${provider.name} API Key...`}
                   value={provider.apiKey}
                   onChange={e => handleKeyChange(provider.id, e.target.value)}
+                  onBlur={e => {
+                    // Force-save on blur to ensure the key is persisted
+                    aiGateway.updateProviderKey(provider.id, e.target.value);
+                  }}
                 />
               </div>
 

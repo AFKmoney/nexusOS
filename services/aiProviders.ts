@@ -335,14 +335,21 @@ export class AIProviderGateway {
 
   private saveProviders() {
     try {
-      localStorage.setItem(PROVIDERS_STORAGE_KEY, JSON.stringify(this.providers));
+      const data = JSON.stringify(this.providers);
+      localStorage.setItem(PROVIDERS_STORAGE_KEY, data);
       localStorage.setItem(ACTIVE_PROVIDER_KEY, this.activeProviderId);
-    } catch {}
+    } catch (e) {
+      // Log the error so we can diagnose save failures
+      console.error('[AI_GATEWAY] Failed to save providers:', e);
+    }
   }
 
   // ─── Provider Management ───────────────────────────────────
   public getProviders(): AIProvider[] {
-    return [...this.providers];
+    // Return deep copies so React detects state changes properly.
+    // Without this, mutations to provider objects (like apiKey) are
+    // invisible to React's reconciliation and the UI doesn't update.
+    return this.providers.map(p => ({ ...p }));
   }
 
   public getActiveProvider(): AIProvider | null {
@@ -377,10 +384,10 @@ export class AIProviderGateway {
   }
 
   public updateProviderKey(id: string, apiKey: string) {
-    const p = this.providers.find(p => p.id === id);
-    if (p) {
-      p.apiKey = apiKey;
-      p.enabled = apiKey.length > 0;
+    const idx = this.providers.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      // Create a new object instead of mutating — ensures React sees the change
+      this.providers[idx] = { ...this.providers[idx]!, apiKey, enabled: apiKey.length > 0 };
       this.saveProviders();
     }
   }
