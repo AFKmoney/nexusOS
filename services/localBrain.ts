@@ -19,20 +19,11 @@ export interface ModelConfig {
   author?: string;
 }
 
-const LFM_DAEMON_MODEL: ModelConfig = {
-  id: 'lfm-daemon',
-  name: 'LM Studio Bridge (Port 1234)',
-  path: 'http://127.0.0.1:1234/v1',
-  source: 'daemon',
-  downloaded: true,
-  installedAt: Date.now(),
-};
-
-// Removed the fake "DAEMON Native Core (Llama 3.2 1B)" preset.
-// It was a placeholder that appeared as a downloadable model but was
-// never actually loaded. The real local model is LM Studio on port 1234.
-// Users who want in-browser GGUF inference can use Model Manager to
-// download a real HuggingFace model.
+// No fake/preset models. The model list starts empty.
+// Users add real models via:
+// 1. Model Manager (downloads GGUF from HuggingFace)
+// 2. LM Studio (auto-detected on port 1234 at runtime)
+// The system never pretends a model is loaded when it isn't.
 
 const STORED_MODELS_KEY = 'nexus_models_v1';
 const ACTIVE_MODEL_KEY  = 'nexus_active_model_v1';
@@ -97,8 +88,12 @@ export class LocalBrain {
   private wllama: Wllama | null = null;
   private modelReady = false;
   private initPromise: Promise<void> | null = null;
-  private activeModelId = LFM_DAEMON_MODEL.id;
-  private storedModels: ModelConfig[] = [LFM_DAEMON_MODEL];
+  private activeModelId = '';
+  private storedModels: ModelConfig[] = [];
+
+  // LM Studio detection state
+  private lmStudioAvailable = false;
+  private lmStudioModelName = '';
 
   private queue: Array<{ task: () => Promise<void>; resolve: () => void; reject: (e: unknown) => void }> = [];
   private isProcessing = false;
@@ -109,6 +104,8 @@ export class LocalBrain {
     this.loadStoredModels();
     const savedActive = safeLocalStorageGet(ACTIVE_MODEL_KEY);
     if (savedActive && isSafeModelId(savedActive)) this.activeModelId = savedActive;
+    // Probe LM Studio in background — don't block boot
+    this.probeLMStudio();
   }
 
   public static getInstance(): LocalBrain {
@@ -118,26 +115,47 @@ export class LocalBrain {
     return LocalBrain.instance;
   }
 
+  // Check if LM Studio is running on port 1234 and grab the model name
+  private async probeLMStudio(): Promise<void> {
+    try {
+      const res = await fetch('http://127.0.0.1:1234/v1/models', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const modelId = data?.data?.[0]?.id;
+        this.lmStudioAvailable = true;
+        this.lmStudioModelName = modelId || 'local-model';
+        kernelLog.info(`[NEURAL_CORE] LM Studio detected: ${this.lmStudioModelName}`);
+      }
+    } catch {
+      this.lmStudioAvailable = false;
+    }
+  }
+
+  public isLMStudioAvailable(): boolean {
+    return this.lmStudioAvailable;
+  }
+
+  public getLMStudioModelName(): string {
+    return this.lmStudioModelName;
+  }
+
   private loadStoredModels() {
     try {
       if (typeof localStorage === 'undefined') {
-        this.storedModels = [LFM_DAEMON_MODEL];
+        this.storedModels = [];
         return;
       }
       const raw = localStorage.getItem(STORED_MODELS_KEY);
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          const sanitized = parsed
+          this.storedModels = parsed
             .map(item => sanitizeModel(item as ModelConfig))
             .filter((m): m is ModelConfig => Boolean(m));
-          const filtered = sanitized.filter(m => m.id !== LFM_DAEMON_MODEL.id);
-          filtered.unshift(LFM_DAEMON_MODEL);
-          this.storedModels = filtered;
         }
       }
     } catch {
-      this.storedModels = [LFM_DAEMON_MODEL];
+      this.storedModels = [];
     }
   }
 
@@ -157,8 +175,8 @@ export class LocalBrain {
     return this.activeModelId;
   }
 
-  public getActiveModel(): ModelConfig {
-    return this.storedModels.find(m => m.id === this.activeModelId) || LFM_DAEMON_MODEL;
+  public getActiveModel(): ModelConfig | null {
+    return this.storedModels.find(m => m.id === this.activeModelId) || null;
   }
 
   public async checkAndDownloadDaemonModel(onProgress: (pct: number, msg: string) => void): Promise<void> {
@@ -180,11 +198,11 @@ export class LocalBrain {
   }
 
   public removeModel(id: string) {
-    if (!isSafeModelId(id) || id === LFM_DAEMON_MODEL.id) return;
+    if (!isSafeModelId(id)) return;
     this.storedModels = this.storedModels.filter(m => m.id !== id);
     this.saveStoredModels();
     if (this.activeModelId === id) {
-      this.activeModelId = LFM_DAEMON_MODEL.id;
+      this.activeModelId = '';
       safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
     }
   }
@@ -240,31 +258,28 @@ export class LocalBrain {
     this.initPromise = (async () => {
       const model = this.getActiveModel();
 
-      if (model.id === LFM_DAEMON_MODEL.id) {
-        try {
-          this.onLoadProgress?.(getProgressAmount(), 'Connecting to Port 1234 LM Studio...');
-          const res = await fetch('http://127.0.0.1:1234/v1/models', { cache: 'no-store' });
-          if (res.ok) {
-            this.modelReady = true;
-            this.onLoadProgress?.(100, 'LM Studio Port 1234 Socket Linked.');
-          } else {
-            this.modelReady = true;
-          }
-        } catch {
-           this.onLoadProgress?.(100, 'Warning: Port 1234 closed. Model will fallback to localhost.');
-           this.modelReady = true;
+      // No stored model — try LM Studio if available
+      if (!model) {
+        if (this.lmStudioAvailable) {
+          this.onLoadProgress?.(100, `LM Studio connected: ${this.lmStudioModelName}`);
+          this.modelReady = true;
+          return;
         }
+        this.modelReady = false;
+        this.initPromise = null;
         return;
       }
 
-      if (!model.downloaded && model.source === 'huggingface') {
+      // If model has a URL path (HuggingFace GGUF), load via Wllama
+      if (model.source === 'huggingface' || model.path.startsWith('http')) {
+        if (!model.downloaded) {
           this.onLoadProgress?.(0, `DAEMON ERROR: Weights for ${model.name} are missing.`);
           this.modelReady = false;
           this.initPromise = null;
           return;
-      }
+        }
 
-      try {
+        try {
         kernelLog.info('[NEURAL_CORE] Initializing Wllama Node...');
         this.onLoadProgress?.(5, 'Initializing Wllama engine...');
 
@@ -300,6 +315,17 @@ export class LocalBrain {
         this.initPromise = null;
         throw e;
       }
+      }
+
+      // Non-HuggingFace model (e.g. local path) — try LM Studio
+      if (this.lmStudioAvailable) {
+        this.modelReady = true;
+        this.onLoadProgress?.(100, `LM Studio connected: ${this.lmStudioModelName}`);
+        return;
+      }
+
+      this.modelReady = false;
+      this.initPromise = null;
     })();
 
     return this.initPromise;
@@ -335,9 +361,10 @@ export class LocalBrain {
   public async generate(prompt: string, systemPrompt?: string): Promise<string> {
     return this.enqueue(async () => {
       if (!this.modelReady) await this.initialize();
-      let model = this.getActiveModel();
+      const model = this.getActiveModel();
 
-      if (model.id === LFM_DAEMON_MODEL.id) {
+      // Try LM Studio first if available (regardless of stored model)
+      if (this.lmStudioAvailable) {
          try {
              const messages: Array<{ role: string; content: string }> = [];
              if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
@@ -345,27 +372,19 @@ export class LocalBrain {
              const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({ model: 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: false })
+               body: JSON.stringify({ model: this.lmStudioModelName || 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: false })
              });
-             if (!res.ok) throw new Error('Port 1234 Local REST Failure');
+             if (!res.ok) throw new Error('LM Studio request failed');
              const d = await res.json();
              const content = d?.choices?.[0]?.message?.content;
-             if (typeof content !== 'string') {
-               throw new Error('LM Studio returned an unexpected response shape');
-             }
-             return content;
+             if (typeof content === 'string') return content;
          } catch (e) {
-             kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
-             // Silently switch to default local model for this request
-             model = LFM_DAEMON_MODEL;
-             if (!this.wllama) {
-                 this.activeModelId = LFM_DAEMON_MODEL.id;
-                 await this.initialize();
-             }
+             kernelLog.warn('[LM_STUDIO] Port 1234 request failed, trying Wllama...');
          }
       }
 
-      if (!this.wllama) throw new Error('Brain Native Wasm not ready.');
+      // Fall back to Wllama (in-browser GGUF)
+      if (!this.wllama) throw new Error('No AI model available. Open Model Manager to download a model, or start LM Studio on port 1234.');
       const formatted = this.formatPrompt(prompt, systemPrompt);
       return await this.wllama.createCompletion(formatted, {
         nPredict: 2048,
@@ -381,17 +400,18 @@ export class LocalBrain {
   ): Promise<void> {
     return this.enqueue(async () => {
       if (!this.modelReady) await this.initialize();
-      let model = this.getActiveModel();
+      const model = this.getActiveModel();
 
-      if (model.id === LFM_DAEMON_MODEL.id) {
+      // Try LM Studio first if available
+      if (this.lmStudioAvailable) {
          const messages: Array<{ role: string; content: string }> = [];
          if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
          messages.push({ role: 'user', content: prompt });
-         
+
          try {
            const res = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
              method: 'POST', headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ model: 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: true })
+             body: JSON.stringify({ model: this.lmStudioModelName || 'local-model', messages, temperature: 0.7, max_tokens: 2048, stream: true })
            });
            if (!res.ok || !res.body) throw new Error('');
            const reader = res.body.getReader();
@@ -410,22 +430,18 @@ export class LocalBrain {
                    const d = JSON.parse(p.slice(6));
                    const t = d.choices[0]?.delta?.content || '';
                    if (t) onToken(t);
-                 } catch(err){}
+                 } catch {}
                }
              }
            }
            return;
          } catch {
-           kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable during stream, switching.');
-           model = LFM_DAEMON_MODEL;
-           if (!this.wllama) {
-               this.activeModelId = LFM_DAEMON_MODEL.id;
-               await this.initialize();
-           }
+           kernelLog.warn('[LM_STUDIO] Port 1234 stream failed, trying Wllama...');
          }
       }
 
-      if (!this.wllama) throw new Error('Native Wasm not ready.');
+      // Fall back to Wllama
+      if (!this.wllama) throw new Error('No AI model available. Open Model Manager to download a model, or start LM Studio on port 1234.');
       const formatted = this.formatPrompt(prompt, systemPrompt);
       const decoder = new TextDecoder();
       try {
@@ -448,7 +464,7 @@ export class LocalBrain {
 
   private formatPrompt(userPrompt: string, systemPrompt?: string): string {
     const model = this.getActiveModel();
-    const modelId = model.id.toLowerCase();
+    const modelId = model?.id.toLowerCase() ?? 'default';
     
     // Llama 3 / 3.1 / 3.2 Template
     if (modelId.includes('llama-3')) {

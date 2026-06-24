@@ -188,7 +188,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
       setActiveModelId(modelId);
       updateKernelRules({ activeLocalModel: modelId });
       await refreshState();
-      addNotification({ title: 'Model Switched', message: `Now using: ${localBrain.getActiveModel().name}`, type: 'success' });
+      addNotification({ title: 'Model Switched', message: `Now using: ${localBrain.getActiveModel()?.name ?? (localBrain.getLMStudioModelName() || 'model')}`, type: 'success' });
     } catch (e: any) {
       addNotification({ title: 'Switch Failed', message: e?.message || 'Unable to switch model.', type: 'error' });
     } finally {

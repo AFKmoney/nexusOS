@@ -82,9 +82,8 @@ export default function SettingsApp() {
 
   useEffect(() => {
     const checkWeights = async () => {
-      const models = localBrain.getStoredModels();
-      const dm = models.find((m: { id: string }) => m.id === 'lfm-daemon');
-        setWeightsDownloaded(dm?.downloaded === true);
+      // No fake "weights downloaded" check — show real status
+      setWeightsDownloaded(localBrain.isReady());
     };
     checkWeights();
   }, [installing]);

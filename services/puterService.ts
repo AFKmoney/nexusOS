@@ -157,7 +157,7 @@ export class PuterService {
   }
 
   public getActiveLocalModelName(): string {
-    return localBrain.getActiveModel().name;
+    return localBrain.getActiveModel()?.name ?? localBrain.getLMStudioModelName() ?? 'No model';
   }
 
   // Memory is now handled by the manifest's compressed tier.

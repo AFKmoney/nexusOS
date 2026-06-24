@@ -100,7 +100,7 @@ export default function DashboardApp() {
   }, []);
 
   useEffect(() => {
-    setModelStatus(localBrain.isReady() ? `✓ ${localBrain.getActiveModel().name}` : '⏳ No model loaded');
+    setModelStatus(localBrain.isReady() ? `✓ ${localBrain.getActiveModel()?.name ?? (localBrain.getLMStudioModelName() || 'Model Active')}` : '⏳ No model loaded');
     const allMem = memory.getRecent(100);
     setMemories(allMem.length);
     toolForge.getAllTools().then(allTools => {
