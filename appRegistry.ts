@@ -247,7 +247,7 @@ export const SYSTEM_APPS: AppManifest[] = [
     icon: Image,
     component: WallpaperApp,
     permissions: ['kernel.modify'],
-    defaultSize: { width: 720, height: 560 },
+    defaultSize: { width: 900, height: 640 },
     description: 'Generative AI engine for system backgrounds.'
   },
   {
