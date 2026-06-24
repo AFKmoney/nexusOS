@@ -5,36 +5,29 @@ import { aiService } from '../services/puterService';
 import { Paintbrush, Loader2, Check, Wand2, Sparkles, Dices, Zap, Star, Trash2 } from 'lucide-react';
 import { WALLPAPER_LIBRARY } from '../kernel/wallpaperLibrary';
 
-// ─── Live wallpaper preview ──────────────────────────────────────────
-// Renders the actual wallpaper HTML in a tiny sandboxed iframe so the
-// user sees a real preview instead of fake animated bars. The iframe is
-// scaled down to fit the thumbnail using CSS transform: scale().
-function WallpaperPreview({ code, preview }: { code: string; preview: string }) {
+// ─── Lazy wallpaper preview ──────────────────────────────────────────
+// Only renders the live iframe when the user hovers over the card.
+// Without this, 26+ iframes running canvas animations simultaneously
+// cause severe jank. Default state shows the CSS gradient placeholder.
+function WallpaperPreview({ code, preview, isHovered }: { code: string; preview: string; isHovered: boolean }) {
   const [html, setHtml] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.225);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    // Calculate scale based on container width
     if (containerRef.current) {
       const width = containerRef.current.offsetWidth;
       if (width > 0) setScale(width / 800);
     }
   }, []);
 
+  // Only load the HTML when hovered — this is the key optimization.
+  // 26 simultaneous iframes with canvas animations = death by jank.
   useEffect(() => {
-    // Recalculate on resize
-    const handleResize = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.offsetWidth;
-        if (width > 0) setScale(width / 800);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (!isHovered || loadedRef.current) return;
+    loadedRef.current = true;
 
-  useEffect(() => {
     if (code.startsWith('/')) {
       const content = vfs.readFile(code, SYSTEM_VFS_APP_ID);
       if (content && (content.startsWith('<!DOCTYPE') || content.startsWith('<html'))) {
@@ -46,20 +39,15 @@ function WallpaperPreview({ code, preview }: { code: string; preview: string }) 
       setHtml(code);
       return;
     }
-    setHtml('');
-  }, [code]);
+  }, [isHovered, code]);
 
-  if (html) {
+  if (html && isHovered) {
     return (
       <div ref={containerRef} className="absolute inset-0 overflow-hidden bg-black">
         <iframe
           srcDoc={html}
           className="absolute top-0 left-0 origin-top-left pointer-events-none"
-          style={{
-            width: '800px',
-            height: '450px',
-            transform: `scale(${scale})`,
-          }}
+          style={{ width: '800px', height: '450px', transform: `scale(${scale})` }}
           sandbox="allow-scripts"
           title="preview"
         />
@@ -67,20 +55,17 @@ function WallpaperPreview({ code, preview }: { code: string; preview: string }) 
     );
   }
 
+  // Default: CSS gradient placeholder (no iframe, no jank)
   return (
     <div ref={containerRef} className={`absolute inset-0 bg-gradient-to-br ${preview}`}>
-      <div className="absolute inset-0 flex items-center justify-center opacity-20">
+      <div className="absolute inset-0 flex items-center justify-center opacity-15">
         <div className="text-4xl font-black opacity-10">{preview.charAt(0).toUpperCase()}</div>
       </div>
-      <div className="absolute bottom-2 left-2 right-2 flex gap-0.5 items-end h-8">
-        {Array.from({ length: 16 }, (_, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-white/10 rounded-full animate-pulse"
-            style={{ height: `${20 + Math.sin(i) * 60}%`, animationDelay: `${i * 0.05}s` }}
-          />
-        ))}
-      </div>
+      {isHovered && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 size={16} className="text-white/30 animate-spin" />
+        </div>
+      )}
     </div>
   );
 }
@@ -92,6 +77,7 @@ export default function WallpaperApp() {
   const [prompt, setPrompt] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [userWallpapers, setUserWallpapers] = useState<any[]>([]);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const categories = ['All', 'Neural', 'Space', 'Cyberpunk', 'Hacker', 'Abstract', 'Interactive', 'Custom'];
 
@@ -203,7 +189,7 @@ export default function WallpaperApp() {
           {/* Category bar */}
           <div className="sticky top-0 z-10 bg-[#050508]/95 backdrop-blur-sm px-5 py-3 border-b border-white/5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-emerald-400 shrink-0">
-              <Zap size={14} className="animate-pulse" />
+              <Zap size={14} />
               <span className="text-[10px] font-black uppercase tracking-[0.25em]">{filtered.length} Wallpapers</span>
             </div>
             <div className="flex gap-1 overflow-x-auto custom-scrollbar">
@@ -211,8 +197,8 @@ export default function WallpaperApp() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeCategory === cat
-                    ? 'bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeCategory === cat
+                    ? 'bg-emerald-500 text-black'
                     : 'text-zinc-500 hover:text-zinc-300 bg-white/5 hover:bg-white/10'
                   }`}
                 >
@@ -231,32 +217,25 @@ export default function WallpaperApp() {
                   <button
                     key={preset.id}
                     onClick={() => setWallpaper(preset.code)}
-                    className={`group relative rounded-xl overflow-hidden border transition-all duration-300 text-left ${isActive
-                      ? 'border-emerald-500 ring-2 ring-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                    onMouseEnter={() => setHoveredId(preset.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`group relative rounded-xl overflow-hidden border transition-colors text-left ${isActive
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/30'
                       : 'border-white/5 hover:border-white/20'
                     }`}
                   >
-                    {/* Live preview thumbnail — 16:9 aspect ratio */}
+                    {/* Preview thumbnail — 16:9 aspect ratio */}
                     <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
-                      <WallpaperPreview code={preset.code} preview={preset.preview} />
+                      <WallpaperPreview code={preset.code} preview={preset.preview} isHovered={hoveredId === preset.id} />
 
                       {/* LIVE badge */}
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-[0.15em] rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)] z-10">LIVE</div>
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-[0.15em] rounded-full z-10">LIVE</div>
 
                       {/* Active overlay */}
                       {isActive && (
-                        <div className="absolute inset-0 bg-emerald-500/15 backdrop-blur-[1px] flex items-center justify-center z-10">
-                          <div className="p-2 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.8)]">
+                        <div className="absolute inset-0 bg-emerald-500/15 flex items-center justify-center z-10">
+                          <div className="p-2 bg-emerald-500 rounded-full">
                             <Check size={18} className="text-black" strokeWidth={3} />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Hover overlay */}
-                      {!isActive && (
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-white/10 backdrop-blur-md rounded-full">
-                            <Check size={16} className="text-white" />
                           </div>
                         </div>
                       )}
@@ -305,7 +284,7 @@ export default function WallpaperApp() {
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Vision Prompt</label>
               <textarea
-                className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-all resize-none placeholder:text-zinc-600"
+                className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-colors resize-none placeholder:text-zinc-600"
                 placeholder="e.g. A flowing river of binary code in a neon forest..."
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
@@ -316,7 +295,7 @@ export default function WallpaperApp() {
               <button
                 onClick={handleSuggest}
                 disabled={isSuggesting}
-                className="flex-1 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50"
+                className="flex-1 h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
               >
                 {isSuggesting ? <Loader2 size={13} className="animate-spin" /> : <Dices size={13} />}
                 Suggest
@@ -324,7 +303,7 @@ export default function WallpaperApp() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt}
-                className="flex-[2] h-10 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none"
+                className="flex-[2] h-10 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
               >
                 {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
                 Manifest
@@ -344,7 +323,7 @@ export default function WallpaperApp() {
                   <Star size={10} /> System Capabilities
                 </div>
                 <div className="text-[10px] text-zinc-500 leading-relaxed">
-                  Generates real-time HTML5/Canvas wallpapers. Interactive, lightweight, and adaptive to the system's temporal state. All wallpapers are saved to the VFS and persist across reboots.
+                  Generates real-time HTML5/Canvas wallpapers. Hover a card to preview. All wallpapers are saved to the VFS and persist across reboots.
                 </div>
               </div>
             </div>

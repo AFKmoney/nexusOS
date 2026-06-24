@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { PROCEDURAL_WALLPAPERS } from '../appShellConstants';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
 
 // Maximum parallax shift, in pixels, at full motion strength.
@@ -70,7 +70,7 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
 
     // VFS path (user-generated or system wallpapers saved as files)
     if (wallpaper.startsWith('/')) {
-      const content = vfs.readFile(wallpaper) ?? '';
+      const content = vfs.readFile(wallpaper, SYSTEM_VFS_APP_ID) ?? '';
       if (isHtmlDocument(content)) {
         return { kind: 'html', doc: withPointerBridge(content) };
       }
@@ -81,25 +81,42 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
   }, [wallpaper]);
 
   // Forward desktop pointer activity into the animated iframe.
+  // Throttled with requestAnimationFrame to avoid jank — without this,
+  // every mousemove triggers a style mutation on the iframe, causing
+  // layout thrashing.
   useEffect(() => {
     if (!resolved || resolved.kind !== 'html') return;
+
+    let rafId: number | null = null;
+    let lastMoveEvent: MouseEvent | null = null;
 
     const post = (kind: 'mousemove' | 'click', e: MouseEvent) => {
       const win = iframeRef.current?.contentWindow;
       if (win) win.postMessage({ __nexusPointer: true, kind, x: e.clientX, y: e.clientY }, '*');
     };
 
-    // Apply generic parallax to the wallpaper surface, scaled by motion strength.
     const applyParallax = (e: MouseEvent) => {
       const el = iframeRef.current;
       if (!el) return;
       const strength = motionRef.current ?? 0;
+      if (strength === 0) return;
       const offsetX = ((e.clientX / window.innerWidth) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
       const offsetY = ((e.clientY / window.innerHeight) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
       el.style.transform = `scale(1.06) translate(${-offsetX}px, ${-offsetY}px)`;
     };
 
-    const onMove = (e: MouseEvent) => { post('mousemove', e); applyParallax(e); };
+    const onMove = (e: MouseEvent) => {
+      lastMoveEvent = e;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (lastMoveEvent) {
+            post('mousemove', lastMoveEvent);
+            applyParallax(lastMoveEvent);
+          }
+        });
+      }
+    };
     const onClick = (e: MouseEvent) => post('click', e);
 
     window.addEventListener('mousemove', onMove, { passive: true });
@@ -107,6 +124,7 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('click', onClick);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [resolved]);
 
