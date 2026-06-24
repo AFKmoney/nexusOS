@@ -187,11 +187,17 @@ export class VirtualFileSystem {
       const data = await idbGet();
       if (data) {
         this.root = data;
+        // ─── Migration: ensure new INITIAL_FS directories exist ─────
+        // When we add new directories to INITIAL_FS (like /system/wallpapers/
+        // or /home/user/Wallpapers/), existing IndexedDB state won't have
+        // them. This merge step ensures missing directories are created.
+        this.mergeMissingInitialDirs();
       } else {
         // Fallback to legacy localStorage migration
         const saved = localStorage.getItem(VFS_STORAGE_KEY);
         if (saved) {
           this.root = JSON.parse(saved);
+          this.mergeMissingInitialDirs();
         } else {
           this.root = safeClone(INITIAL_FS);
         }
@@ -201,10 +207,49 @@ export class VirtualFileSystem {
       kernelLog.error('[VFS] Failed to initialize IndexedDB:', e);
       // Ultimate fallback
       const saved = localStorage.getItem(VFS_STORAGE_KEY);
-      if (saved) this.root = JSON.parse(saved);
+      if (saved) {
+        this.root = JSON.parse(saved);
+        this.mergeMissingInitialDirs();
+      }
     }
     this.isInitialized = true;
     kernelLog.info('[VFS] Virtual File System Initialized via IndexedDB.');
+  }
+
+  /**
+   * Walk the INITIAL_FS tree and create any directories that are missing
+   * in the current root. This is a lightweight migration: it only adds
+   * missing directories (and their default file contents), never overwrites
+   * existing data. Called after loading from IndexedDB/localStorage.
+   */
+  private mergeMissingInitialDirs(): void {
+    const walkAndMerge = (
+      initial: { [key: string]: FileNode },
+      current: { [key: string]: FileNode }
+    ) => {
+      for (const key of Object.keys(initial)) {
+        const initNode = initial[key];
+        if (!initNode) continue;
+
+        if (!current[key]) {
+          // Missing entirely — copy from INITIAL_FS
+          current[key] = safeClone(initNode);
+          kernelLog.info(`[VFS] Migration: created missing ${key}`);
+          continue;
+        }
+
+        // Both exist — if both are directories, recurse into children
+        const curNode = current[key];
+        if (initNode.type === 'directory' && curNode.type === 'directory') {
+          if (!curNode.children) curNode.children = {};
+          if (initNode.children) {
+            walkAndMerge(initNode.children, curNode.children);
+          }
+        }
+      }
+    };
+
+    walkAndMerge(INITIAL_FS, this.root);
   }
 
   // Seed system wallpaper files into /system/wallpapers/ if they are
