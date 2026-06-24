@@ -12,9 +12,29 @@ import { WALLPAPER_LIBRARY } from '../kernel/wallpaperLibrary';
 function WallpaperPreview({ code, preview }: { code: string; preview: string }) {
   const [html, setHtml] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.225);
 
   useEffect(() => {
-    // Resolve the wallpaper HTML from VFS path or inline code
+    // Calculate scale based on container width
+    if (containerRef.current) {
+      const width = containerRef.current.offsetWidth;
+      if (width > 0) setScale(width / 800);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Recalculate on resize
+    const handleResize = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        if (width > 0) setScale(width / 800);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (code.startsWith('/')) {
       const content = vfs.readFile(code, SYSTEM_VFS_APP_ID);
       if (content && (content.startsWith('<!DOCTYPE') || content.startsWith('<html'))) {
@@ -26,7 +46,6 @@ function WallpaperPreview({ code, preview }: { code: string; preview: string }) 
       setHtml(code);
       return;
     }
-    // Fallback: use the CSS gradient preview class
     setHtml('');
   }, [code]);
 
@@ -39,9 +58,7 @@ function WallpaperPreview({ code, preview }: { code: string; preview: string }) 
           style={{
             width: '800px',
             height: '450px',
-            transform: 'scale(0.225)',
-            // scale = thumbnail_width / iframe_width. For a ~180px thumbnail
-            // in a 2-col grid, 800*0.225 = 180px.
+            transform: `scale(${scale})`,
           }}
           sandbox="allow-scripts"
           title="preview"
@@ -50,18 +67,16 @@ function WallpaperPreview({ code, preview }: { code: string; preview: string }) 
     );
   }
 
-  // Fallback: CSS gradient + animated bars (for wallpapers that don't
-  // have inline HTML, like the procedural nexus:// ones)
   return (
-    <div className={`absolute inset-0 bg-gradient-to-br ${preview}`}>
-      <div className="absolute inset-0 flex items-center justify-center opacity-30">
-        <div className="text-5xl font-black opacity-10">{preview.charAt(0).toUpperCase()}</div>
+    <div ref={containerRef} className={`absolute inset-0 bg-gradient-to-br ${preview}`}>
+      <div className="absolute inset-0 flex items-center justify-center opacity-20">
+        <div className="text-4xl font-black opacity-10">{preview.charAt(0).toUpperCase()}</div>
       </div>
       <div className="absolute bottom-2 left-2 right-2 flex gap-0.5 items-end h-8">
-        {Array.from({ length: 20 }, (_, i) => (
+        {Array.from({ length: 16 }, (_, i) => (
           <div
             key={i}
-            className="flex-1 bg-white/15 rounded-full animate-pulse"
+            className="flex-1 bg-white/10 rounded-full animate-pulse"
             style={{ height: `${20 + Math.sin(i) * 60}%`, animationDelay: `${i * 0.05}s` }}
           />
         ))}
