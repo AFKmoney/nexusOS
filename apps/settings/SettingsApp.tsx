@@ -675,17 +675,50 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
                 />
               </div>
 
-              {/* Model selector */}
+              {/* Model selector — clickable to set as active model */}
               {provider.models && provider.models.length > 0 && (
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span className="text-[9px] text-zinc-600 uppercase tracking-widest">Models:</span>
+                <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] text-zinc-600 uppercase tracking-widest shrink-0">Model:</span>
                   {provider.models.map(m => (
-                    <span key={m} className="px-2 py-0.5 rounded text-[9px] bg-white/5 text-zinc-400 border border-white/5">
+                    <button
+                      key={m}
+                      onClick={() => {
+                        const updated = providers.map(p => p.id === provider.id ? { ...p, defaultModel: m } : p);
+                        setProviders(updated);
+                        aiGateway.addProvider(updated.find(p => p.id === provider.id)!);
+                        addNotification({ title: 'Model Set', message: `${m}`, type: 'success' });
+                      }}
+                      className={`px-2 py-0.5 rounded text-[9px] border transition-all ${
+                        provider.defaultModel === m
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          : 'bg-white/5 text-zinc-400 border-white/5 hover:border-white/15'
+                      }`}
+                    >
                       {m.split('/').pop()}
-                    </span>
+                    </button>
                   ))}
                 </div>
               )}
+
+              {/* Custom model input — type any model name */}
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-emerald-500/30 font-mono"
+                  placeholder="Custom model name (e.g. z-ai/glm-5.1)"
+                  defaultValue={provider.defaultModel}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) {
+                        const updated = providers.map(p => p.id === provider.id ? { ...p, defaultModel: val } : p);
+                        setProviders(updated);
+                        aiGateway.addProvider(updated.find(p => p.id === provider.id)!);
+                        addNotification({ title: 'Model Set', message: `${val}`, type: 'success' });
+                      }
+                    }
+                  }}
+                />
+              </div>
 
               {/* Base URL */}
               <div className="mt-2 text-[9px] text-zinc-600 font-mono truncate">
