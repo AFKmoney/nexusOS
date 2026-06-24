@@ -42,7 +42,7 @@ The shell deliberately contains no business logic. Application state is read fro
 
 ### 2.1 Built-in applications
 
-The `apps/` directory contains 52 application components. Each component is a React function component. Applications are registered through `appRegistry.ts`, which is the single source of truth for which applications exist, what permissions they require, and how they should be presented in the start menu.
+The `apps/` directory contains 54 application components. Each component is a React function component. Applications are registered through `appRegistry.ts`, which is the single source of truth for which applications exist, what permissions they require, and how they should be presented in the start menu.
 
 Each entry in the registry is an `AppManifest` (defined in `types.ts`):
 
@@ -107,7 +107,7 @@ The VFS does **not** live in the Zustand store. It is a separate kernel singleto
 
 ## 4. Kernel layer
 
-The kernel is implemented as 38 TypeScript modules under `kernel/`. Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
+The kernel is implemented as 53 TypeScript modules under `kernel/`. Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
 
 ### 4.1 Virtual file system — `fileSystem.ts`
 
@@ -303,6 +303,27 @@ A manifest-based hook registry. A plugin manifest declares its hooks (`onBoot`, 
 - `undoRedo.ts` — global transaction history.
 - `wallpaperLibrary.ts` — bundled wallpaper assets.
 - `ipc.ts` — typed wrapper around `window.electron` IPC.
+- `log.ts` — centralized kernel logger (`kernelLog` singleton) with production-silencing. All kernel/store/service console calls route through this module.
+- `browserBridge.ts` — AI browser control surface. Routes `OS::BROWSE_*` actions to the active browser surface (NetRunner in AI mode, WebRunner in Chromium mode).
+
+### 4.13 Agent pipeline modules (Phase 1–3)
+
+The agent pipeline extends the kernel with capabilities that let the AI do real work: commit code, search the web, execute generated code, orchestrate multi-agent teams, see the screen, speak, and retrieve documents.
+
+- `git.ts` — Git operations via `isomorphic-git`. Works against the VFS (browser mode, via a custom fs adapter) and the host filesystem (Electron mode, via `fs-*` IPC channels). Exposes: `init`, `add`, `addAll`, `commit`, `log`, `diff`, `status`, `branch`, `checkout`. Consumed by 9 `OS::GIT_*` actions.
+- `webSearch.ts` — Web search via DuckDuckGo Instant Answer API (JSON, no key required) with an HTML scrape fallback that parses result links and snippets through a CORS proxy. Returns structured `SearchResult[]`. Consumed by `OS::WEB_SEARCH`.
+- `codeExecution.ts` — Sandboxed code execution. Browser mode: JavaScript runs in a hidden sandboxed iframe with a captured console; Python runs via Pyodide (lazy-loaded ~10MB WASM); TypeScript is stripped to JS. Electron mode: delegates to `child_process.execFile` (node, python3, bash, tsx) via the `exec-code` IPC channel. Consumed by `OS::EXEC_CODE`.
+- `agentOrchestrator.ts` — Multi-agent task delegation. Five agent roles: `planner` (breaks a goal into subtasks), `coder` (implements), `reviewer` (reviews), `tester` (writes tests), `researcher` (searches web). The orchestrator coordinates: plan → execute each subtask with the assigned role → review → collect results. Consumed by `OS::SPAWN_AGENT`.
+- `vision.ts` — Screenshot capture and VLM analysis. Electron mode uses `desktopCapturer`; browser mode uses `getDisplayMedia`. The captured image is sent to the active AI provider for structured analysis (description, UI elements, suggested actions). Also supports `clickPixel(x, y)` for coordinate-based clicking. Consumed by `OS::ANALYZE_SCREEN`.
+- `voice.ts` — Speech I/O via the Web Speech API. `SpeechRecognition` for STT (returns transcribed text), `SpeechSynthesis` for TTS (speaks text aloud). No backend required — everything runs in the browser. Consumed by `OS::SPEAK` and `OS::LISTEN`.
+- `rag.ts` — Retrieval-augmented generation. Indexes documents (VFS files, code, web pages) by chunking them into 500-character pieces with 50-char overlap, generating embeddings (OpenAI `text-embedding-3-small` when an API key is configured, or a hash-based fallback), and storing them in a vector store backed by `localStorage`. At query time, retrieves the most relevant chunks via cosine similarity. Consumed by `OS::INDEX_DOCS` and `OS::SEARCH_RAG`.
+
+### 4.14 Sovereign platform modules (Phase 4–5)
+
+- `sync.ts` — Self-hosted cloud sync client. Encrypts VFS state client-side (XOR-based placeholder; production should use Web Crypto AES-GCM) and pushes to a user-configured sync server every 60 seconds. On reconnect, pulls remote changes and applies them. The server is a separate Node project the user deploys on their own VPS — no vendor lock-in.
+- `pluginMarket.ts` — Decentralized plugin marketplace. Supports multiple registries (default: community-maintained). Plugins are categorized as `app`, `agent`, `tool`, `theme`, or `wallpaper`. Install downloads the plugin to the VFS and registers it; uninstall removes it. Publish sends the plugin manifest to a registry server.
+- `selfEvolution.ts` — Safe AI-driven code modification. This is NexusOS's killer feature. The AI proposes a set of `CodePatch` objects (filePath, oldContent, newContent). The proposal goes through the full governance pipeline: `policyEngine` classifies the action as `self-modify-code` (kernel tier, requires staged validation), `trustTierEngine` confirms it's kernel-tier, `rollbackManager` snapshots the original content, the patches are applied to the VFS, `validationPipeline` runs validators, and the test suite is executed. If anything fails, the rollback manager restores the original content. Consumed by `OS::SELF_EVOLVE`.
+- `cluster.ts` — Sovereign AI device clustering. Discovers other NexusOS instances on the local network (Electron: UDP broadcast via `cluster-scan` IPC; browser: manual pairing by IP). Devices compare compute scores (CPU + memory + GPU + local model presence); the most powerful device becomes the "compute leader" and runs the LLM, while others connect as thin clients. Consumed by `OS::CLUSTER_SCAN` and `OS::CLUSTER_STATUS`.
 
 ---
 
@@ -443,7 +464,15 @@ A contributor opening the repository for the first time is best served by readin
 | `kernel/permissions.ts` | The capability model |
 | `kernel/autonomy.ts` | The autonomy loop and mission scheduler |
 | `kernel/osManifest.ts` | The action grammar and the adaptive context engine |
-| `kernel/toolForge.ts` | Action dispatch |
+| `kernel/toolForge.ts` | Action dispatch (50 verbs) |
+| `kernel/browserBridge.ts` | AI browser control surface |
+| `kernel/git.ts` | Git operations (isomorphic-git) |
+| `kernel/webSearch.ts` | Web search (DuckDuckGo, no API key) |
+| `kernel/codeExecution.ts` | Sandboxed code execution |
+| `kernel/agentOrchestrator.ts` | Multi-agent task delegation |
+| `kernel/rag.ts` | RAG pipeline (embeddings + vector store) |
+| `kernel/selfEvolution.ts` | Safe AI-driven code modification |
+| `kernel/cluster.ts` | Device clustering + compute sharing |
 | `services/localBrain.ts` | Local inference |
 | `services/aiProviders.ts` | Remote inference |
 | `electron-main.cjs` | Native bridge surface |
@@ -457,22 +486,30 @@ A contributor opening the repository for the first time is best served by readin
 | Surface | State |
 |---|---|
 | TypeScript strict compilation | passing |
-| Production build | passing |
-| Test suite | 90 / 90 passing across 14 test files |
+| Production build | passing (Vite 8, ~1.7s) |
+| Test suite | 154 / 154 passing across 22 test files |
 | Electron packaging (Windows NSIS) | functional, unsigned |
-| 52 applications registered | functional |
+| 54 applications registered | functional |
 | VFS permission enforcement | enforced; `appId` required |
 | DAEMON autonomy loop | operational; kill switch enforced |
 | Local inference | functional (Wllama + LM Studio) |
 | Multi-provider remote inference | functional (OpenAI, Anthropic, Gemini, Groq, Mistral, OpenRouter) |
-| Architecture decomposition | in progress (`App.tsx` thinning, store slice extraction) |
-| AI governance framework | ✅ fully implemented — all 10 phases complete |
-| Test suite | 90 / 90 passing across 14 test files |
+| AI governance framework | ✅ fully implemented — all phases complete |
+| Agent pipeline | ✅ Git, web search, code execution, multi-agent, vision, voice, RAG |
+| Sovereign platform | ✅ Cloud sync, plugin marketplace, self-evolution, device clustering |
+| OS:: action grammar | 50 verbs across 7 categories |
+| Electron IPC channels | 25 (OS info, native exec, filesystem, browser, code execution, cluster) |
 
 ---
 
 ## 13. Evolution trajectory
 
-NexusOS is structured to migrate from an AI-assisted desktop shell to a self-governing operating environment in nine phases. The migration is not arbitrary: each phase removes a class of human-in-the-loop dependency by replacing it with a kernel-enforced safety property. Sandboxed execution precedes autonomous code generation; capability scoping precedes multi-agent orchestration; rollback precedes self-modification.
+NexusOS has evolved through 11 phases, each removing a class of human-in-the-loop dependency by replacing it with a kernel-enforced safety property. Sandboxed execution precedes autonomous code generation; capability scoping precedes multi-agent orchestration; rollback precedes self-modification.
 
-All ten phases of the autonomy roadmap are now implemented and passing tests. The detailed plan and completion status are in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md). The specification for safe self-evolution is in [`docs/SAFE_SELF_EVOLUTION_SPEC.md`](docs/SAFE_SELF_EVOLUTION_SPEC.md). The original gap analysis (now resolved) is in [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md).
+All phases are now implemented and passing tests:
+
+- **Phases 0–9**: Foundation, audit log, policy engine, proposal loop, validation pipeline, staging, rollback, health monitoring, trust tiers, human override. All ✅ complete.
+- **Phase 10 — Agent pipeline**: Git integration, web search, code execution, multi-agent orchestration, vision, voice, RAG. All ✅ complete.
+- **Phase 11 — Sovereign platform**: Cloud sync, plugin marketplace, self-evolution, device clustering. All ✅ complete.
+
+The detailed plan and completion status are in [`docs/AUTONOMY_ROADMAP.md`](docs/AUTONOMY_ROADMAP.md). The specification for safe self-evolution is in [`docs/SAFE_SELF_EVOLUTION_SPEC.md`](docs/SAFE_SELF_EVOLUTION_SPEC.md). The original gap analysis (now resolved) is in [`docs/AI_GOVERNANCE_GAP_ANALYSIS.md`](docs/AI_GOVERNANCE_GAP_ANALYSIS.md).

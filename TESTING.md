@@ -95,20 +95,26 @@ Test files run in the order returned by `readdir` after `.sort()`. This means al
 |---|---|
 | `kernel/tests/aiProviders.test.ts` | Provider registry completeness, endpoint validation, model declarations, OpenAI-compatible presets. |
 | `kernel/tests/aiProvidersFailover.test.ts` | Transient vs. permanent error classification, failover decision logic. |
+| `kernel/tests/autonomy.test.ts` | Autonomy engine public API surface: singleton exports, healthCheck shape, selfHeal no-throw, stop idempotency. |
+| `kernel/tests/autonomyHealthMonitor.test.ts` | Initial healthy state, event-driven metric updates, confidence bounds, disabled status, subscribe/unsubscribe, threshold overrides, defensive copy. |
+| `kernel/tests/browserBridge.test.ts` | Surface registration/unregistration, active surface tracking, command dispatch (navigate/back/forward/reload/click/input/scroll/extract), state reporting, error handling. |
 | `kernel/tests/e2eGovernancePipeline.test.ts` | End-to-end governance pipeline: all 4 tier paths (doc/ui/app-logic/kernel), dashboard approval flow, revert flow, artifact count sync. |
 | `kernel/tests/errorGuard.test.ts` | `OS::` action grammar validation, HTML structure validation (DOCTYPE, closing tags). |
 | `kernel/tests/fileSystem.test.ts` | VFS permission enforcement, IndexedDB-fallback behavior, system bypass via `__system__` appId. |
 | `kernel/tests/generatedRuntimeCoverage.test.ts` | Runtime coverage assertions for dynamically generated apps and components. |
 | `kernel/tests/governance.test.ts` | `policyEngine` (8 tests), `autonomyEventLog` (6 tests), `proposalEngine` (8 tests), `validationPipeline` (5 tests), `rollbackManager` (5 tests), `humanOverride` (5 tests), `autonomyHealthMonitor` (5 tests). |
-| `kernel/tests/mirrorGuard.test.ts` | Structural action validation, verb allow-list, argument bounds. |
+| `kernel/tests/governanceBridge.test.ts` | initGovernanceBridge idempotency, no-throw when OS store unavailable. |
+| `kernel/tests/humanOverride.test.ts` | Initial active state, pause/resume, safe-mode, disable, killSwitch, history with previousMode tracking, subscribe, persistence, defensive copy. |
+| `kernel/tests/mirrorGuard.test.ts` | Structural action validation, verb allow-list (50 verbs), argument bounds, BROWSE_NAVIGATE protocol validation. |
 | `kernel/tests/missionLearning.test.ts` | Mission trust scoring, Bayesian smoothing, time-decay, storage namespacing. |
 | `kernel/tests/osManifest.test.ts` | `parseOsActions()` grammar, `generateOSManifest()` v3 compressed output across tiers. |
 | `kernel/tests/permissions.test.ts` | Capability enforcement, `grant()` / `revoke()`, permission declaration model. |
+| `kernel/tests/policyEngine.test.ts` | Deny-by-default fallback, read-state auto-allow, critical actions (system-reset, self-modify, kernel-rules), AI-initiated action classification, user-initiated allow, decision log, custom rules, isAllowed. |
 | `kernel/tests/releaseReadiness.test.ts` | `package.json` and `electron-builder.yml` NexusOS branding alignment; `TESTING.md` validation sequence; runner auto-discovery contract. |
 | `kernel/tests/stagingTrustTier.test.ts` | `stagingManager` (13 tests): stage, seal, sealAll, promote, revert, subscribe, event emission. `trustTierEngine` (24 tests): all tier classifications, approval gates, rank ordering, canActAtTier, subscribeOverride. |
 | `kernel/tests/store.test.ts` | `createDefaultStoreState()` shape, `makeStoreId()` determinism. |
 
-Total: 90 assertions across 14 files. All passing on `main`.
+Total: 154 assertions across 22 files. All passing on `main`.
 
 ---
 
@@ -131,20 +137,35 @@ Total: 90 assertions across 14 files. All passing on `main`.
 | `kernel/rollbackManager.ts` | yes | Snapshot creation, async restore, record status. |
 | `kernel/humanOverride.ts` | yes | Mode transitions, persistence, kill switch semantics. |
 | `kernel/autonomyHealthMonitor.ts` | yes | Metric accumulation, confidence computation, auto safe-mode. |
-| `kernel/mirrorGuard.ts` | yes | Action structural validation, verb allow-list. |
+| `kernel/mirrorGuard.ts` | yes | Action structural validation, verb allow-list (50 verbs). |
 | `kernel/missionLearning.ts` | yes | Trust scoring, storage, time-decay. |
-| `kernel/autonomy.ts` | partial | Governance pipeline wiring tested via e2e suite. Mission scoring, command filtering not yet unit-tested. |
+| `kernel/browserBridge.ts` | yes | Surface registration, command dispatch, state reporting. |
+| `kernel/policyEngine.ts` | yes | Deny-by-default, all action classes, decision log, custom rules. |
+| `kernel/humanOverride.ts` | yes | All 4 modes, transitions, persistence, history, subscribe. |
+| `kernel/governanceBridge.ts` | yes | Idempotency, lazy store import error handling. |
+| `kernel/autonomy.ts` | partial | Public API surface tested. Mission scoring, command filtering not yet unit-tested. |
+| `kernel/git.ts` | none | Git operations (init, add, commit, log, diff, status, branch, checkout). |
+| `kernel/webSearch.ts` | none | DuckDuckGo IA API, HTML scrape, result formatting. |
+| `kernel/codeExecution.ts` | none | JS sandbox, Pyodide, TypeScript stripping. |
+| `kernel/agentOrchestrator.ts` | none | Multi-agent task delegation, role assignment. |
+| `kernel/vision.ts` | none | Screenshot capture, VLM analysis, pixel click. |
+| `kernel/voice.ts` | none | STT, TTS, voice enumeration. |
+| `kernel/rag.ts` | none | Document indexing, chunking, embedding, cosine similarity. |
+| `kernel/sync.ts` | none | VFS serialization, encryption, push/pull cycle. |
+| `kernel/pluginMarket.ts` | none | Registry fetching, plugin install/uninstall, publish. |
+| `kernel/selfEvolution.ts` | none | Proposal pipeline, rollback, risk assessment. |
+| `kernel/cluster.ts` | none | Device discovery, pairing, compute leader election. |
 | `kernel/commander.ts` | none | Command dispatch, pipes, redirection. |
 | `kernel/eventBus.ts` | none | Pub/sub semantics, history retention. |
 | `kernel/processManager.ts` | none | PID allocation, lifecycle. |
 | `kernel/cronScheduler.ts` | none | Expression parsing, persistent scheduling. |
 | `services/localBrain.ts` | none | Inference queue, model lifecycle. |
 | `services/aiProviders.ts` | none | Provider routing, streaming. |
-| `electron-main.cjs` | none | IPC handlers, native bridge contract. |
+| `electron-main.cjs` | none | IPC handlers (25 channels), native bridge contract. |
 | `daemon-bridge-server.cjs` | none | CORS allow-list, WebSocket origin verification, exec validation. |
 | Shell components | none | Window manager, taskbar, start menu. |
 
-The dominant gap is autonomy. The autonomy loop is the core of the system's thesis but has no test coverage today; this is a high-priority contribution area.
+The dominant gap is the agent pipeline. The 10 new modules (git, webSearch, codeExecution, agentOrchestrator, vision, voice, rag, sync, pluginMarket, selfEvolution, cluster) have no dedicated test coverage yet; this is the highest-priority contribution area.
 
 ---
 

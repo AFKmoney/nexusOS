@@ -1,91 +1,68 @@
 # NexusOS — Audit & Roadmap
 
 > **Status:** Version 2.0.6 — audit pass performed June 2026.
-> This document replaces the original v2.0.3 audit log, which had drifted
-> out of sync with the actual repository state.
+> This document tracks the current audit status and outstanding work.
 
 ## Current status
 
 **Version:** 2.0.6
 **Build:** green (`npm run typecheck`, `npm test`, `npm run build` all pass)
-**Test suite:** 90/90 tests passing across 14 test files
-**VFS:** IndexedDB-backed with `localStorage` fallback, permission-gated by `appId`
+**Test suite:** 154/154 tests passing across 22 test files
+**Kernel modules:** 53
+**OS:: actions:** 50 (across 7 categories: filesystem, app management, browser, git, code execution, multi-agent/vision/voice, RAG, self-evolution/cluster, system)
+**Electron IPC channels:** 25
+**VFS:** IndexedDB-backed with `localStorage` fallback, permission-gated by `appId`, recursive directory creation via `createDirRecursive`
 **App Forge:** Operational; saves custom apps as isolated HTML files in the VFS
-**Wallpapers:** Procedural and static, decoupled and loaded from the VFS
-**Security:** Electron IPC channels hardened; `native-exec` requires explicit
-user confirmation dialog before executing host commands (see
-`electron-main.cjs:180+`); `DOMPurify` protects terminal outputs and
-markdown rendering
+**Wallpapers:** 26 system presets (seeded into `/system/wallpapers/` at boot) + AI-generated wallpapers saved to `/home/user/Wallpapers/`
+**Security:** Electron `native-exec` IPC requires explicit user confirmation modal before any host command execution. `DOMPurify` protects terminal outputs and markdown rendering.
 
 ## Recently resolved
 
-### NexusPortable cleanup (2026)
-The mobile PWA + Android APK edition (previously under `NexusPortable/`)
-has been fully removed from this repository. The desktop (browser +
-Electron) build is the only supported target. All references in code,
-docs, scripts, and GitHub workflows have been deleted.
+### 5-phase platform upgrade (June 2026)
+- **Phase 1 — Agent that delivers:** Git integration (`kernel/git.ts` via isomorphic-git), web search (`kernel/webSearch.ts` via DuckDuckGo, no API key), code execution (`kernel/codeExecution.ts` — sandboxed JS/Python/TS in browser, real child_process in Electron), host filesystem bridge (7 `fs-*` IPC channels).
+- **Phase 2 — Multi-agent + vision + voice:** Agent orchestrator (`kernel/agentOrchestrator.ts` — 5 roles: planner, coder, reviewer, tester, researcher), vision module (`kernel/vision.ts` — screenshot + VLM analysis), voice module (`kernel/voice.ts` — STT + TTS via Web Speech API).
+- **Phase 3 — RAG pipeline:** `kernel/rag.ts` — document indexing with chunking, embedding generation (OpenAI or hash fallback), cosine similarity retrieval, IndexedDB-backed vector store.
+- **Phase 4 — Cloud sync + marketplace:** `kernel/sync.ts` — self-hosted sync client with client-side encryption. `kernel/pluginMarket.ts` — decentralized plugin marketplace with multi-registry support.
+- **Phase 5 — Kill features:** `kernel/selfEvolution.ts` — safe AI-driven code modification through the full governance pipeline. `kernel/cluster.ts` — device clustering with compute leader election.
 
-### Build pipeline (v2.0.6)
-- `vite.config.ts` migrated from Vite 6.4 (rollup) to Vite 8 (rolldown):
-  `manualChunks` converted from object form to function form (required
-  by rolldown).
-- `puppeteer` moved from `dependencies` to `devDependencies` (it was
-  shipped to end users for no reason — only the e2e harness uses it).
+### Visual readability pass (June 2026)
+- Added missing `.custom-scrollbar` CSS class (57 components referenced it but it was never defined).
+- Added `::selection` styling, `*:focus-visible` global ring for keyboard accessibility.
+- Fixed 5 `text-zinc-700` contrast issues (invisible on dark backgrounds).
+- Bumped tiny text (`text-[8px]`/`text-[9px]`) to `text-[10px]` minimum across StartMenu, Taskbar, App.tsx.
+- Added `prefers-reduced-motion` media query.
 
-### Version drift (v2.0.6)
-- `index.tsx`, `apps/WelcomeApp.tsx`, `apps/SystemMonitor.tsx` now all
-  display `v2.0.6` (were stuck at `v2.0.3` / `v2.0.0`).
-- `BUILD_AND_RELEASE.md` example installer name aligned with
-  `package.json` version.
+### Browser AI control (June 2026)
+- `kernel/browserBridge.ts` — AI can now control the browser via 8 `OS::BROWSE_*` actions.
+- Real Chromium `WebContentsView` in Electron for true browser rendering.
+- NetRunner and WebRunner register with the bridge and respond to AI commands.
 
-### Logging hygiene (v2.0.6)
-- All kernel, store, and service `console.log` / `console.error` calls
-  now go through `kernel/log.ts` (`kernelLog`), a single point of truth
-  that can be silenced in production via `kernelLog.setProduction(true)`.
-- 11 production `console.log` calls in boot paths, VFS init, AI
-  pipeline, and event bus have been migrated.
+### NexusPortable cleanup (June 2026)
+- All references to the removed mobile edition purged from code, docs, scripts, and workflows.
 
-### Documentation accuracy (v2.0.6)
-- `docs/ARCHITECTURE.md`, `docs/BUILD_AND_RELEASE.md`, `docs/TESTING.md`
-  were stale stubs that contradicted their canonical root counterparts.
-  They are now pointers to the root docs.
-- `README.md` badges aligned: Vite 8, no Android APK badge, correct
-  source-file count, PWA icon MIME type corrected in `manifest.json`.
+### Build pipeline (June 2026)
+- `vite.config.ts` migrated to Vite 8/rolldown (manualChunks converted to function form).
+- `puppeteer` moved to `devDependencies`.
+- Version strings synchronized to 2.0.6 everywhere.
+
+### Mistral API key purge (June 2026)
+- Leaked key purged from git history via `git filter-repo`. All SHAs after the leak commit rewritten. Force-pushed to all branches. Key rotation on console.mistral.ai still required.
 
 ## Outstanding work
 
 ### High priority
-1. **Rotate the leaked Mistral API key** still present in git history
-   (commit `eeb16f6` removed it from the working tree but did not
-   rewrite history). See `SECURITY.md` for the procedure. The key must
-   be considered compromised regardless of any future history rewrite.
-2. **Add tests for the four untested governance modules:**
-   `kernel/autonomy.ts` (750 lines, the most complex module),
-   `kernel/policyEngine.ts` (228 lines, deny-by-default policy gate),
-   `kernel/humanOverride.ts` (179 lines, the kill switch),
-   `kernel/autonomyHealthMonitor.ts` (190 lines, auto safe-mode).
-3. **Decompose the largest app components:**
-   `apps/HyperIDE.tsx` (786 lines), `apps/GovernanceDashboard.tsx`
-   (717 lines), `apps/ModelManager.tsx` (598 lines) into sub-components.
+1. **Code-signing** for the Windows NSIS installer (OV/EV certificate + `electron-builder.yml` configuration).
+2. **macOS and Linux installers** — `release.yml` workflow already targets Linux (`AppImage` + `snap`), but `electron-builder.yml` is Windows-only.
+3. **Test coverage** — 154 tests across 22 files, but 31 of 53 kernel modules still lack dedicated test files. Priority: `git.ts`, `webSearch.ts`, `codeExecution.ts`, `agentOrchestrator.ts`, `rag.ts`.
 
 ### Medium priority
-4. Reduce the 116 `: any` / `as any` casts in the strict-TS codebase.
-5. Code-sign the Windows NSIS installer (see `BUILD_AND_RELEASE.md`
-   section 4.3 for the cert + electron-builder.yml procedure).
-6. Add macOS and Linux installers to `electron-builder.yml` — the
-   release.yml workflow already targets Linux (`AppImage` + `snap`) but
-   `electron-builder.yml` itself is Windows-only.
-7. Replace `compression: store` with `maximum` if installer size
-   becomes a concern (~100 MB today).
+4. **Visual agent builder** — node-based canvas (like ComfyUI) for constructing agent workflows visually. This is the feature that would make NexusOS accessible to non-developers.
+5. **Sync server reference implementation** — a deployable Node + SQLite server that implements the protocol expected by `kernel/sync.ts`.
+6. **Plugin registry** — community-maintained default registry for `kernel/pluginMarket.ts`. Currently points to a placeholder URL.
+7. **Cluster UDP discovery** — `cluster-scan` IPC handler is a placeholder. Real implementation would use `dgram` for UDP broadcast.
+8. **RAG embedding upgrade** — `kernel/rag.ts` uses a hash-based fallback when no OpenAI key is configured. Could use Wllama for local embeddings.
 
 ### Low priority
-8. Move `apps/Settings.tsx` and `apps/ModelManagerApp.tsx` re-export
-   indirections directly into `appRegistry.ts` (currently 4 and 3 line
-   files that just re-export).
-9. The legacy `docs/index.html` and `docs/screenshots/` directory have
-   been removed (they were unreferenced and outdated). If you want a
-   static doc site, scaffold one with VitePress or Starlight rather
-   than re-adding ad-hoc HTML.
-10. Remove the `kernel/autonomy.ts` header comment that says
-    "DAEMON AUTONOMY ENGINE" — already done in this pass, but watch
-    for new version drift in module headers.
+9. **Self-evolution test runner** — `kernel/selfEvolution.ts` runs `npm test` via Electron in Electron mode. Browser mode only does syntax validation. Could integrate the Node test runner more deeply.
+10. **Voice multi-language** — `kernel/voice.ts` is hardcoded to `en-US`. Should detect locale from the OS store.
+11. **Plugin signing** — `kernel/pluginMarket.ts` doesn't verify plugin signatures. A signing scheme would prevent malicious plugins.
