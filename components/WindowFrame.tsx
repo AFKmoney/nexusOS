@@ -129,7 +129,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
         </div>
 
         <div
-          className="flex-1 overflow-hidden relative bg-transparent"
+          className="flex-1 overflow-hidden relative bg-transparent min-h-0"
           onContextMenu={(e) => {
             // Only intercept if no child has handled it
             if (!(e.target as HTMLElement).closest('textarea, input, [contenteditable], .custom-context')) {

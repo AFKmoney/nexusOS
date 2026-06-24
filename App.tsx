@@ -78,6 +78,15 @@ function DesktopIconGrid({
     if (!node) return;
     if (node.type === 'directory') {
       openWindow('explorer', { path });
+    } else if (path.endsWith('.lnk')) {
+      // App shortcut — read the file content to get the appId
+      const content = vfs.readFile(path, SYSTEM_VFS_APP_ID);
+      if (content && content.startsWith('NEXUSOS_APP_SHORTCUT:')) {
+        const appId = content.slice('NEXUSOS_APP_SHORTCUT:'.length);
+        openWindow(appId);
+      } else {
+        openWindow('notepad', { path });
+      }
     } else if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.gif')) {
       openWindow('image_viewer', { path });
     } else if (path.endsWith('.mp4') || path.endsWith('.webm')) {
@@ -326,7 +335,12 @@ export default function App() {
 
       <div
         className="absolute inset-0 z-10 overflow-hidden"
-        style={uiScale !== 1.0 ? { zoom: uiScale } : undefined}
+        style={uiScale !== 1.0 ? {
+          transform: `scale(${uiScale})`,
+          transformOrigin: 'top left',
+          width: `${100 / uiScale}%`,
+          height: `${100 / uiScale}%`,
+        } : undefined}
       >
         <DesktopIconGrid
           currentUserId={currentUser?.id ?? null}

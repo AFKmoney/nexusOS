@@ -11,7 +11,8 @@ import {
   FolderOpen, Play, Wallpaper, Languages, Tag, FileSearch, BrainCircuit, Paintbrush
 } from 'lucide-react';
 import { aiService } from '../services/puterService';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
+import { getDesktopPath } from '../appShellConstants';
 
 interface MenuItemProps {
   icon: React.ElementType;
@@ -206,6 +207,41 @@ export default function ContextMenu() {
       const newPath = `${targetDir}/${oldName} - Shortcut`;
       vfs.createSymlink(filePath, newPath);
       addNotification({ title: 'Shortcut Created', message: `Shortcut created for ${oldName}.`, type: 'success' });
+      closeContextMenu();
+  };
+
+  const handleAddToDesktop = () => {
+      if (!filePath) return;
+      const fileName = filePath.split('/').pop() || 'file';
+      const desktopPath = getDesktopPath(currentUser?.id ?? null);
+      const destPath = `${desktopPath}/${fileName}`;
+      // Don't copy if already on the desktop
+      if (filePath === destPath) {
+          addNotification({ title: 'Already on Desktop', message: `${fileName} is already on the desktop.`, type: 'info' });
+          closeContextMenu();
+          return;
+      }
+      const content = vfs.readFile(filePath);
+      if (content !== null) {
+          vfs.writeFile(destPath, content);
+          addNotification({ title: 'Added to Desktop', message: `${fileName} copied to desktop.`, type: 'success' });
+      } else {
+          // It's a directory — create a symlink instead
+          vfs.createSymlink(filePath, destPath);
+          addNotification({ title: 'Added to Desktop', message: `Shortcut to ${fileName} created on desktop.`, type: 'success' });
+      }
+      closeContextMenu();
+  };
+
+  const handleAddAppToDesktop = (appId: string) => {
+      const app = registry.find(a => a.id === appId);
+      if (!app) return;
+      const desktopPath = getDesktopPath(currentUser?.id ?? null);
+      const shortcutName = `${app.name}.lnk`;
+      const destPath = `${desktopPath}/${shortcutName}`;
+      // Create a .lnk file that the desktop handler recognizes as an app shortcut
+      vfs.writeFile(destPath, `NEXUSOS_APP_SHORTCUT:${appId}`, SYSTEM_VFS_APP_ID);
+      addNotification({ title: 'Shortcut Created', message: `${app.name} shortcut added to desktop.`, type: 'success' });
       closeContextMenu();
   };
 
@@ -563,6 +599,7 @@ export default function ContextMenu() {
                 <MenuItem icon={Scissors} label="Cut" onClick={handleCut} />
                 <MenuItem icon={Copy} label="Copy" onClick={handleCopy} />
                 <MenuItem icon={ExternalLink} label="Create Shortcut" onClick={handleCreateShortcut} />
+                <MenuItem icon={Monitor} label="Add to Desktop" onClick={handleAddToDesktop} />
                 <MenuItem icon={Edit3} label="Rename" onClick={handleRename} />
                 <MenuItem icon={Tag} label="Change Overlay..." onClick={handleSetLabel} />
                 
@@ -646,6 +683,22 @@ export default function ContextMenu() {
                     onClick={handlePaste} 
                     disabled={!clipboard} 
                 />
+                
+                <Separator />
+                <SubHeader label="Add App to Desktop" />
+                <div className="max-h-32 overflow-y-auto custom-scrollbar">
+                    {registry.filter(a => !a.hidden).slice(0, 12).map(app => {
+                        const AppIcon = app.icon;
+                        return (
+                            <MenuItem
+                                key={app.id}
+                                icon={AppIcon}
+                                label={app.name}
+                                onClick={() => handleAddAppToDesktop(app.id)}
+                            />
+                        );
+                    })}
+                </div>
                 
                 <Separator />
                 <SubHeader label="System Tools" />

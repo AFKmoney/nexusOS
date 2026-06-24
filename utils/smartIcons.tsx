@@ -1,5 +1,5 @@
 import React from 'react';
-import { File, FileCode, FileJson, FileText, Globe, Image, Music, Video, Database, Settings, FileArchive } from 'lucide-react';
+import { File, FileCode, FileJson, FileText, Globe, Image, Music, Video, Database, Settings, FileArchive, AppWindow } from 'lucide-react';
 import { vfs } from '../kernel/fileSystem';
 
 export function getSmartIcon(path: string, size: number = 24, className: string = "") {
@@ -14,6 +14,7 @@ export function getSmartIcon(path: string, size: number = 24, className: string 
   const ext = fileName.split('.').pop()?.toLowerCase();
 
   // 1. Extension Check
+  if (ext === 'lnk') return <AppWindow size={size} className={`text-emerald-400 ${className}`} />;
   if (ext === 'html' || ext === 'htm') return <Globe size={size} className={`text-orange-500 ${className}`} />;
   if (ext === 'json') return <FileJson size={size} className={`text-yellow-500 ${className}`} />;
   if (ext === 'js' || ext === 'ts' || ext === 'tsx' || ext === 'jsx' || ext === 'css') return <FileCode size={size} className={`text-blue-400 ${className}`} />;
