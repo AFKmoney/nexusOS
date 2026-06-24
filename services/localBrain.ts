@@ -28,19 +28,11 @@ const LFM_DAEMON_MODEL: ModelConfig = {
   installedAt: Date.now(),
 };
 
-const DEFAULT_MODEL: ModelConfig = {
-  id: 'llama-3.2-1b-instruct',
-  name: 'DAEMON Native Core (Llama 3.2 1B)',
-  path: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf',
-  nCtx: 4096,
-  nBatch: 256,
-  nGpuLayers: 50,
-  size: '1.2 GB',
-  repoId: 'bartowski/Llama-3.2-1B-Instruct-GGUF',
-  filename: 'Llama-3.2-1B-Instruct-Q8_0.gguf',
-  source: 'huggingface',
-  downloaded: false,
-};
+// Removed the fake "DAEMON Native Core (Llama 3.2 1B)" preset.
+// It was a placeholder that appeared as a downloadable model but was
+// never actually loaded. The real local model is LM Studio on port 1234.
+// Users who want in-browser GGUF inference can use Model Manager to
+// download a real HuggingFace model.
 
 const STORED_MODELS_KEY = 'nexus_models_v1';
 const ACTIVE_MODEL_KEY  = 'nexus_active_model_v1';
@@ -105,8 +97,8 @@ export class LocalBrain {
   private wllama: Wllama | null = null;
   private modelReady = false;
   private initPromise: Promise<void> | null = null;
-  private activeModelId = DEFAULT_MODEL.id;
-  private storedModels: ModelConfig[] = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
+  private activeModelId = LFM_DAEMON_MODEL.id;
+  private storedModels: ModelConfig[] = [LFM_DAEMON_MODEL];
 
   private queue: Array<{ task: () => Promise<void>; resolve: () => void; reject: (e: unknown) => void }> = [];
   private isProcessing = false;
@@ -129,7 +121,7 @@ export class LocalBrain {
   private loadStoredModels() {
     try {
       if (typeof localStorage === 'undefined') {
-        this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
+        this.storedModels = [LFM_DAEMON_MODEL];
         return;
       }
       const raw = localStorage.getItem(STORED_MODELS_KEY);
@@ -139,13 +131,13 @@ export class LocalBrain {
           const sanitized = parsed
             .map(item => sanitizeModel(item as ModelConfig))
             .filter((m): m is ModelConfig => Boolean(m));
-          const filtered = sanitized.filter(m => m.id !== LFM_DAEMON_MODEL.id && m.id !== DEFAULT_MODEL.id);
-          filtered.unshift(LFM_DAEMON_MODEL, DEFAULT_MODEL);
+          const filtered = sanitized.filter(m => m.id !== LFM_DAEMON_MODEL.id);
+          filtered.unshift(LFM_DAEMON_MODEL);
           this.storedModels = filtered;
         }
       }
     } catch {
-      this.storedModels = [LFM_DAEMON_MODEL, DEFAULT_MODEL];
+      this.storedModels = [LFM_DAEMON_MODEL];
     }
   }
 
@@ -166,29 +158,12 @@ export class LocalBrain {
   }
 
   public getActiveModel(): ModelConfig {
-    return this.storedModels.find(m => m.id === this.activeModelId) || DEFAULT_MODEL;
+    return this.storedModels.find(m => m.id === this.activeModelId) || LFM_DAEMON_MODEL;
   }
 
   public async checkAndDownloadDaemonModel(onProgress: (pct: number, msg: string) => void): Promise<void> {
-    const model = this.storedModels.find(m => m.id === DEFAULT_MODEL.id) || DEFAULT_MODEL;
-    if (model.downloaded) {
-        onProgress(100, 'DAEMON weights verified in local vault.');
-        return;
-    }
-
-    onProgress(0, 'DAEMON weights missing. Initiating automatic retrieval...');
-    try {
-        await this.downloadFromHuggingFace(
-            DEFAULT_MODEL.repoId!, 
-            DEFAULT_MODEL.filename!, 
-            onProgress
-        );
-        this.activeModelId = DEFAULT_MODEL.id;
-        safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
-    } catch (e: any) {
-        kernelLog.error('[DAEMON_DL_ERR]', e);
-        throw new Error(`Failed to download DAEMON weights: ${e.message}`);
-    }
+    // LM Studio bridge is always "downloaded" — it's a local server.
+    onProgress(100, 'LM Studio bridge active on port 1234.');
   }
 
   public registerModel(config: ModelConfig) {
@@ -205,11 +180,11 @@ export class LocalBrain {
   }
 
   public removeModel(id: string) {
-    if (!isSafeModelId(id) || id === LFM_DAEMON_MODEL.id || id === DEFAULT_MODEL.id) return;
+    if (!isSafeModelId(id) || id === LFM_DAEMON_MODEL.id) return;
     this.storedModels = this.storedModels.filter(m => m.id !== id);
     this.saveStoredModels();
     if (this.activeModelId === id) {
-      this.activeModelId = DEFAULT_MODEL.id;
+      this.activeModelId = LFM_DAEMON_MODEL.id;
       safeLocalStorageSet(ACTIVE_MODEL_KEY, this.activeModelId);
     }
   }
@@ -382,9 +357,9 @@ export class LocalBrain {
          } catch (e) {
              kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable, switching to local Wasm.');
              // Silently switch to default local model for this request
-             model = DEFAULT_MODEL;
+             model = LFM_DAEMON_MODEL;
              if (!this.wllama) {
-                 this.activeModelId = DEFAULT_MODEL.id;
+                 this.activeModelId = LFM_DAEMON_MODEL.id;
                  await this.initialize();
              }
          }
@@ -442,9 +417,9 @@ export class LocalBrain {
            return;
          } catch {
            kernelLog.warn('[LM_STUDIO_FALLBACK] Port 1234 unreachable during stream, switching.');
-           model = DEFAULT_MODEL;
+           model = LFM_DAEMON_MODEL;
            if (!this.wllama) {
-               this.activeModelId = DEFAULT_MODEL.id;
+               this.activeModelId = LFM_DAEMON_MODEL.id;
                await this.initialize();
            }
          }

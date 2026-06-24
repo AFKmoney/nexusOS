@@ -35,8 +35,18 @@ export default function SettingsApp() {
 
   const handleAccentChange = (presetName: string, color: string) => {
     setAccentColor(color);
-    const { themeEngine } = require('../../kernel/themeEngine');
-    themeEngine.setAccent(presetName);
+    // Use dynamic import instead of require() — require crashes in browser
+    import('../../kernel/themeEngine').then(({ themeEngine }) => {
+      themeEngine.setCustomAccent(color);
+    }).catch(() => {
+      // Fallback: set CSS variables directly
+      const root = document.documentElement;
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      root.style.setProperty('--nx-accent', color);
+      root.style.setProperty('--nx-accent-rgb', `${r},${g},${b}`);
+    });
     addNotification({ title: 'Theme Updated', message: `Accent set to ${presetName}.`, type: 'success' });
   };
 
@@ -73,7 +83,7 @@ export default function SettingsApp() {
   useEffect(() => {
     const checkWeights = async () => {
       const models = localBrain.getStoredModels();
-      const dm = models.find((m: { id: string }) => m.id === 'llama-3.2-1b-instruct');
+      const dm = models.find((m: { id: string }) => m.id === 'lfm-daemon');
         setWeightsDownloaded(dm?.downloaded === true);
     };
     checkWeights();

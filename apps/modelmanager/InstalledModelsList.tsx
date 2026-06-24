@@ -76,7 +76,7 @@ export const InstalledModelsList: React.FC<InstalledModelsListProps> = ({
                     <Play size={12} /> Active
                   </div>
                 )}
-                {model.id !== 'lfm2.5-1.2b' && (
+                {model.id !== 'lfm-daemon' && (
                   <button
                     onClick={() => onRemove(model.id)}
                     className="p-1.5 text-zinc-600 hover:text-red-400 border border-white/5 hover:border-red-500/30 rounded-lg transition-all"

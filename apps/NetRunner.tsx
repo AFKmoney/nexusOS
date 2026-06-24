@@ -187,13 +187,17 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
       setUrl(finalUrl);
       setUrlInput(finalUrl);
 
-      // Store URL in window data so Chromium mode (WebRunner) can access it
+      // Store URL in window data so Chromium mode (WebRunner) can access it.
+      // Merge with existing data instead of overwriting.
       const os = useOS.getState();
-      os.updateWindow(windowId, { data: { url: finalUrl } });
+      const existingWin = os.windows.find(w => w.id === windowId);
+      os.updateWindow(windowId, { data: { ...existingWin?.data, url: finalUrl } });
 
       if (mode === 'ai') {
         await aiNavigate(finalUrl);
       }
+      // In chromium mode, WebRunner picks up the URL from window data
+      // automatically via its initialUrl prop. No extra action needed.
     },
     [url, mode, normalizeUrl, windowId]
   );
