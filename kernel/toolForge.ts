@@ -5,6 +5,7 @@ import { commander } from './commander';
 import { eventBus } from './eventBus';
 import { vfs } from './fileSystem';
 import { memory } from './memory';
+import { kernelLog } from './log';
 
 interface DaemonTool {
   name: string;
@@ -703,6 +704,286 @@ export class ToolForge {
           } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
             result = `[OS::BROWSE_STATE] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        // ─── Phase 1: Web search ───────────────────────────────────
+        case 'WEB_SEARCH': {
+          const query = clampLength(toStringArg(actionArgs[0]), 500);
+          if (query) {
+            try {
+              const { webSearch } = await import('./webSearch');
+              const results = await webSearch.search(query);
+              result = `[OS::WEB_SEARCH: "${query}"] → ${results.length} results:\n${webSearch.formatResults(results)}`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::WEB_SEARCH] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+
+        // ─── Phase 1: Code execution ───────────────────────────────
+        case 'EXEC_CODE': {
+          // Format: OS::EXEC_CODE:<lang>:<code>
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const lang = clampLength(rawArgs.slice(0, colonIdx), 32);
+            const code = clampLength(rawArgs.slice(colonIdx + 1), 10_000);
+            if (lang && code) {
+              try {
+                const { codeExecutor } = await import('./codeExecution');
+                const execResult = await codeExecutor.execute(lang, code);
+                result = `[OS::EXEC_CODE: ${lang}] → ${execResult.success ? 'SUCCESS' : 'FAILED'} (${execResult.durationMs}ms)\nSTDOUT:\n${execResult.stdout}\n${execResult.stderr ? 'STDERR:\n' + execResult.stderr : ''}`;
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                result = `[OS::EXEC_CODE: ${lang}] → ⚠ ${message}`;
+              }
+            }
+          } else {
+            result = `[OS::EXEC_CODE] → ⚠ Format: OS::EXEC_CODE:<lang>:<code>`;
+          }
+          break;
+        }
+
+        // ─── Phase 1: Git operations ───────────────────────────────
+        case 'GIT_INIT': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_INIT] → ${await gitKernel.init(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_ADD': {
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const { gitKernel } = await import('./git');
+            const repoPath = normalizeOsPath(rawArgs.slice(0, colonIdx));
+            const filepath = rawArgs.slice(colonIdx + 1);
+            result = `[OS::GIT_ADD] → ${await gitKernel.add(repoPath, filepath)}`;
+          }
+          break;
+        }
+        case 'GIT_ADD_ALL': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_ADD_ALL] → ${await gitKernel.addAll(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_COMMIT': {
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const { gitKernel } = await import('./git');
+            const repoPath = normalizeOsPath(rawArgs.slice(0, colonIdx));
+            const message = rawArgs.slice(colonIdx + 1);
+            const os = useOS.getState();
+            const author = {
+              name: os.currentUser?.name || 'NexusOS AI',
+              email: `${os.currentUser?.id || 'ai'}@nexusos.local`,
+            };
+            result = `[OS::GIT_COMMIT] → ${await gitKernel.commit(repoPath, message, author)}`;
+          }
+          break;
+        }
+        case 'GIT_LOG': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_LOG]\n${await gitKernel.log(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_DIFF': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_DIFF]\n${await gitKernel.diff(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_STATUS': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_STATUS]\n${await gitKernel.status(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_BRANCH': {
+          const repoPath = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (repoPath) {
+            const { gitKernel } = await import('./git');
+            result = `[OS::GIT_BRANCH] → ${await gitKernel.branch(repoPath)}`;
+          }
+          break;
+        }
+        case 'GIT_CHECKOUT': {
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const { gitKernel } = await import('./git');
+            const repoPath = normalizeOsPath(rawArgs.slice(0, colonIdx));
+            const ref = rawArgs.slice(colonIdx + 1);
+            result = `[OS::GIT_CHECKOUT] → ${await gitKernel.checkout(repoPath, ref)}`;
+          }
+          break;
+        }
+
+        // ─── Phase 2: Multi-agent + vision + voice ─────────────────
+        case 'SPAWN_AGENT': {
+          const goal = clampLength(toStringArg(actionArgs[0]), 2000);
+          if (goal) {
+            try {
+              const { agentOrchestrator } = await import('./agentOrchestrator');
+              result = `[OS::SPAWN_AGENT] → Agent orchestrator launched for: "${goal}". Task running in background. Results will appear in the audit log.`;
+              // Run in background — don't block the response
+              void agentOrchestrator.run(goal).catch(e => {
+                kernelLog.error('[Agent] Background task failed:', e.message);
+              });
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::SPAWN_AGENT] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+        case 'ANALYZE_SCREEN': {
+          const question = clampLength(toStringArg(actionArgs[0] ?? ''), 500) || undefined;
+          try {
+            const { vision } = await import('./vision');
+            const { screenshot, analysis } = await vision.captureAndAnalyze(question);
+            if (!screenshot) {
+              result = `[OS::ANALYZE_SCREEN] → ⚠ Could not capture screen`;
+            } else if (!analysis) {
+              result = `[OS::ANALYZE_SCREEN] → ⚠ Could not analyze screenshot`;
+            } else {
+              result = `[OS::ANALYZE_SCREEN] → ${analysis.description}${analysis.suggestedActions.length > 0 ? '\nSuggested actions: ' + analysis.suggestedActions.join(', ') : ''}`;
+            }
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::ANALYZE_SCREEN] → ⚠ ${message}`;
+          }
+          break;
+        }
+        case 'SPEAK': {
+          const text = clampLength(toStringArg(actionArgs[0]), 1000);
+          if (text) {
+            try {
+              const { voice } = await import('./voice');
+              await voice.speak(text);
+              result = `[OS::SPEAK] → ✅ Spoke: "${text.slice(0, 80)}${text.length > 80 ? '…' : ''}"`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::SPEAK] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+        case 'LISTEN': {
+          try {
+            const { voice } = await import('./voice');
+            const transcript = await voice.listen(10000);
+            result = `[OS::LISTEN] → Heard: "${transcript}"`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::LISTEN] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        // ─── Phase 3: RAG ──────────────────────────────────────────
+        case 'INDEX_DOCS': {
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (path) {
+            try {
+              const { rag } = await import('./rag');
+              const stat = (await getVfs()).stat(path);
+              if (stat?.type === 'directory') {
+                const count = await rag.indexVfsDirectory(path);
+                result = `[OS::INDEX_DOCS] → ✅ Indexed ${count} files from ${path}`;
+              } else {
+                const doc = await rag.indexVfsFile(path);
+                result = doc
+                  ? `[OS::INDEX_DOCS] → ✅ Indexed ${path} (${doc.chunks.length} chunks)`
+                  : `[OS::INDEX_DOCS] → ⚠ File not found: ${path}`;
+              }
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::INDEX_DOCS] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+        case 'SEARCH_RAG': {
+          const query = clampLength(toStringArg(actionArgs[0]), 500);
+          if (query) {
+            try {
+              const { rag } = await import('./rag');
+              const context = await rag.query(query);
+              result = context
+                ? `[OS::SEARCH_RAG: "${query}"] → Found relevant context:\n${context}`
+                : `[OS::SEARCH_RAG: "${query}"] → No relevant documents found. Use OS::INDEX_DOCS to index files first.`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::SEARCH_RAG] → ⚠ ${message}`;
+            }
+          }
+          break;
+        }
+
+        // ─── Phase 5: Self-evolution + cluster ─────────────────────
+        case 'SELF_EVOLVE': {
+          // Format: OS::SELF_EVOLVE:<json-patches>:<rationale>
+          // The patches arg is a JSON array of CodePatch objects.
+          const rawArgs = getArg(actionArgs[0], '');
+          const colonIdx = rawArgs.indexOf(':');
+          if (colonIdx > 0) {
+            const patchesJson = rawArgs.slice(0, colonIdx);
+            const rationale = rawArgs.slice(colonIdx + 1);
+            try {
+              const patches = JSON.parse(patchesJson);
+              if (!Array.isArray(patches) || patches.length === 0) {
+                result = `[OS::SELF_EVOLVE] → ⚠ Patches must be a non-empty JSON array`;
+                break;
+              }
+              const { selfEvolution } = await import('./selfEvolution');
+              const proposal = await selfEvolution.propose(patches, rationale);
+              result = `[OS::SELF_EVOLVE] → Proposal ${proposal.id}: ${proposal.status.toUpperCase()}${proposal.error ? ' — ' + proposal.error : ''}`;
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              result = `[OS::SELF_EVOLVE] → ⚠ Invalid patches JSON: ${message}`;
+            }
+          } else {
+            result = `[OS::SELF_EVOLVE] → ⚠ Format: OS::SELF_EVOLVE:<json-patches>:<rationale>`;
+          }
+          break;
+        }
+        case 'CLUSTER_SCAN': {
+          try {
+            const { cluster } = await import('./cluster');
+            const peers = await cluster.scan();
+            result = `[OS::CLUSTER_SCAN] → Found ${peers.length} peer(s):${peers.length > 0 ? '\n' + peers.map(p => `  ${p.name} (${p.ip}) — CPU: ${p.capabilities.cpu}, GPU: ${p.capabilities.gpu || 'none'}`).join('\n') : ''}`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::CLUSTER_SCAN] → ⚠ ${message}`;
+          }
+          break;
+        }
+        case 'CLUSTER_STATUS': {
+          try {
+            const { cluster } = await import('./cluster');
+            const status = cluster.getStatus();
+            result = `[OS::CLUSTER_STATUS] → Device: ${status.deviceId} | Leader: ${status.isLeader ? 'YES' : 'NO (following ' + status.leaderId + ')'} | Peers: ${status.peers.length}${status.computeEndpoint ? ' | Compute: ' + status.computeEndpoint : ''}`;
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            result = `[OS::CLUSTER_STATUS] → ⚠ ${message}`;
           }
           break;
         }

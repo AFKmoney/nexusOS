@@ -77,7 +77,27 @@ OS::BROWSE_EXTRACT[:<selector>[:<maxChars>]]
 OS::BROWSE_CLICK:<selector>
 OS::BROWSE_INPUT:<selector>:<value>
 OS::BROWSE_SCROLL:<deltaX>:<deltaY>
-OS::BROWSE_STATE`;
+OS::BROWSE_STATE
+OS::WEB_SEARCH:<query>
+OS::EXEC_CODE:<lang>:<code>
+OS::GIT_INIT:<path>
+OS::GIT_ADD:<path>
+OS::GIT_ADD_ALL:<path>
+OS::GIT_COMMIT:<path>:<message>
+OS::GIT_LOG:<path>
+OS::GIT_DIFF:<path>
+OS::GIT_STATUS:<path>
+OS::GIT_BRANCH:<path>
+OS::GIT_CHECKOUT:<path>:<ref>
+OS::SPAWN_AGENT:<goal>
+OS::ANALYZE_SCREEN[:<question>]
+OS::SPEAK:<text>
+OS::LISTEN
+OS::INDEX_DOCS:<path>
+OS::SEARCH_RAG:<query>
+OS::SELF_EVOLVE:<json-patches>:<rationale>
+OS::CLUSTER_SCAN
+OS::CLUSTER_STATUS`;
 
 // ═══════════════════════════════════════════════════════════════
 // TIER 3: APP INDEX — Compressed (one line per app, ~200 tokens)

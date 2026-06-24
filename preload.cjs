@@ -23,6 +23,14 @@ contextBridge.exposeInMainWorld('electron', {
       'browser-create', 'browser-navigate', 'browser-go-back',
       'browser-go-forward', 'browser-reload', 'browser-execute',
       'browser-destroy', 'browser-resize', 'browser-get-url',
+      // Phase 1: Code execution + host filesystem
+      'exec-code',
+      'fs-read-file', 'fs-write-file', 'fs-mkdir', 'fs-rmdir',
+      'fs-readdir', 'fs-stat', 'fs-unlink',
+      // Phase 2: Vision
+      'native-click',
+      // Phase 5: Cluster
+      'cluster-scan',
     ];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);

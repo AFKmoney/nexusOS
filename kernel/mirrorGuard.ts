@@ -49,6 +49,16 @@ const ALLOWED_VERBS: ReadonlySet<string> = new Set([
   'BROWSE_NAVIGATE', 'BROWSE_BACK', 'BROWSE_FORWARD', 'BROWSE_RELOAD',
   'BROWSE_EXTRACT', 'BROWSE_CLICK', 'BROWSE_INPUT', 'BROWSE_SCROLL',
   'BROWSE_STATE',
+  // Phase 1: Agent that delivers
+  'WEB_SEARCH', 'EXEC_CODE',
+  'GIT_INIT', 'GIT_ADD', 'GIT_ADD_ALL', 'GIT_COMMIT', 'GIT_LOG',
+  'GIT_DIFF', 'GIT_STATUS', 'GIT_BRANCH', 'GIT_CHECKOUT',
+  // Phase 2: Multi-agent + vision + voice
+  'SPAWN_AGENT', 'ANALYZE_SCREEN', 'SPEAK', 'LISTEN',
+  // Phase 3: RAG
+  'INDEX_DOCS', 'SEARCH_RAG',
+  // Phase 5: Self-evolution + cluster
+  'SELF_EVOLVE', 'CLUSTER_SCAN', 'CLUSTER_STATUS',
 ]);
 
 /**
@@ -57,7 +67,9 @@ const ALLOWED_VERBS: ReadonlySet<string> = new Set([
  */
 const HIGH_IMPACT_VERBS: ReadonlySet<string> = new Set([
   'WRITE_FILE', 'DELETE_FILE', 'MOVE_FILE',
-  'BUILD_APP', 'EXECUTE_JS', 'RUN_COMMAND', 'SCHEDULE_TASK',
+  'BUILD_APP', 'EXECUTE_JS', 'RUN_COMMAND', 'RUN_NATIVE', 'SCHEDULE_TASK',
+  'EXEC_CODE', 'GIT_COMMIT', 'GIT_CHECKOUT',
+  'SPAWN_AGENT', 'SELF_EVOLVE',
 ]);
 
 /**
@@ -283,7 +295,54 @@ function staticPolicy(proposal: ActionProposal, isAdmin: boolean): ValidationRes
     case 'BROWSE_FORWARD':
     case 'BROWSE_RELOAD':
     case 'BROWSE_STATE':
+    case 'WEB_SEARCH':
+    case 'INDEX_DOCS':
+    case 'SEARCH_RAG':
+    case 'GIT_LOG':
+    case 'GIT_DIFF':
+    case 'GIT_STATUS':
+    case 'GIT_BRANCH':
+    case 'CLUSTER_SCAN':
+    case 'CLUSTER_STATUS':
+    case 'SPEAK':
+    case 'LISTEN':
+    case 'ANALYZE_SCREEN':
       return { valid: true, score: 0.9 };
+
+    case 'EXEC_CODE': {
+      // Allow code execution — it runs in a sandbox (browser) or
+      // requires user confirmation (Electron native-exec).
+      const code = String(args[0] ?? '');
+      if (code.length > 10_000) return { valid: false, score: 0, reason: 'code too long' };
+      return { valid: true, score: 0.7 };
+    }
+
+    case 'GIT_INIT':
+    case 'GIT_ADD':
+    case 'GIT_ADD_ALL':
+    case 'GIT_CHECKOUT':
+      return { valid: true, score: 0.85 };
+
+    case 'GIT_COMMIT': {
+      const msg = String(args[0] ?? '');
+      if (!msg || msg.length > 500) return { valid: false, score: 0, reason: 'invalid commit message' };
+      return { valid: true, score: 0.8 };
+    }
+
+    case 'SPAWN_AGENT': {
+      const goal = String(args[0] ?? '');
+      if (!goal || goal.length > 2000) return { valid: false, score: 0, reason: 'invalid agent goal' };
+      return { valid: true, score: 0.75 };
+    }
+
+    case 'SELF_EVOLVE': {
+      // Self-evolution is the highest-risk action. It's allowed but
+      // always goes through the full governance pipeline (policy +
+      // trust tiers + validation + staging + rollback).
+      const patches = String(args[0] ?? '');
+      if (!patches || patches.length > 50_000) return { valid: false, score: 0, reason: 'invalid patches payload' };
+      return { valid: true, score: 0.5 }; // Low score → triggers AI critique
+    }
 
     default:
       return { valid: false, score: 0, reason: `verb "${verb}" has no policy rule` };

@@ -502,3 +502,117 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   stopBridgeServer();
 });
+
+// ─── Code Execution (Electron sandbox) ─────────────────────────────
+ipcMain.handle('exec-code', async (event, { language, code, timeoutMs }) => {
+  return new Promise((resolve) => {
+    const lang = (language || '').toLowerCase().trim();
+    let cmd, args;
+
+    if (lang === 'javascript' || lang === 'js') {
+      cmd = 'node'; args = ['-e', code];
+    } else if (lang === 'python' || lang === 'py') {
+      cmd = 'python3'; args = ['-c', code];
+    } else if (lang === 'shell' || lang === 'sh' || lang === 'bash') {
+      cmd = 'bash'; args = ['-c', code];
+    } else if (lang === 'typescript' || lang === 'ts') {
+      cmd = 'npx'; args = ['tsx', '-e', code];
+    } else {
+      resolve({ success: false, stdout: '', stderr: `Unsupported language: ${lang}`, exitCode: null });
+      return;
+    }
+
+    const { execFile } = require('child_process');
+    execFile(cmd, args, { timeout: timeoutMs || 10000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+      resolve({
+        success: !err,
+        stdout: stdout || '',
+        stderr: stderr || '',
+        exitCode: err ? (err.code || 1) : 0,
+      });
+    });
+  });
+});
+
+// ─── Host Filesystem (for Git + host project access) ───────────────
+const fsCallbacks = require('fs');
+const pathModule = require('path');
+
+ipcMain.handle('fs-read-file', async (event, { path: filePath, encoding }) => {
+  try {
+    const data = fsCallbacks.readFileSync(filePath, encoding || 'utf8');
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-write-file', async (event, { path: filePath, content }) => {
+  try {
+    fsCallbacks.mkdirSync(pathModule.dirname(filePath), { recursive: true });
+    fsCallbacks.writeFileSync(filePath, content, 'utf8');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-mkdir', async (event, { path: filePath, recursive }) => {
+  try {
+    fsCallbacks.mkdirSync(filePath, { recursive: recursive !== false });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-rmdir', async (event, { path: filePath }) => {
+  try {
+    fsCallbacks.rmdirSync(filePath, { recursive: true });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-readdir', async (event, { path: filePath }) => {
+  try {
+    const entries = fsCallbacks.readdirSync(filePath);
+    return { success: true, entries };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-stat', async (event, { path: filePath }) => {
+  try {
+    const stat = fsCallbacks.statSync(filePath);
+    return { success: true, isDirectory: stat.isDirectory(), mtimeMs: stat.mtimeMs, size: stat.size };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('fs-unlink', async (event, { path: filePath }) => {
+  try {
+    fsCallbacks.unlinkSync(filePath);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// ─── Cluster scan (UDP discovery placeholder) ──────────────────────
+ipcMain.handle('cluster-scan', async (event, { timeoutMs }) => {
+  // Placeholder: in a real implementation, this would use dgram to
+  // broadcast a discovery packet on the local network and collect
+  // responses. For now, returns an empty list.
+  return { success: true, devices: [] };
+});
+
+// ─── Native click (for vision module) ──────────────────────────────
+ipcMain.handle('native-click', async (event, { x, y }) => {
+  // Placeholder: would use robotjs or similar to click at coordinates.
+  // For now, returns false (not implemented).
+  return { success: false, error: 'Native click requires robotjs (not installed)' };
+});
