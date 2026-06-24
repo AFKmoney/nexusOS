@@ -56,23 +56,23 @@ export default function Taskbar() {
   return (
     <div
       onContextMenu={handleTaskbarRightClick}
-      className="taskbar fixed left-4 right-4 bottom-4 h-16 z-50 select-none"
+      className="taskbar fixed left-3 right-3 bottom-3 h-14 z-50 select-none"
     >
-      <div className="h-full rounded-[28px] bg-white/8 backdrop-blur-[30px] border border-white/15 flex items-center px-5 justify-between shadow-[0_20px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10">
+      <div className="h-full rounded-2xl bg-white/8 backdrop-blur-2xl border border-white/12 flex items-center px-3 justify-between shadow-[0_10px_40px_rgba(0,0,0,0.4)] ring-1 ring-white/5">
         {/* Left: Start + Pinned Apps */}
         <div className="flex items-center gap-3 h-full">
           <button
             onClick={(e) => { e.stopPropagation(); toggleStartMenu(); }}
-            className={`group relative flex items-center gap-3 px-4 h-11 rounded-2xl transition-all duration-500 hover:scale-[1.05] active:scale-95 ${
+            className={`group relative flex items-center gap-2.5 px-3 h-10 rounded-xl transition-all duration-300 ${
               isStartMenuOpen
-                ? 'bg-accent/20 text-accent ring-2 ring-accent/40 shadow-accent'
-                : 'bg-white/5 text-zinc-300 border border-white/5 hover:border-accent/30'
+                ? 'bg-accent/20 text-accent ring-1 ring-accent/30'
+                : 'bg-white/5 text-zinc-300 border border-white/5 hover:border-accent/20'
             }`}
           >
-            <div className={`w-6 h-6 bg-accent rounded-lg flex items-center justify-center shadow-lg transition-transform duration-500 ${isStartMenuOpen ? 'rotate-180' : 'group-hover:rotate-12'}`}>
-              <Zap size={14} className="text-black fill-current" />
+            <div className={`w-5 h-5 bg-accent rounded-md flex items-center justify-center shadow-sm transition-transform duration-300 ${isStartMenuOpen ? 'rotate-180' : 'group-hover:rotate-12'}`}>
+              <Zap size={12} className="text-black fill-current" />
             </div>
-            <span className="font-black text-sm tracking-[0.3em] drop-shadow-md hidden lg:inline">NEXUS</span>
+            <span className="font-bold text-xs tracking-[0.2em] hidden lg:inline">NEXUS</span>
           </button>
 
           <div className="h-8 w-px bg-white/10 mx-2" />
@@ -92,11 +92,11 @@ export default function Taskbar() {
                     e.stopPropagation();
                     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'app-icon', appId: app.id });
                   }}
-                  className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 group relative ${isActive ? 'bg-white/10 shadow-inner' : 'hover:bg-white/10 hover:scale-110'}`}
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200 group relative ${isActive ? 'bg-white/10 shadow-inner' : 'hover:bg-white/10'}`}
                 >
-                  <Icon size={22} className={`transition-all duration-300 ${isActive ? 'text-accent drop-shadow-[0_0_8px_rgba(var(--nx-accent-rgb),0.6)]' : 'text-zinc-400 group-hover:text-white'}`} />
-                  {isActive && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-1 bg-accent rounded-full shadow-[0_0_10px_rgba(var(--nx-accent-rgb),0.8)]" />}
-                  <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-[#0a0a0c]/90 backdrop-blur-2xl border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-zinc-100 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap shadow-[0_20px_40px_rgba(0,0,0,0.9)] translate-y-4 group-hover:translate-y-0 z-[100] ring-1 ring-white/5">
+                  <Icon size={20} className={`transition-colors ${isActive ? 'text-accent' : 'text-zinc-400 group-hover:text-white'}`} />
+                  {isActive && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-accent rounded-full" />}
+                  <div className="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#0a0a0c]/95 backdrop-blur-xl border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-wider text-zinc-200 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-lg translate-y-2 group-hover:translate-y-0 z-[100]">
                     {app.name}
                   </div>
                 </button>
@@ -106,7 +106,7 @@ export default function Taskbar() {
         </div>
 
         {/* Center: Window Tabs */}
-        <div className="flex-1 flex justify-center gap-3 px-10 overflow-hidden h-full items-center">
+        <div className="flex-1 flex justify-center gap-1.5 px-4 overflow-hidden h-full items-center">
           {windows.filter(w => w.workspaceId === activeWorkspace || !w.workspaceId).map(w => {
             const app = registry.find(a => a.id === w.appId);
             const Icon = app?.icon || Lock;
@@ -120,16 +120,14 @@ export default function Taskbar() {
                     e.stopPropagation();
                     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'window', targetId: w.id });
                   }}
-                  className={`px-4 h-10 rounded-xl text-xs font-bold truncate max-w-[180px] transition-all border flex items-center gap-3 ${
+                  className={`px-3 h-9 rounded-lg text-xs font-medium truncate max-w-[160px] transition-all border flex items-center gap-2 ${
                     isFocused && !w.isMinimized
-                      ? 'bg-white/10 border-white/20 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-[1.05]'
-                      : 'bg-black/40 border-white/5 text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
-                  } ${w.isMinimized ? 'opacity-40 grayscale' : ''}`}
+                      ? 'bg-white/10 border-white/15 text-white'
+                      : 'bg-black/30 border-white/5 text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+                  } ${w.isMinimized ? 'opacity-50' : ''}`}
                 >
-                  <div className={`p-1.5 rounded-lg ${isFocused ? 'bg-accent/20 text-accent' : 'bg-black/20 text-zinc-600'}`}>
-                    <Icon size={14} />
-                  </div>
-                  <span className="truncate tracking-wide">{w.title}</span>
+                  <Icon size={13} className={isFocused ? 'text-accent' : 'text-zinc-500'} />
+                  <span className="truncate">{w.title}</span>
                 </button>
               </div>
             );
@@ -200,10 +198,12 @@ export default function Taskbar() {
 
           {/* Show Desktop */}
           <button
-            className="w-1.5 h-10 bg-white/5 border-l border-white/10 ml-1 hover:bg-accent/20 rounded-full transition-all active:scale-y-75"
+            className="w-8 h-9 bg-white/5 hover:bg-accent/20 rounded-lg transition-colors flex items-center justify-center"
             title="Show Desktop"
             onClick={() => windows.forEach(w => minimizeWindow(w.id))}
-          />
+          >
+            <div className="w-3 h-3 border border-white/20 rounded-sm" />
+          </button>
         </div>
 
         {/* Quick Settings Panel */}

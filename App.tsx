@@ -31,21 +31,23 @@ function NeuralThoughtStream() {
   if (!kernelRules.autonomyEnabled) return null;
 
   return (
-    <div className="fixed top-20 right-6 w-72 bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-4 z-0 pointer-events-none select-none animate-in fade-in slide-in-from-right-10 duration-700">
-      <div className="flex items-center gap-2 mb-4">
-        <div className={`p-1.5 rounded-lg ${autonomyState !== 'IDLE' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' : 'bg-zinc-800 text-zinc-500'}`}>
-          <Cpu size={14} />
+    <div className="fixed top-20 right-6 w-64 bg-black/50 backdrop-blur-xl border border-white/8 rounded-2xl p-3.5 z-0 pointer-events-none select-none">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`p-1.5 rounded-lg ${autonomyState !== 'IDLE' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800/80 text-zinc-500'}`}>
+          <Cpu size={13} />
         </div>
-        <div className="flex-1">
-          <div className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">Neural Engine</div>
-          <div className="text-[11px] text-white font-medium truncate">{currentObjective}</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">Neural Engine</div>
+          <div className="text-[11px] text-white font-medium truncate">{currentObjective || 'Idle'}</div>
         </div>
+        {autonomyState !== 'IDLE' && (
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        )}
       </div>
-      <div className="space-y-2 h-40 overflow-hidden relative">
-        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/40 to-transparent z-10" />
-        {autonomyLog.slice(-5).map((log, i) => (
-          <div key={i} className="text-[10px] font-mono text-zinc-400 border-l border-white/10 pl-2 leading-relaxed">
-            <span className="text-emerald-500/60 mr-2">{">>>"}</span>
+      <div className="space-y-1.5 h-32 overflow-hidden relative">
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/50 to-transparent z-10" />
+        {autonomyLog.slice(-4).map((log, i) => (
+          <div key={i} className="text-[10px] font-mono text-zinc-400 border-l border-emerald-500/20 pl-2 leading-relaxed">
             {log}
           </div>
         ))}
@@ -125,11 +127,11 @@ function DesktopIconGrid({
 
   return (
     <div
-      className="absolute inset-0 bottom-12 p-6 overflow-hidden"
+      className="absolute inset-0 bottom-16 p-5 overflow-hidden"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDesktopDrop}
     >
-      <div className="grid grid-cols-[repeat(auto-fill,100px)] grid-rows-[repeat(auto-fill,100px)] gap-4 h-full">
+      <div className="grid grid-cols-[repeat(auto-fill,96px)] grid-rows-[repeat(auto-fill,96px)] gap-3 h-full content-start">
         {(vfs.listDir(desktopPath, SYSTEM_VFS_APP_ID) || []).map(name => {
           const itemPath = `${desktopPath}/${name}`;
           return (
@@ -137,7 +139,7 @@ function DesktopIconGrid({
               key={name}
               draggable
               onDragStart={(e) => { e.dataTransfer.setData('text/plain', itemPath); }}
-              className="flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group"
+              className="flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
               onDoubleClick={() => handleFileOpen(itemPath)}
               onContextMenu={(e) => {
                 e.preventDefault();
@@ -145,10 +147,10 @@ function DesktopIconGrid({
                 openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
               }}
             >
-              <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+              <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
                 {getSmartIcon(itemPath, 24)}
               </div>
-              <span className="text-[11px] text-zinc-300 mt-2 text-center truncate w-full drop-shadow-md font-medium group-hover:text-white transition-colors">{name}</span>
+              <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
             </div>
           );
         })}
@@ -164,9 +166,9 @@ function DesktopWidgets() {
     return () => clearInterval(t);
   }, []);
   return (
-    <div className="absolute top-8 right-8 flex flex-col gap-1 pointer-events-none select-none z-0 text-white/90 items-end animate-in fade-in duration-1000">
-      <div className="text-7xl font-extralight tracking-tighter drop-shadow-lg">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-      <div className="text-xl font-medium drop-shadow-md text-emerald-400/90">{time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+    <div className="absolute top-6 right-6 flex flex-col gap-0.5 pointer-events-none select-none z-0 text-white/80 items-end">
+      <div className="text-5xl font-light tracking-tight drop-shadow-lg tabular-nums">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+      <div className="text-sm font-medium drop-shadow-md text-emerald-400/80">{time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</div>
     </div>
   );
 }
@@ -328,7 +330,7 @@ export default function App() {
     >
       <DesktopWallpaper wallpaper={wallpaper} />
 
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none" />
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       <DesktopWidgets />
       <NeuralThoughtStream />
@@ -348,7 +350,7 @@ export default function App() {
           openWindow={openWindow}
         />
 
-        <div className="absolute inset-0 bottom-24 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bottom-20 overflow-hidden">
           {(windows || []).filter(w => w.workspaceId === activeWorkspace || !w.workspaceId).map(win => (
             <WindowFrame key={win.id} windowState={win} />
           ))}

@@ -26,14 +26,14 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
   const isActive = activeWindowId === windowState.id;
 
   useEffect(() => {
-    const t = setTimeout(() => setIsOpening(false), 300);
+    const t = setTimeout(() => setIsOpening(false), 200);
     return () => clearTimeout(t);
   }, []);
 
   const handleClose = () => {
     setIsClosing(true);
     sounds.windowClose();
-    setTimeout(() => closeWindow(windowState.id), 200);
+    setTimeout(() => closeWindow(windowState.id), 180);
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -52,13 +52,37 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
 
   if (windowState.isMinimized) return null;
 
+  // Window drag bounds — keep title bar visible (top 40px) and within
+  // the desktop area (above the taskbar).
+  const dragBounds = {
+    top: 0,
+    left: -windowState.width + 100, // allow partial off-screen left, keep 100px visible
+    right: window.innerWidth - 100,  // same for right
+    bottom: window.innerHeight - 48, // keep above taskbar area
+  };
+
   return (
     <Rnd
-      size={{ width: windowState.isMaximized ? '100%' : windowState.width, height: windowState.isMaximized ? '100%' : windowState.height }}
-      position={{ x: windowState.isMaximized ? 0 : windowState.x, y: windowState.isMaximized ? 0 : windowState.y }}
-      onDragStop={(e, d) => updateWindow(windowState.id, { x: d.x, y: d.y })}
+      size={{
+        width: windowState.isMaximized ? '100%' : windowState.width,
+        height: windowState.isMaximized ? '100%' : windowState.height,
+      }}
+      position={{
+        x: windowState.isMaximized ? 0 : windowState.x,
+        y: windowState.isMaximized ? 0 : windowState.y,
+      }}
+      onDragStop={(e, d) => {
+        // Clamp position so the title bar stays accessible
+        const clampedX = Math.max(dragBounds.left, Math.min(dragBounds.right, d.x));
+        const clampedY = Math.max(dragBounds.top, Math.min(dragBounds.bottom, d.y));
+        updateWindow(windowState.id, { x: clampedX, y: clampedY });
+      }}
       onResizeStop={(e, direction, ref, delta, position) => {
-        updateWindow(windowState.id, { width: ref.offsetWidth, height: ref.offsetHeight, ...position });
+        updateWindow(windowState.id, {
+          width: ref.offsetWidth,
+          height: ref.offsetHeight,
+          ...position,
+        });
       }}
       onDragStart={() => focusWindow(windowState.id)}
       onResizeStart={() => focusWindow(windowState.id)}
@@ -68,70 +92,90 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
       minHeight={200}
       bounds="parent"
       dragHandleClassName="window-title-bar"
-      style={{ zIndex: alwaysOnTop ? 9999 : windowState.zIndex, display: 'flex', pointerEvents: 'auto' }}
-      className={`window-frame transition-opacity duration-300 ${isClosing ? 'opacity-0 scale-95' : 'opacity-100'}`}
+      style={{
+        zIndex: alwaysOnTop ? 9999 : windowState.zIndex,
+        display: 'flex',
+        pointerEvents: 'auto',
+      }}
+      className={`window-frame transition-opacity duration-200 ${isClosing ? 'opacity-0 scale-95' : 'opacity-100'}`}
     >
       <div
-        className={`flex flex-col w-full h-full overflow-hidden transition-all duration-500 relative
-          ${windowState.isMaximized ? 'rounded-none border-none' : 'rounded-[24px]'}
-          ${isActive ? 'shadow-[0_30px_80px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.2)] ring-1 ring-emerald-500/30' : 'shadow-[0_10px_40px_rgba(0,0,0,0.4)] grayscale-[0.2]'}
-          bg-[#050505]/40 backdrop-blur-3xl border border-white/10
+        className={`flex flex-col w-full h-full overflow-hidden relative
+          ${windowState.isMaximized ? 'rounded-none' : 'rounded-xl'}
+          ${isActive
+            ? 'shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)] ring-1 ring-emerald-500/20'
+            : 'shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+          }
+          bg-[#08080a]/95 backdrop-blur-2xl border border-white/10
         `}
         style={{
           opacity,
-          transform: isOpening ? 'scale(0.9) translateY(20px)' : 'scale(1) translateY(0)',
+          transform: isOpening ? 'scale(0.96) translateY(10px)' : 'scale(1) translateY(0)',
+          transition: isOpening ? 'transform 0.2s ease-out, opacity 0.2s ease-out' : 'none',
         }}
       >
+        {/* Title Bar */}
         <div
           onContextMenu={handleContextMenu}
           onDoubleClick={() => toggleMaximizeWindow(windowState.id)}
-          className="window-title-bar h-14 flex items-center justify-between px-6 cursor-default select-none border-b border-white/5 bg-gradient-to-b from-white/[0.05] to-transparent relative z-10"
+          className="window-title-bar h-11 flex items-center justify-between px-4 cursor-default select-none border-b border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent relative z-10 shrink-0"
         >
-          <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-xl border border-white/10 shadow-inner transition-colors ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-black/20 text-zinc-600'}`}>
-              <IconComponent size={16} className={isActive ? 'drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' : ''} />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`p-1.5 rounded-lg border border-white/10 transition-colors shrink-0 ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-black/20 text-zinc-500'}`}>
+              <IconComponent size={14} className={isActive ? 'drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]' : ''} />
             </div>
-            <span className={`text-[11px] font-black uppercase tracking-[0.25em] transition-colors duration-500 ${isActive ? 'text-zinc-100' : 'text-zinc-500'} truncate max-w-[300px]`}>
+            <span className={`text-xs font-bold tracking-wide transition-colors truncate max-w-[260px] ${isActive ? 'text-zinc-100' : 'text-zinc-500'}`}>
               {windowState.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5 mr-2">
-              <button
-                onClick={() => setOpacity(o => o === 1 ? 0.7 : o === 0.7 ? 0.4 : 1)}
-                className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-all"
-                title="Visual Density"
-              >
-                <Droplet size={14} />
-              </button>
-              <button
-                onClick={() => setAlwaysOnTop(!alwaysOnTop)}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${alwaysOnTop ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'hover:bg-white/10 text-zinc-500 hover:text-white'}`}
-                title="Neural Priority"
-              >
-                {alwaysOnTop ? <Pin size={14} /> : <PinOff size={14} />}
-              </button>
-            </div>
+          <div className="flex items-center gap-1 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+            {/* Window controls — Windows-style */}
+            <button
+              onClick={() => setOpacity(o => o === 1 ? 0.7 : o === 0.7 ? 0.4 : 1)}
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors"
+              title="Opacity"
+            >
+              <Droplet size={13} />
+            </button>
+            <button
+              onClick={() => setAlwaysOnTop(!alwaysOnTop)}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${alwaysOnTop ? 'bg-emerald-500/15 text-emerald-400' : 'hover:bg-white/10 text-zinc-500 hover:text-white'}`}
+              title="Always on top"
+            >
+              {alwaysOnTop ? <Pin size={13} /> : <PinOff size={13} />}
+            </button>
 
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => minimizeWindow(windowState.id)} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-xl text-zinc-500 hover:text-white transition-all">
-                <Minus size={18} />
-              </button>
-              <button onClick={() => toggleMaximizeWindow(windowState.id)} className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-xl text-zinc-500 hover:text-white transition-all">
-                {windowState.isMaximized ? <Minimize2 size={16} /> : <Square size={14} />}
-              </button>
-              <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-black rounded-xl transition-all group shadow-lg">
-                <X size={18} className="group-hover:rotate-90 transition-transform duration-300 font-bold" />
-              </button>
-            </div>
+            <div className="w-px h-5 bg-white/10 mx-1" />
+
+            <button
+              onClick={() => minimizeWindow(windowState.id)}
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
+              title="Minimize"
+            >
+              <Minus size={16} />
+            </button>
+            <button
+              onClick={() => toggleMaximizeWindow(windowState.id)}
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
+              title={windowState.isMaximized ? 'Restore' : 'Maximize'}
+            >
+              {windowState.isMaximized ? <Minimize2 size={14} /> : <Square size={12} />}
+            </button>
+            <button
+              onClick={handleClose}
+              className="w-8 h-8 flex items-center justify-center hover:bg-red-500 text-zinc-400 hover:text-white rounded-lg transition-colors"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
 
+        {/* Content Area */}
         <div
           className="flex-1 overflow-hidden relative bg-transparent min-h-0"
           onContextMenu={(e) => {
-            // Only intercept if no child has handled it
             if (!(e.target as HTMLElement).closest('textarea, input, [contenteditable], .custom-context')) {
               e.preventDefault();
               e.stopPropagation();
@@ -144,8 +188,8 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
               <Suspense
                 fallback={
                   <div className="h-full w-full flex flex-col items-center justify-center text-zinc-500">
-                    <Box size={40} className="opacity-30 mb-3 animate-pulse" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.4em] animate-pulse">Linking Node…</span>
+                    <Box size={32} className="opacity-30 mb-3 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest animate-pulse">Loading…</span>
                   </div>
                 }
               >
@@ -153,21 +197,14 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
               </Suspense>
             </ErrorBoundary>
           ) : (
-            <div className="h-full w-full flex flex-col items-center justify-center text-zinc-800">
-              <Box size={48} className="opacity-10 mb-4 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Node Link Broken</span>
+            <div className="h-full w-full flex flex-col items-center justify-center text-zinc-700">
+              <Box size={40} className="opacity-10 mb-3" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">No Component</span>
             </div>
           )}
 
-          {!isActive && <div className="absolute inset-0 bg-black/10 pointer-events-none transition-opacity duration-500" />}
+          {!isActive && <div className="absolute inset-0 bg-black/5 pointer-events-none" />}
         </div>
-
-        {!windowState.isMaximized && (
-          <div className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize opacity-0 group-hover:opacity-20 transition-opacity">
-            <div className="absolute bottom-0 right-0 w-full h-[1px] bg-white rotate-45" />
-            <div className="absolute bottom-1 right-0 w-3/4 h-[1px] bg-white rotate-45" />
-          </div>
-        )}
       </div>
     </Rnd>
   );
