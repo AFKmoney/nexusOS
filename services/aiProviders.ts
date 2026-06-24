@@ -27,7 +27,7 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini'],
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo', 'o3-mini', 'o4-mini'],
     maxTokens: 4096,
   },
   {
@@ -54,7 +54,7 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.groq.com/openai/v1',
     defaultModel: 'llama-3.3-70b-versatile',
-    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it', 'deepseek-r1-distill-llama-70b', 'qwen-2.5-32b'],
     maxTokens: 4096,
   },
   {
@@ -112,8 +112,8 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.deepseek.com/v1',
     defaultModel: 'deepseek-chat',
-    models: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'],
-    maxTokens: 4096,
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+    maxTokens: 8192,
   },
   {
     id: 'openrouter',
@@ -139,7 +139,7 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.together.xyz/v1',
     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-    models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
+    models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo', 'deepseek-ai/DeepSeek-R1'],
     maxTokens: 4096,
   },
   {
@@ -164,8 +164,8 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'xAI (Grok)',
     type: 'openai-compatible',
     baseUrl: 'https://api.x.ai/v1',
-    defaultModel: 'grok-2-latest',
-    models: ['grok-2-latest', 'grok-2-1212', 'grok-2-vision-1212', 'grok-beta', 'grok-vision-beta'],
+    defaultModel: 'grok-3-latest',
+    models: ['grok-3-latest', 'grok-3-mini-latest', 'grok-2-latest', 'grok-2-1212', 'grok-2-vision-1212'],
     maxTokens: 4096,
   },
   {
@@ -174,7 +174,7 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     type: 'openai-compatible',
     baseUrl: 'https://api.cerebras.ai/v1',
     defaultModel: 'llama-3.3-70b',
-    models: ['llama-3.3-70b', 'llama3.1-70b', 'llama3.1-8b'],
+    models: ['llama-3.3-70b', 'llama3.1-70b', 'llama3.1-8b', 'qwen-3-32b'],
     maxTokens: 8192,
   },
   {
@@ -182,8 +182,8 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'Perplexity',
     type: 'openai-compatible',
     baseUrl: 'https://api.perplexity.ai',
-    defaultModel: 'llama-3.1-sonar-large-128k-online',
-    models: ['llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-small-128k-online', 'llama-3.1-sonar-huge-128k-online'],
+    defaultModel: 'sonar-pro',
+    models: ['sonar-pro', 'sonar', 'sonar-reasoning', 'sonar-reasoning-pro', 'sonar-deep-research'],
     maxTokens: 4096,
   },
   {
@@ -799,10 +799,8 @@ ${suffix}`;
 
     const start = performance.now();
     try {
-      const result = await this.generate.call(
-        { ...this, getActiveProvider: () => provider } as any,
-        '', 'Reply with exactly: OK', provider.defaultModel, 10
-      );
+      // Use generateOnce directly instead of the hacky .call() approach
+      const result = await this.generateOnce(provider, '', 'Reply with exactly: OK', undefined, 10);
       const latency = Math.round(performance.now() - start);
       return { success: true, message: `Connected: "${result.trim().slice(0, 50)}"`, latencyMs: latency };
     } catch (e: any) {
