@@ -612,7 +612,36 @@ ipcMain.handle('cluster-scan', async (event, { timeoutMs }) => {
 
 // ─── Native click (for vision module) ──────────────────────────────
 ipcMain.handle('native-click', async (event, { x, y }) => {
-  // Placeholder: would use robotjs or similar to click at coordinates.
-  // For now, returns false (not implemented).
   return { success: false, error: 'Native click requires robotjs (not installed)' };
+});
+
+// ─── AI API Proxy (bypasses CORS for cloud AI providers) ───────────
+// Browser fetch() is subject to CORS. Most AI APIs (NVIDIA, Mistral,
+// OpenAI, etc.) don't return Access-Control-Allow-Origin headers, so
+// direct browser requests fail with "Failed to fetch". This proxy
+// forwards the request through Electron's main process (no CORS).
+ipcMain.handle('ai-proxy', async (event, { url, method, headers, body }) => {
+  try {
+    const fetchHeaders = { ...headers };
+    // Remove headers that fetch in main process doesn't need
+    delete fetchHeaders['Host'];
+
+    const response = await fetch(url, {
+      method: method || 'POST',
+      headers: fetchHeaders,
+      body: body || undefined,
+    });
+
+    const text = await response.text();
+    let json;
+    try { json = JSON.parse(text); } catch { json = null; }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: json || text,
+    };
+  } catch (err) {
+    return { ok: false, status: 0, error: err.message };
+  }
 });

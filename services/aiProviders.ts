@@ -426,20 +426,47 @@ export class AIProviderGateway {
 
     // OpenRouter requires extra headers
     if (provider.id === 'openrouter') {
-      headers['HTTP-Referer'] = window.location.origin;
+      headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://nexusos.local';
       headers['X-Title'] = 'NexusOS';
     }
 
-    const res = await fetch(`${provider.baseUrl}/chat/completions`, {
+    const url = `${provider.baseUrl}/chat/completions`;
+    const bodyStr = JSON.stringify({
+      model: model || provider.defaultModel,
+      messages,
+      temperature: 0.7,
+      max_tokens: maxTokens || provider.maxTokens || 4096,
+      stream,
+    });
+
+    // Use Electron proxy to bypass CORS when available.
+    // Browser direct fetch fails with "Failed to fetch" for most AI APIs
+    // because they don't return Access-Control-Allow-Origin headers.
+    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+
+    if (hasElectron && !stream) {
+      // Non-streaming: use IPC proxy
+      try {
+        const res = await (window as any).electron.invoke('ai-proxy', {
+          url, method: 'POST', headers, body: bodyStr,
+        });
+        if (!res.ok) {
+          const errBody = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+          throw new Error(`${provider.name} API Error ${res.status}: ${errBody.slice(0, 200)}`);
+        }
+        const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+        return data.choices?.[0]?.message?.content || '';
+      } catch (err: any) {
+        // If proxy fails, fall through to direct fetch
+        if (err.message?.includes('API Error')) throw err;
+      }
+    }
+
+    // Direct fetch (works in browser mode for CORS-friendly APIs, or as fallback)
+    const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        model: model || provider.defaultModel,
-        messages,
-        temperature: 0.7,
-        max_tokens: maxTokens || provider.maxTokens || 4096,
-        stream,
-      }),
+      body: bodyStr,
     });
 
     if (!res.ok) {
@@ -463,26 +490,43 @@ export class AIProviderGateway {
     model?: string,
     maxTokens?: number
   ): Promise<string | ReadableStream<Uint8Array>> {
-    // Convert system messages to Anthropic format
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';
     const userMsgs = messages.filter(m => m.role !== 'system');
 
-    const res = await fetch(`${provider.baseUrl}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': provider.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: model || provider.defaultModel,
-        max_tokens: maxTokens || provider.maxTokens || 4096,
-        system: systemMsg,
-        messages: userMsgs,
-        stream,
-      }),
+    const url = `${provider.baseUrl}/v1/messages`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': provider.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    };
+    const bodyStr = JSON.stringify({
+      model: model || provider.defaultModel,
+      max_tokens: maxTokens || provider.maxTokens || 4096,
+      system: systemMsg,
+      messages: userMsgs,
+      stream,
     });
+
+    // Use Electron proxy for non-streaming to bypass CORS
+    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+    if (hasElectron && !stream) {
+      try {
+        const res = await (window as any).electron.invoke('ai-proxy', {
+          url, method: 'POST', headers, body: bodyStr,
+        });
+        if (!res.ok) {
+          const errBody = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+          throw new Error(`Anthropic API Error ${res.status}: ${errBody.slice(0, 200)}`);
+        }
+        const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+        return data.content?.[0]?.text || '';
+      } catch (err: any) {
+        if (err.message?.includes('API Error')) throw err;
+      }
+    }
+
+    const res = await fetch(url, { method: 'POST', headers, body: bodyStr });
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
@@ -506,11 +550,8 @@ export class AIProviderGateway {
   ): Promise<string | ReadableStream<Uint8Array>> {
     const modelId = model || provider.defaultModel;
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
-    // Pass the API key in a header rather than the URL to keep it out of
-    // referers, server logs, browser history, and proxy access logs.
     const url = `${provider.baseUrl}/models/${modelId}:${endpoint}`;
 
-    // Convert to Gemini format
     const systemInstruction = messages.find(m => m.role === 'system')?.content;
     const contents = messages.filter(m => m.role !== 'system').map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -522,14 +563,28 @@ export class AIProviderGateway {
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': provider.apiKey,
-      },
-      body: JSON.stringify(body),
-    });
+    const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': provider.apiKey };
+    const bodyStr = JSON.stringify(body);
+
+    // Use Electron proxy for non-streaming to bypass CORS
+    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+    if (hasElectron && !stream) {
+      try {
+        const res = await (window as any).electron.invoke('ai-proxy', {
+          url, method: 'POST', headers, body: bodyStr,
+        });
+        if (!res.ok) {
+          const errBody = typeof res.body === 'string' ? res.body : JSON.stringify(res.body);
+          throw new Error(`Gemini API Error ${res.status}: ${errBody.slice(0, 200)}`);
+        }
+        const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } catch (err: any) {
+        if (err.message?.includes('API Error')) throw err;
+      }
+    }
+
+    const res = await fetch(url, { method: 'POST', headers, body: bodyStr });
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');

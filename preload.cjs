@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('electron', {
       'native-click',
       // Phase 5: Cluster
       'cluster-scan',
+      // AI API proxy (bypasses CORS)
+      'ai-proxy',
     ];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);
