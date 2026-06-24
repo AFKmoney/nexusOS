@@ -1,10 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useOS } from '../store/osStore';
-import { 
+import {
   Sparkles, Copy, ClipboardPaste, Scissors, Maximize2,
-  X, Minimize, Minus, ExternalLink, 
-  Trash2, FilePlus, Terminal as TerminalIcon, 
-  Monitor, Bot, FileText,
+  X, Minimize, Minus, ExternalLink,
+  Trash2, FilePlus, Terminal as TerminalIcon,
+  Monitor, Bot, FileText, Lock,
   Wand2, Pin, Settings, RefreshCw, Edit3, Info, Activity, Zap, Layers, PinOff,
   LogOut, ArrowDownFromLine, ArrowUpFromLine,
   Bug, FileCode, AlignLeft, Eraser, MessageSquare, Image as ImageIcon,
@@ -34,7 +34,7 @@ export default function ContextMenu() {
     contextMenu, closeContextMenu, 
     minimizeWindow, closeWindow, toggleMaximizeWindow, restoreWindow,
     windows, openWindow, clipboard, setClipboard, addNotification, kernelRules,
-    pinApp, unpinApp, pinnedApps, registry, logout, updateWindow, setWallpaper,
+    pinApp, unpinApp, pinnedApps, registry, logout, updateWindow, setWallpaper, lockShell,
     currentUser, activeWindowId
   } = useOS();
   
@@ -726,7 +726,8 @@ export default function ContextMenu() {
                 <SubHeader label="System" />
                 <MenuItem icon={Activity} label="Task Manager" onClick={() => { openWindow('monitor'); closeContextMenu(); }} />
                 <MenuItem icon={Settings} label="Settings" onClick={() => { openWindow('settings'); closeContextMenu(); }} />
-                <MenuItem icon={LogOut} label="Lock System" onClick={() => { logout(); closeContextMenu(); }} />
+                <MenuItem icon={Lock} label="Lock System" onClick={() => { lockShell(); closeContextMenu(); }} />
+                <MenuItem icon={LogOut} label="Logout" onClick={() => { logout(); closeContextMenu(); }} />
                 
                 <Separator />
                 <MenuItem icon={Trash2} label="Close All Windows" onClick={() => { if(confirm("Close all windows?")) windows.forEach(w => closeWindow(w.id)); closeContextMenu(); }} danger />

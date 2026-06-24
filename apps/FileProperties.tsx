@@ -103,11 +103,11 @@ export default function FilePropertiesApp({ windowId }: { windowId: string }) {
 
       {/* Tabs */}
       <div className="flex px-2 pt-2 gap-1 bg-[#1c1c1c]">
-          {['General', 'Sharing', 'Security', 'Customize'].map(tab => (
-              <button 
+          {['General'].map(tab => (
+              <button
                 key={tab}
                 onClick={() => setActiveTab(tab.toLowerCase())}
-                className={`px-3 py-1.5 rounded-t-md border-t border-x border-transparent hover:bg-[#2a2a2a] transition-colors
+                className={`px-3 py-1.5 rounded-t-md border-t border-x border-transparent
                 ${activeTab === tab.toLowerCase() ? 'bg-[#2a2a2a] border-[#3a3a3a] text-white relative top-[1px] z-10' : 'text-[#888]'}`}
               >
                   {tab}
@@ -186,22 +186,10 @@ export default function FilePropertiesApp({ windowId }: { windowId: string }) {
                 <div className="col-span-2 h-px bg-[#3a3a3a] my-1" />
 
                 <div className="text-[#888]">Attributes:</div>
-                <div className="flex gap-4">
-                    <label className="flex items-center gap-1.5 cursor-not-allowed opacity-50">
-                        <input type="checkbox" className="accent-blue-500" disabled /> Read-only
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-not-allowed opacity-50">
-                        <input type="checkbox" className="accent-blue-500" disabled /> Hidden
-                    </label>
+                <div className="flex gap-4 text-[#aaa]">
+                    <span>{node?.permissions?.includes('w') ? 'Read/Write' : 'Read-only'}</span>
                 </div>
             </div>
-          )}
-
-          {activeTab !== 'general' && (
-              <div className="flex-1 flex flex-col items-center justify-center text-zinc-600 gap-2 opacity-50 italic">
-                  <Settings className="w-8 h-8" />
-                  <span>Module unavailable in current session</span>
-              </div>
           )}
       </div>
 

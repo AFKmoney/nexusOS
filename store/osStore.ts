@@ -78,6 +78,7 @@ export const useOS = create<OSState>()(
       kernelRules: DEFAULT_KERNEL_RULES,
       isForging: false,
       uiScale: 1.0,
+      isShellLocked: false,
       daemonLocked: false,
       daemonLockLog: [],
       contextMenu: { isOpen: false, x: 0, y: 0, targetType: 'desktop' },

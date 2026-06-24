@@ -90,9 +90,6 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
             >
               <Replace size={14} />
             </button>
-            <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="More Options">
-              <MoreHorizontal size={14} />
-            </button>
           </div>
         </div>
 

@@ -96,8 +96,8 @@ export default function VideoPlayer() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="p-2 text-zinc-500 hover:text-white transition-all"><Settings size={18} /></button>
-            <button className="p-2 text-zinc-500 hover:text-white transition-all"><Maximize size={18} /></button>
+            <button onClick={() => { if (videoRef.current) { const speeds = [1, 1.25, 1.5, 2, 0.5]; const cur = videoRef.current.playbackRate; const idx = speeds.indexOf(cur); const next = speeds[(idx + 1) % speeds.length] ?? 1; videoRef.current.playbackRate = next; } }} className="p-2 text-zinc-500 hover:text-white transition-all" title="Playback Speed"><Settings size={18} /></button>
+            <button onClick={() => { if (videoRef.current?.parentElement) { if (document.fullscreenElement) document.exitFullscreen(); else videoRef.current.parentElement.requestFullscreen(); } }} className="p-2 text-zinc-500 hover:text-white transition-all" title="Fullscreen"><Maximize size={18} /></button>
           </div>
         </div>
       </div>

@@ -20,6 +20,7 @@ import DesktopWallpaper from './components/DesktopWallpaper';
 import { DaemonLockScreen } from './components/DaemonLockScreen';
 import LockScreen from './components/LockScreen';
 import { NeuralHoloUI } from './components/NeuralHoloUI';
+import ToastContainer from './components/ToastContainer';
 import { getDesktopPath } from './appShellConstants';
 import { kernelLog } from './kernel/log';
 
@@ -197,7 +198,7 @@ export default function App() {
     login,
     setBooted
   } = useOS();
-  const [locked, setLocked] = useState(false);
+  const { lockShell, unlockShell, isShellLocked: locked } = useOS();
   const [bootTimedOut, setBootTimedOut] = useState(false);
 
   useEffect(() => {
@@ -272,7 +273,7 @@ export default function App() {
       if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); toggleSearch(); return; }
       if (e.ctrlKey && e.key === 't') { e.preventDefault(); openWindow('terminal'); sounds.windowOpen(); return; }
       if (e.ctrlKey && e.key === 'e') { e.preventDefault(); openWindow('explorer'); sounds.windowOpen(); return; }
-      if (e.ctrlKey && e.key === 'l') { e.preventDefault(); setLocked(true); return; }
+      if (e.ctrlKey && e.key === 'l') { e.preventDefault(); lockShell(); return; }
       if (e.ctrlKey && e.key === 'w') {
         e.preventDefault();
         const ws = useOS.getState().windows;
@@ -362,7 +363,7 @@ export default function App() {
         <Taskbar />
       </div>
 
-      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+      {locked && <LockScreen onUnlock={() => unlockShell()} />}
 
       {isSearchOpen && (
         <Suspense fallback={null}>
@@ -372,6 +373,7 @@ export default function App() {
 
       <DaemonLockScreen />
       <NeuralHoloUI />
+      <ToastContainer />
     </div>
   );
 }

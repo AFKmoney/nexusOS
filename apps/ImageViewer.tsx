@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Image, ZoomIn, ZoomOut, Maximize, RotateCw, Trash2, ChevronLeft, ChevronRight, Share2, Info, FolderOpen } from 'lucide-react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 
-export default function ImageViewer() {
+export default function ImageViewer({ windowId }: { windowId: string }) {
+  const { addNotification, closeWindow } = useOS();
   const [images, setImages] = useState<{name: string, path: string}[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -45,8 +46,8 @@ export default function ImageViewer() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Share2 size={16}/></button>
-          <button className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
+          <button onClick={() => { if (activeImage) { navigator.clipboard.writeText(activeImage.path); addNotification({ title: 'Path Copied', message: 'Image path copied to clipboard', type: 'success' }); } }} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Share2 size={16}/></button>
+          <button onClick={() => { if (activeImage && confirm(`Delete ${activeImage.name}?`)) { vfs.delete(activeImage.path, SYSTEM_VFS_APP_ID); setImages(prev => { const next = prev.filter((_, i) => i !== activeIdx); setActiveIdx(Math.max(0, activeIdx - 1)); return next; }); addNotification({ title: 'Deleted', message: `${activeImage.name} deleted`, type: 'info' }); } }} className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
         </div>
       </div>
 

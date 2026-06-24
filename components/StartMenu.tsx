@@ -12,6 +12,7 @@ export default function StartMenu() {
   const {
     isStartMenuOpen, registry, installedApps, openWindow, systemReset,
     currentUser, logout, openContextMenu, toggleStartMenu,
+    lockShell,
     wallpaper, wallpaperEffect, themePreset, aiManagedStoreEnabled,
     setWallpaper, setWallpaperEffect, setThemePreset,
     setAiManagedStoreEnabled, setAccentColor,
@@ -251,7 +252,7 @@ export default function StartMenu() {
 
         <div className="flex items-center gap-1.5 p-1.5 bg-black/60 rounded-xl border border-white/10">
           <button
-            onClick={() => { toggleStartMenu(); }}
+            onClick={() => { lockShell(); toggleStartMenu(); }}
             className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
             title="Lock"
           >

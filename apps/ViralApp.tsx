@@ -90,15 +90,15 @@ export default function ViralApp() {
                   </button>
 
                   <div className="flex gap-4">
-                    <button className="flex-1 flex flex-col items-center justify-center p-6 bg-blue-500/5 border border-blue-500/10 rounded-3xl hover:bg-blue-500/10 transition-all">
+                    <button onClick={() => window.open('https://twitter.com/intent/tweet?text=Check%20out%20NexusOS%20-%20AI-native%20OS&url=https://github.com/AFKmoney/nexusOS', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-blue-500/5 border border-blue-500/10 rounded-3xl hover:bg-blue-500/10 transition-all">
                       <Twitter size={24} className="text-blue-400 mb-2" />
                       <span className="text-[10px] font-black uppercase tracking-widest">X / Twitter</span>
                     </button>
-                    <button className="flex-1 flex flex-col items-center justify-center p-6 bg-purple-500/5 border border-purple-500/10 rounded-3xl hover:bg-purple-500/10 transition-all">
+                    <button onClick={() => window.open('https://discord.com/channels', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-purple-500/5 border border-purple-500/10 rounded-3xl hover:bg-purple-500/10 transition-all">
                       <MessageSquare size={24} className="text-purple-400 mb-2" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Discord</span>
                     </button>
-                    <button className="flex-1 flex flex-col items-center justify-center p-6 bg-zinc-500/5 border border-zinc-500/10 rounded-3xl hover:bg-zinc-500/10 transition-all">
+                    <button onClick={() => window.open('https://github.com/AFKmoney/nexusOS', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-zinc-500/5 border border-zinc-500/10 rounded-3xl hover:bg-zinc-500/10 transition-all">
                       <Github size={24} className="text-zinc-400 mb-2" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Starred</span>
                     </button>

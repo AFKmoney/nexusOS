@@ -32,7 +32,6 @@ export default function SettingsApp() {
   const [profileName, setProfileName] = useState(currentUser?.name ?? 'System');
   const [profileBio, setProfileBio] = useState((currentUser as any)?.bio ?? '');
   const [enableAIAssist, setEnableAIAssist] = useState(Boolean(kernelRules.autonomyEnabled));
-  const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
 
   const handleAccentChange = (presetName: string, color: string) => {
     setAccentColor(color);
@@ -233,25 +232,6 @@ export default function SettingsApp() {
                     className={`w-12 h-6 rounded-full transition-all relative ${kernelRules.autonomyEnabled ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-zinc-800'}`}
                   >
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${kernelRules.autonomyEnabled ? 'left-7' : 'left-1'}`} />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors">
-                      <Shield size={18} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white">Encryption Vault</div>
-                      <div className="text-xs text-zinc-500">Enable military-grade AES-GCM for all system documents</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => addNotification({ title: 'Encryption Vault', message: 'Vault controls are not yet wired to kernel rules.', type: 'info' })}
-                    className="w-12 h-6 rounded-full bg-zinc-800 relative cursor-not-allowed opacity-60"
-                    disabled
-                  >
-                    <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all" />
                   </button>
                 </div>
 

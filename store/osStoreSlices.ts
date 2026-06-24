@@ -49,6 +49,7 @@ export interface OSStateShape {
   isSearchOpen: boolean;
   isForging: boolean;
   uiScale: number;
+  isShellLocked: boolean;
   daemonLocked: boolean;
   daemonLockLog: string[];
   currentUser: UserProfile | null;
@@ -67,6 +68,8 @@ export interface OSStateShape {
   openContextMenu: (state: ContextMenuState) => void;
   closeContextMenu: () => void;
   setUiScale: (scale: number) => void;
+  lockShell: () => void;
+  unlockShell: () => void;
   setClipboard: (val: { path: string; operation: 'copy' | 'cut' } | null) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   setDaemonLocked: (locked: boolean, initialLog?: string) => void;
@@ -111,6 +114,8 @@ export const createUIActions = (
   openContextMenu: (contextMenu: ContextMenuState) => set({ contextMenu }),
   closeContextMenu: () => set(state => ({ contextMenu: { ...state.contextMenu, isOpen: false } })),
   setUiScale: (uiScale: number) => set({ uiScale }),
+  lockShell: () => set({ isShellLocked: true }),
+  unlockShell: () => set({ isShellLocked: false }),
 });
 
 export const createNotificationAndAutonomyActions = (

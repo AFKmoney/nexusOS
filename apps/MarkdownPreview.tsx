@@ -58,7 +58,7 @@ export default function MarkdownPreview() {
           </div>
           <div className="w-px h-6 bg-white/10 mx-2" />
           <button onClick={downloadHtml} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Download size={18}/></button>
-          <button className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Share2 size={18}/></button>
+          <button onClick={() => { navigator.clipboard.writeText(content); }} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all" title="Copy"><Share2 size={18}/></button>
         </div>
       </div>
 

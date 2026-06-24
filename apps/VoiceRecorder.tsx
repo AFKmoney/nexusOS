@@ -178,9 +178,9 @@ export default function VoiceRecorder() {
           {recordings.map(r => (
             <div key={r.id} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:bg-white/[0.04] transition-all">
               <div className="flex items-center gap-4">
-                <div className="p-2 bg-zinc-800 rounded-lg text-zinc-400 group-hover:text-white transition-colors">
+                <button onClick={() => { const a = new Audio(r.url); a.play(); }} className="p-2 bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors" title="Play">
                   <Play size={16} />
-                </div>
+                </button>
                 <div>
                   <div className="text-xs font-bold text-zinc-200">{r.name}</div>
                   <div className="text-[9px] text-zinc-600 font-mono uppercase">{formatTime(r.duration)} · {new Date(r.date).toLocaleDateString()}</div>

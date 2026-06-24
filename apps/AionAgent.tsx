@@ -120,7 +120,7 @@ export default function AionAgent() {
       <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8 relative z-0">
         {messages.map((m, i) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-500`}>
-            <div className={`flex gap-4 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className={`flex gap-4 max-w-[85%] group ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className={`w-10 h-10 rounded-2xl shrink-0 flex items-center justify-center border border-white/10 shadow-lg ${m.role === 'user' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                 {m.role === 'user' ? <User size={18} /> : <Zap size={18} className={isAiThinking && i === messages.length - 1 ? 'animate-pulse' : ''} />}
               </div>
@@ -148,8 +148,8 @@ export default function AionAgent() {
                 </div>
                 {m.role === 'ai' && m.content && (
                   <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1.5 text-zinc-600 hover:text-white transition-colors"><Copy size={12}/></button>
-                    <button className="p-1.5 text-zinc-600 hover:text-white transition-colors"><RefreshCw size={12}/></button>
+                    <button onClick={() => { navigator.clipboard.writeText(m.content); }} className="p-1.5 text-zinc-600 hover:text-white transition-colors" title="Copy"><Copy size={12}/></button>
+                    <button onClick={() => { const lastUser = messages.filter(msg => msg.role === 'user').pop(); if (lastUser) { setMessages(prev => prev.slice(0, prev.findIndex(msg => msg.id === m.id))); setAiInput(lastUser.content); setTimeout(() => handleSend(), 0); } }} className="p-1.5 text-zinc-600 hover:text-white transition-colors" title="Regenerate"><RefreshCw size={12}/></button>
                   </div>
                 )}
               </div>

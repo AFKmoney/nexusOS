@@ -1,5 +1,6 @@
 import React from 'react';
 import { Code, Copy, Search, GitBranch, WrapText, Sparkles, Settings2 } from 'lucide-react';
+import { useOS } from '../../store/osStore';
 import type { SidePanelKind } from './types';
 
 interface ActivityBarProps {
@@ -80,6 +81,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       </button>
       <button
         title="Settings"
+        onClick={() => { useOS.getState().openWindow('settings'); }}
         className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-all mt-2"
       >
         <Settings2 size={20} />
