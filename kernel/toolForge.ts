@@ -28,6 +28,7 @@ type VfsModule = {
   listDir: (path: string) => string[] | null;
   stat: (path: string) => { type?: 'directory' | 'file' } | null | undefined;
   delete: (path: string) => boolean;
+  moveToTrash: (path: string) => boolean;
 };
 
 type MemoryModule = {
@@ -386,9 +387,11 @@ export class ToolForge {
           const path = normalizeOsPath(toStringArg(action.args[0]));
           if (path) {
             const fs = await getVfs();
-            const success = fs.delete(path);
+            // Use moveToTrash instead of permanent delete — safer, and
+            // the user can restore from the Recycle Bin app.
+            const success = fs.moveToTrash(path);
             result = success
-              ? `[OS::DELETE_FILE] → ✅ ${path} deleted`
+              ? `[OS::DELETE_FILE] → ✅ ${path} moved to Recycle Bin`
               : `[OS::DELETE_FILE] → ⚠ File not found: ${path}`;
           }
           break;
@@ -984,6 +987,99 @@ export class ToolForge {
           } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
             result = `[OS::CLUSTER_STATUS] → ⚠ ${message}`;
+          }
+          break;
+        }
+
+        // ─── New OS:: actions ──────────────────────────────────────────
+        case 'EMPTY_TRASH': {
+          try {
+            const fs = await getVfs();
+            const trashItems = fs.listDir('/home/user/Trash') || [];
+            for (const item of trashItems) {
+              fs.delete(`/home/user/Trash/${item}`);
+            }
+            result = `[OS::EMPTY_TRASH] → ✅ Emptied ${trashItems.length} item(s) from Recycle Bin`;
+          } catch (e: unknown) {
+            result = `[OS::EMPTY_TRASH] → ⚠ ${e instanceof Error ? e.message : String(e)}`;
+          }
+          break;
+        }
+
+        case 'SET_THEME': {
+          const themeName = clampLength(toStringArg(actionArgs[0]), 64);
+          if (themeName) {
+            try {
+              const { themeEngine } = await import('./themeEngine');
+              const os = useOS.getState();
+              os.setThemePreset(themeName);
+              result = `[OS::SET_THEME] → ✅ Theme set to ${themeName}`;
+            } catch {
+              result = `[OS::SET_THEME] → ⚠ Could not set theme`;
+            }
+          }
+          break;
+        }
+
+        case 'SET_ACCENT': {
+          const hex = clampLength(toStringArg(actionArgs[0]), 7);
+          if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) {
+            const os = useOS.getState();
+            os.setAccentColor(hex);
+            try {
+              const { themeEngine } = await import('./themeEngine');
+              themeEngine.setCustomAccent(hex);
+            } catch {}
+            result = `[OS::SET_ACCENT] → ✅ Accent set to ${hex}`;
+          } else {
+            result = `[OS::SET_ACCENT] → ⚠ Invalid hex color. Format: #RRGGBB`;
+          }
+          break;
+        }
+
+        case 'PLAY_AUDIO': {
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (path) {
+            const os = useOS.getState();
+            os.openWindow('music', { path });
+            result = `[OS::PLAY_AUDIO] → ✅ Playing ${path}`;
+          }
+          break;
+        }
+
+        case 'TAKE_SCREENSHOT': {
+          try {
+            const { vision } = await import('./vision');
+            const screenshot = await vision.captureScreen();
+            if (screenshot) {
+              const fs = await getVfs();
+              const path = `/home/user/Desktop/screenshot_${Date.now()}.png`;
+              fs.writeFile(path, screenshot);
+              result = `[OS::TAKE_SCREENSHOT] → ✅ Screenshot saved to ${path}`;
+            } else {
+              result = `[OS::TAKE_SCREENSHOT] → ⚠ Could not capture screen`;
+            }
+          } catch (e: unknown) {
+            result = `[OS::TAKE_SCREENSHOT] → ⚠ ${e instanceof Error ? e.message : String(e)}`;
+          }
+          break;
+        }
+
+        case 'IDE_OPEN_FILE': {
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (path) {
+            const os = useOS.getState();
+            // Check if HyperIDE is already open
+            const existingWin = os.windows.find(w => w.appId === 'hyperide');
+            if (existingWin) {
+              // Update existing window's data to open the file
+              os.updateWindow(existingWin.id, { data: { ...existingWin.data, path } });
+              os.focusWindow(existingWin.id);
+              result = `[OS::IDE_OPEN_FILE] → ✅ Opened ${path} in existing HyperIDE`;
+            } else {
+              os.openWindow('hyperide', { path });
+              result = `[OS::IDE_OPEN_FILE] → ✅ Opened ${path} in new HyperIDE`;
+            }
           }
           break;
         }

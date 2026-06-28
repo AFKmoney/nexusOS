@@ -31,8 +31,12 @@ import type {
 // mixed presentation, state, and rendering for every panel.
 // ─────────────────────────────────────────────────────────────────────
 
-export default function HyperIDE({ windowId, initPath }: { windowId: string; initPath?: string }) {
-  const { kernelRules, addNotification } = useOS();
+export default function HyperIDE({ windowId }: { windowId: string; initPath?: string }) {
+  const { kernelRules, addNotification, windows } = useOS();
+
+  // Resolve initPath from window data (passed by OS::OPEN_APP:hyperide:/path)
+  const win = windows.find(w => w.id === windowId);
+  const initPath = win?.data?.path as string | undefined;
 
   // ─── Tab state ───────────────────────────────────────────────────
   const [tabs, setTabs] = useState<EditorTab[]>([]);

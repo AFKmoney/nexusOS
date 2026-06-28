@@ -97,7 +97,13 @@ OS::INDEX_DOCS:<path>
 OS::SEARCH_RAG:<query>
 OS::SELF_EVOLVE:<json-patches>:<rationale>
 OS::CLUSTER_SCAN
-OS::CLUSTER_STATUS`;
+OS::CLUSTER_STATUS
+OS::EMPTY_TRASH
+OS::SET_THEME:<name>
+OS::SET_ACCENT:<#hex>
+OS::PLAY_AUDIO:<path>
+OS::TAKE_SCREENSHOT
+OS::IDE_OPEN_FILE:<path>`;
 
 // ═══════════════════════════════════════════════════════════════
 // TIER 3: APP INDEX — Compressed (one line per app, ~200 tokens)

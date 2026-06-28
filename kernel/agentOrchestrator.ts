@@ -169,13 +169,13 @@ class AgentOrchestrator {
     try {
       const os = useOS.getState();
       const systemPrompt = ROLE_PROMPTS[role];
-      const prompt = `${systemPrompt}\n\nTASK: ${taskDescription}`;
+      let prompt = `${systemPrompt}\n\nTASK: ${taskDescription}`;
 
       // Researcher gets web search results injected
       if (role === 'researcher') {
         const searchResults = await webSearch.search(taskDescription);
         const formatted = webSearch.formatResults(searchResults);
-        prompt.concat(`\n\nWEB SEARCH RESULTS:\n${formatted}`);
+        prompt = `${prompt}\n\nWEB SEARCH RESULTS:\n${formatted}`;
       }
 
       agent.status = 'working';

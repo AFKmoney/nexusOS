@@ -96,9 +96,15 @@ export default function NetRunnerApp({ windowId }: { windowId: string }) {
           case 'reload':
             if (url) void navigate(url);
             return undefined;
-          // extract / click / input / scroll are not meaningful in AI
-          // snapshot mode — the AI renders content as HTML text, not a
-          // live DOM. Return a helpful message.
+          // For click/input/scroll/extract in AI mode, auto-switch to
+          // Chromium mode so the AI can interact with the real DOM.
+          case 'click':
+          case 'input':
+          case 'scroll':
+            setMode('chromium');
+            // Wait for mode switch to take effect, then let WebRunner
+            // handle the command when it registers.
+            return `Switched to Chromium mode for ${cmd.kind}. Retry the command.`;
           case 'extract':
             return {
               url,

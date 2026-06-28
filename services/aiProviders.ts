@@ -71,16 +71,14 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     name: 'NVIDIA NIM',
     type: 'openai-compatible',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
-    defaultModel: 'z-ai/glm-5.1',
+    defaultModel: 'meta/llama-3.3-70b-instruct',
     models: [
-      'z-ai/glm-5.1',
-      'z-ai/glm-5',
-      'deepseek-ai/deepseek-r1',
-      'deepseek-ai/deepseek-v3',
       'meta/llama-3.3-70b-instruct',
       'meta/llama-3.1-405b-instruct',
       'meta/llama-3.1-70b-instruct',
       'meta/llama-3.1-8b-instruct',
+      'deepseek-ai/deepseek-r1',
+      'deepseek-ai/deepseek-v3',
       'nvidia/llama-3.1-nemotron-70b-instruct',
       'nvidia/llama-3.3-nemotron-super-49b-v1',
       'mistralai/mistral-large-2-instruct',
@@ -462,8 +460,16 @@ export class AIProviderGateway {
       }
     }
 
+    // Browser mode CORS proxy fallback — for providers that don't send
+    // CORS headers. Anthropic and Google already work in browser mode.
+    const needsCorsProxy = !hasElectron && provider.type === 'openai-compatible'
+      && provider.id !== 'lmstudio' && provider.id !== 'ollama';
+    const fetchUrl = needsCorsProxy
+      ? `https://corsproxy.io/?url=${encodeURIComponent(url)}`
+      : url;
+
     // Direct fetch (works in browser mode for CORS-friendly APIs, or as fallback)
-    const res = await fetch(url, {
+    const res = await fetch(fetchUrl, {
       method: 'POST',
       headers,
       body: bodyStr,

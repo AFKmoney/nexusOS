@@ -243,24 +243,61 @@ class RagModule {
     // Try the active AI provider's embedding endpoint
     try {
       const provider = aiGateway.getActiveProvider();
-      if (provider && provider.id === 'openai' && provider.apiKey) {
+      if (!provider || !provider.apiKey) return this.hashEmbedding(text);
+
+      // OpenAI embeddings
+      if (provider.id === 'openai') {
         const resp = await fetch('https://api.openai.com/v1/embeddings', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: text.slice(0, 8000),
-          }),
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` },
+          body: JSON.stringify({ model: 'text-embedding-3-small', input: text.slice(0, 8000) }),
           signal: AbortSignal.timeout(10000),
         });
         if (resp.ok) {
           const data = await resp.json();
-          if (data.data?.[0]?.embedding) {
-            return data.data[0].embedding as number[];
-          }
+          if (data.data?.[0]?.embedding) return data.data[0].embedding as number[];
+        }
+      }
+
+      // Mistral embeddings
+      if (provider.id === 'mistral') {
+        const resp = await fetch('https://api.mistral.ai/v1/embeddings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` },
+          body: JSON.stringify({ model: 'mistral-embed', input: text.slice(0, 8000) }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.data?.[0]?.embedding) return data.data[0].embedding as number[];
+        }
+      }
+
+      // NVIDIA embeddings
+      if (provider.id === 'nvidia') {
+        const resp = await fetch('https://integrate.api.nvidia.com/v1/embeddings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${provider.apiKey}` },
+          body: JSON.stringify({ model: 'nvidia/nv-embed-v1', input: [text.slice(0, 8000)], input_type: 'query' }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.data?.[0]?.embedding) return data.data[0].embedding as number[];
+        }
+      }
+
+      // Google embeddings
+      if (provider.id === 'google') {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${provider.apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'models/text-embedding-004', content: { parts: [{ text: text.slice(0, 8000) }] } }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.embedding?.values) return data.embedding.values as number[];
         }
       }
     } catch (e: any) {

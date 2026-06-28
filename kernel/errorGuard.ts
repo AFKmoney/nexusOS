@@ -144,6 +144,8 @@ const VALID_OS_ACTIONS = new Set([
   'INDEX_DOCS', 'SEARCH_RAG',
   // Sovereign platform
   'SELF_EVOLVE', 'CLUSTER_SCAN', 'CLUSTER_STATUS',
+  // New actions
+  'EMPTY_TRASH', 'SET_THEME', 'SET_ACCENT', 'PLAY_AUDIO', 'TAKE_SCREENSHOT', 'IDE_OPEN_FILE',
 ]);
 
 function validateOsActions(text: string): ValidationError[] {
