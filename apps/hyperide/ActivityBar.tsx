@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code, Copy, Search, GitBranch, WrapText, Sparkles, Settings2 } from 'lucide-react';
+import { Code, Copy, Search, GitBranch, WrapText, Sparkles, Settings2, Layout } from 'lucide-react';
 import { useOS } from '../../store/osStore';
 import type { SidePanelKind } from './types';
 
@@ -29,6 +29,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
     { id: 'files', icon: Copy, title: 'Explorer' },
     { id: 'search', icon: Search, title: 'Search' },
     { id: 'git', icon: GitBranch, title: 'Source Control' },
+    { id: 'project', icon: Layout, title: 'Project Overview' },
   ];
 
   return (

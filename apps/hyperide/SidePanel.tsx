@@ -176,6 +176,21 @@ export const SidePanel: React.FC<SidePanelProps> = (props) => {
             </button>
           </div>
         )}
+
+        {sidePanel === 'project' && (
+          <div className="p-2 space-y-3">
+            <div className="p-3 bg-zinc-900/60 rounded-xl border border-white/5 text-xs text-zinc-400 space-y-2 shadow-inner">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-widest">
+                <Layout size={14} /> Project Overview
+              </div>
+              <div className="text-[10px] text-zinc-600 mt-2">
+                Open a generated app or a folder to see project details here.
+                Use OS::BUILD_APP to generate a new app, then open it in
+                HyperIDE to edit as a multi-file project.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

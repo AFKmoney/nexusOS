@@ -226,8 +226,8 @@ class SkillForgeEngine {
     }
 
     try {
-      // Wrap in an async IIFE so skills can use `await` at the top level.
-      // Without this, `await` is a syntax error in a regular Function().
+      // Validate syntax using the same wrapper as executeInProcess.
+      // The sandbox worker uses its own equivalent.
       // eslint-disable-next-line no-new-func
       new Function('ctx', `"use strict";\nreturn (async () => {\n${code}\n})();`);
     } catch (e: any) {
@@ -288,18 +288,19 @@ class SkillForgeEngine {
     }
 
     const start = Date.now();
-    const ctx = this.buildContext(args, argsRaw);
 
+    // ─── SANDBOX EXECUTION ────────────────────────────────────────
+    // Skills run in an isolated Web Worker (skillSandboxWorker.ts).
+    // The worker has NO access to the main thread's DOM, window,
+    // localStorage, or process. It communicates via a curated RPC
+    // protocol — only whitelisted operations (vfs.read, ai.generate,
+    // etc.) are forwarded to the main thread for execution.
+    //
+    // If Web Workers are unavailable (SSR, test runner), fall back to
+    // the old in-process execution with a warning. This should never
+    // happen in production (browser/Electron).
     try {
-      // Wrap in an async IIFE so skills can use `await` at the top level.
-      // eslint-disable-next-line no-new-func
-      const fn = new Function('ctx', `"use strict";\nreturn (async () => {\n${skill.code}\n})();`) as (ctx: SkillExecutionContext) => Promise<unknown>;
-      const result = await Promise.race([
-        fn(ctx),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Skill timed out after ${MAX_EXECUTION_MS}ms`)), MAX_EXECUTION_MS)
-        ),
-      ]);
+      const result = await this.executeInSandbox(skill.code, args, argsRaw);
 
       skill.invocations++;
       skill.lastResult = 'success';
@@ -330,6 +331,199 @@ class SkillForgeEngine {
 
       return { success: false, error: errorMsg, durationMs: Date.now() - start };
     }
+  }
+
+  /**
+   * Execute skill code in an isolated Web Worker sandbox.
+   *
+   * The worker (skillSandboxWorker.ts) runs the skill code with NO
+   * access to the main thread's DOM, window, localStorage, or process.
+   * It communicates via a curated RPC protocol — only whitelisted
+   * operations are forwarded to the main thread for execution.
+   *
+   * If Web Workers are unavailable (SSR, Node test runner), falls
+   * back to in-process execution. This is less secure but ensures
+   * the OS doesn't crash in non-browser environments.
+   */
+  private async executeInSandbox(code: string, args: unknown, argsRaw: string): Promise<unknown> {
+    // Check if Web Workers are available
+    if (typeof Worker === 'undefined') {
+      kernelLog.warn('[SkillForge] Web Workers unavailable — falling back to in-process execution (less secure)');
+      return this.executeInProcess(code, args, argsRaw);
+    }
+
+    return new Promise<unknown>((resolve, reject) => {
+      let worker: Worker | null = null;
+      let settled = false;
+
+      const cleanup = () => {
+        if (worker) {
+          worker.terminate();
+          worker = null;
+        }
+      };
+
+      const timeoutId = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(new Error(`Skill timed out after ${MAX_EXECUTION_MS}ms`));
+        }
+      }, MAX_EXECUTION_MS);
+
+      try {
+        // Create the worker. We use new Worker() with the module
+        // path. Vite handles the bundling.
+        const workerUrl = new URL('../kernel/skillSandboxWorker.ts', import.meta.url);
+        worker = new Worker(workerUrl, { type: 'module' });
+
+        // Set up the RPC handler — the worker sends 'request' messages
+        // for each operation it wants to perform. We validate, execute
+        // on the main thread, and send back 'response' messages.
+        worker.onmessage = async (event: MessageEvent) => {
+          const msg = event.data;
+          if (!msg || typeof msg !== 'object') return;
+
+          if (msg.type === 'request' && typeof msg.id === 'number') {
+            // RPC request from the worker — execute on main thread
+            try {
+              const result = await this.handleSandboxRpc(msg.op, msg.args || []);
+              worker?.postMessage({ type: 'response', id: msg.id, ok: true, result });
+            } catch (err: any) {
+              worker?.postMessage({ type: 'response', id: msg.id, ok: false, error: err?.message || String(err) });
+            }
+            return;
+          }
+
+          if (msg.type === 'result' && typeof msg.id === 'number') {
+            // Final result from the skill execution
+            if (!settled) {
+              settled = true;
+              clearTimeout(timeoutId);
+              cleanup();
+              if (msg.ok) {
+                resolve(msg.result);
+              } else {
+                reject(new Error(msg.error || 'Skill execution failed'));
+              }
+            }
+            return;
+          }
+
+          // Stream token messages (for ctx.ai.stream)
+          // These are already handled by the worker internally — we
+          // only see the final result here.
+        };
+
+        worker.onerror = (err: ErrorEvent) => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeoutId);
+            cleanup();
+            reject(new Error(`Worker error: ${err.message || 'unknown'}`));
+          }
+        };
+
+        // Kick off the skill execution
+        worker.postMessage({
+          type: 'execute',
+          id: 1,
+          code,
+          ctx: { args, argsRaw },
+        });
+      } catch (e: any) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeoutId);
+          cleanup();
+          // Worker creation failed (e.g. in test env) — fall back
+          kernelLog.warn('[SkillForge] Worker creation failed, falling back to in-process:', e?.message);
+          this.executeInProcess(code, args, argsRaw).then(resolve, reject);
+        }
+      }
+    });
+  }
+
+  /**
+   * Handle an RPC request from the sandbox worker. Only whitelisted
+   * operations are executed; anything else throws.
+   */
+  private async handleSandboxRpc(op: string, args: any[]): Promise<unknown> {
+    const ctx = this.buildContext(args[0], args[1] || '');
+    switch (op) {
+      case 'vfs.read':
+        return vfs.readFile(args[0], SYSTEM_VFS_APP_ID);
+      case 'vfs.write':
+        return vfs.writeFile(args[0], args[1], SYSTEM_VFS_APP_ID);
+      case 'vfs.list':
+        return vfs.listDir(args[0], SYSTEM_VFS_APP_ID) || [];
+      case 'vfs.delete':
+        return vfs.delete(args[0], SYSTEM_VFS_APP_ID);
+      case 'memory.remember':
+        return memory.remember(args[0], args[1] || []);
+      case 'memory.recall':
+        return memory.recall(args[0]).slice(0, args[1] || 5).map((m: any) => ({ content: m.content }));
+      case 'events.emit':
+        return eventBus.emit(args[0], args[1]);
+      case 'os.openWindow':
+        return useOS.getState().openWindow(args[0], args[1]);
+      case 'os.closeWindow':
+        return useOS.getState().closeWindow(args[0]);
+      case 'os.notify':
+        return useOS.getState().addNotification({ title: args[0], message: args[1], type: 'info' } as any);
+      case 'os.getRegistry':
+        return useOS.getState().registry.map(a => ({ id: a.id, name: a.name }));
+      case 'os.getWindows':
+        return useOS.getState().windows.map(w => ({ id: w.id, appId: w.appId, title: w.title }));
+      case 'ai.generate':
+        return aiService.generateOnce(args[0], useOS.getState().kernelRules, args[1] || 'chat');
+      case 'ai.stream':
+        // Streaming RPC is more complex — for now, just generate and
+        // return the full response. The worker's stream() method will
+        // receive it as a single token.
+        const result = await aiService.streamChat(args[0], useOS.getState().kernelRules, () => {}, args[1] || 'chat');
+        return result;
+      case 'fetch': {
+        const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+        if (hasElectron) {
+          const res = await (window as any).electron.invoke('ai-proxy', {
+            url: args[0],
+            method: (args[1] as any)?.method || 'GET',
+            headers: (args[1] as any)?.headers || {},
+            body: (args[1] as any)?.body,
+          });
+          return {
+            ok: res.ok,
+            status: res.status,
+            text: typeof res.body === 'string' ? res.body : JSON.stringify(res.body),
+            json: typeof res.body === 'string' ? JSON.parse(res.body) : res.body,
+          };
+        }
+        const res = await fetch(args[0], args[1] || {});
+        return {
+          ok: res.ok,
+          status: res.status,
+          text: await res.text(),
+          json: await res.json(),
+        };
+      }
+      case 'log':
+        kernelLog.info(`[Skill sandbox] ${args[0]}`);
+        return undefined;
+      default:
+        throw new Error(`Permission denied: operation '${op}' is not allowed in the sandbox`);
+    }
+  }
+
+  /**
+   * In-process fallback for environments without Web Workers (Node,
+   * SSR, test runner). Less secure but ensures the OS doesn't crash.
+   */
+  private async executeInProcess(code: string, args: unknown, argsRaw: string): Promise<unknown> {
+    const ctx = this.buildContext(args, argsRaw);
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('ctx', `"use strict";\nreturn (async () => {\n${code}\n})();`) as (ctx: SkillExecutionContext) => Promise<unknown>;
+    return fn(ctx);
   }
 
   private buildContext(args: unknown, argsRaw: string): SkillExecutionContext {

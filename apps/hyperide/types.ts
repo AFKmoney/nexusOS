@@ -30,4 +30,20 @@ export interface ContextMenuState {
   isDir: boolean;
 }
 
-export type SidePanelKind = 'files' | 'search' | 'git';
+/**
+ * A project is a folder that serves as the root for a multi-file
+ * editing session. HyperIDE tracks the project root so it can:
+ *   - Show a project overview (file count, total size, languages)
+ *   - Scope file search to the project
+ *   - Enable "new file at project root" / "run project" actions
+ *   - Persist the project root across sessions
+ */
+export interface ProjectState {
+  rootPath: string;           // e.g. /system/apps/gen_abc123
+  name: string;               // derived from rootPath
+  openFiles: string[];        // paths relative to rootPath
+  activeFile?: string;        // path relative to rootPath
+  lastOpenedAt: number;
+}
+
+export type SidePanelKind = 'files' | 'search' | 'git' | 'project';

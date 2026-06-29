@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
-import { Loader2, AlertTriangle, RefreshCw, Code, Eye, ChevronLeft } from 'lucide-react';
+import { appGenerator } from '../kernel/appGenerator';
+import { Loader2, AlertTriangle, RefreshCw, Code, Eye, ChevronLeft, FolderOpen } from 'lucide-react';
 
 export default function CustomAppRunner({ windowId, onBack, appId }: { windowId: string, onBack?: () => void, appId?: string }) {
   const desktopState = useOS();
+  const { openWindow } = desktopState;
 
   // Find app manifest in the desktop registry
   const registry = desktopState.registry;
   const windows = desktopState.windows;
-  
+
   // For desktop, the appId is resolved from the window state when not passed directly.
   const targetAppId = appId || windows.find(w => w.id === windowId)?.appId;
   const app = registry.find(a => a.id === targetAppId);
@@ -21,8 +23,13 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
   const [view, setView] = useState<'preview' | 'code'>('preview');
   const retryCount = useRef(0);
 
+  // Determine if this is a multi-file generated app (has a manifest.json
+  // in /system/apps/<id>/) vs a single-file forged app (just an HTML file).
+  const isGeneratedApp = !!(targetAppId?.startsWith('gen_') ||
+    (sourcePath && sourcePath.includes('/system/apps/')));
+
   const loadApp = () => {
-    if (!sourcePath) {
+    if (!sourcePath && !targetAppId) {
       setError('Source path missing for this application.');
       setLoading(false);
       return;
@@ -30,7 +37,20 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
 
     setLoading(true);
     try {
-      const content = vfs.readFile(sourcePath, SYSTEM_VFS_APP_ID);
+      let content: string | null = null;
+
+      // For generated apps, use appGenerator.getInlinedEntry() which
+      // inlines CSS and JS into the HTML so it works in an iframe
+      // without path resolution issues.
+      if (isGeneratedApp && targetAppId) {
+        content = appGenerator.getInlinedEntry(targetAppId);
+      }
+
+      // Fallback: read the single HTML file directly (legacy forged apps)
+      if (!content && sourcePath) {
+        content = vfs.readFile(sourcePath, SYSTEM_VFS_APP_ID);
+      }
+
       if (content) {
         setHtml(content);
         setError('');
@@ -40,7 +60,7 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
         retryCount.current++;
         setTimeout(loadApp, 500);
       } else {
-        setError(`Failed to read application source at ${sourcePath}`);
+        setError(`Failed to read application source at ${sourcePath || targetAppId}`);
         setLoading(false);
       }
     } catch (e: any) {
@@ -52,14 +72,26 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
   useEffect(() => {
     retryCount.current = 0;
     loadApp();
-    
+
     // Refresh if file changes (optional, but good for dev)
     const interval = setInterval(() => {
-       const content = vfs.readFile(sourcePath || '', SYSTEM_VFS_APP_ID);
-       if (content && content !== html) setHtml(content);
+      let content: string | null = null;
+      if (isGeneratedApp && targetAppId) {
+        content = appGenerator.getInlinedEntry(targetAppId);
+      } else if (sourcePath) {
+        content = vfs.readFile(sourcePath, SYSTEM_VFS_APP_ID);
+      }
+      if (content && content !== html) setHtml(content);
     }, 5000);
     return () => clearInterval(interval);
-  }, [sourcePath]);
+  }, [sourcePath, targetAppId, isGeneratedApp]);
+
+  // Open the app's source in HyperIDE for editing
+  const editInHyperIDE = () => {
+    if (!targetAppId) return;
+    const appDir = `/system/apps/${targetAppId}`;
+    openWindow('hyperide', { projectRoot: appDir });
+  };
 
   if (loading) {
     return (
@@ -102,8 +134,20 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
               <ChevronLeft size={22} className="text-white" />
             </button>
             <h1 className="text-white font-semibold text-[16px]">{app?.name || 'Forged App'}</h1>
+            {isGeneratedApp && (
+              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-bold uppercase">Generated</span>
+            )}
           </div>
           <div className="flex gap-2">
+            {isGeneratedApp && (
+              <button
+                onClick={editInHyperIDE}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-bold transition-all"
+                title="Edit source in HyperIDE"
+              >
+                <FolderOpen size={14} /> Edit
+              </button>
+            )}
              <button onClick={() => setView('preview')} className={`p-1.5 rounded-xl ${view === 'preview' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600'}`}>
                <Eye size={18} />
              </button>
@@ -130,11 +174,20 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
           />
         )}
       </div>
-      
+
       {!onBack && (
         <div className="h-8 bg-zinc-900 border-t border-white/5 flex items-center justify-between px-3 shrink-0">
           <div className="flex items-center gap-4">
              <span className="text-[10px] text-zinc-500 font-mono truncate max-w-[200px]">{sourcePath}</span>
+             {isGeneratedApp && (
+               <button
+                 onClick={editInHyperIDE}
+                 className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-bold transition-colors"
+                 title="Edit in HyperIDE"
+               >
+                 <FolderOpen size={11} /> Edit
+               </button>
+             )}
           </div>
           <div className="flex gap-2">
              <button onClick={() => setView('preview')} className={`p-1 rounded ${view === 'preview' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600 hover:text-zinc-400'}`}>
@@ -149,3 +202,4 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
     </div>
   );
 }
+

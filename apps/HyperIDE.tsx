@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useOS } from '../store/osStore';
 import { aiService } from '../services/puterService';
-import { vfs } from '../kernel/fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { memory } from '../kernel/memory';
 import { localBrain } from '../services/localBrain';
+import { appGenerator } from '../kernel/appGenerator';
+import { FolderOpen, Play, FileCode2, Files } from 'lucide-react';
 
 import { ActivityBar } from './hyperide/ActivityBar';
 import { SidePanel } from './hyperide/SidePanel';
@@ -14,7 +16,7 @@ import { FileContextMenu } from './hyperide/FileContextMenu';
 import { highlight } from './hyperide/syntax';
 import type {
   EditorTab, AiMsg, SearchHit, CursorPos,
-  ContextMenuState, SidePanelKind,
+  ContextMenuState, SidePanelKind, ProjectState,
 } from './hyperide/types';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -32,11 +34,18 @@ import type {
 // ─────────────────────────────────────────────────────────────────────
 
 export default function HyperIDE({ windowId }: { windowId: string; initPath?: string }) {
-  const { kernelRules, addNotification, windows } = useOS();
+  const { kernelRules, addNotification, windows, openWindow } = useOS();
 
   // Resolve initPath from window data (passed by OS::OPEN_APP:hyperide:/path)
   const win = windows.find(w => w.id === windowId);
   const initPath = win?.data?.path as string | undefined;
+  const initProjectRoot = win?.data?.projectRoot as string | undefined;
+
+  // ─── Project state ───────────────────────────────────────────────
+  // A project is a folder that serves as the root for multi-file editing.
+  // When set, the file tree is scoped to the project root, and "Run"
+  // can preview the project's entry point.
+  const [project, setProject] = useState<ProjectState | null>(null);
 
   // ─── Tab state ───────────────────────────────────────────────────
   const [tabs, setTabs] = useState<EditorTab[]>([]);
@@ -106,9 +115,86 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initPath]);
 
+  // Open a project if one was passed via window data
+  useEffect(() => {
+    if (initProjectRoot) {
+      const stat = vfs.stat(initProjectRoot);
+      if (stat?.type === 'directory') {
+        const name = initProjectRoot.split('/').pop() || initProjectRoot;
+        setProject({
+          rootPath: initProjectRoot,
+          name,
+          openFiles: [],
+          lastOpenedAt: Date.now(),
+        });
+        setCurrentDir(initProjectRoot);
+        // Auto-open the entry file if it exists
+        const entryPath = `${initProjectRoot}/index.html`;
+        if (vfs.readFile(entryPath, SYSTEM_VFS_APP_ID)) {
+          openFile(entryPath);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initProjectRoot]);
+
   useEffect(() => {
     aiScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [aiMessages]);
+
+  // ─── Project operations ──────────────────────────────────────────
+  /**
+   * Open a folder as a project. Sets the project root, scopes the file
+   * tree to it, and auto-opens index.html if present.
+   */
+  const openProject = (rootPath: string) => {
+    const stat = vfs.stat(rootPath);
+    if (stat?.type !== 'directory') {
+      addNotification({ title: 'Cannot open project', message: `${rootPath} is not a directory`, type: 'error' });
+      return;
+    }
+    const name = rootPath.split('/').pop() || rootPath;
+    setProject({
+      rootPath,
+      name,
+      openFiles: [],
+      lastOpenedAt: Date.now(),
+    });
+    setCurrentDir(rootPath);
+    // Auto-open the entry file if it exists
+    const entryPath = `${rootPath}/index.html`;
+    if (vfs.readFile(entryPath, SYSTEM_VFS_APP_ID)) {
+      openFile(entryPath);
+    }
+    addNotification({ title: 'Project opened', message: name, type: 'info' });
+  };
+
+  /**
+   * Run the current project — if it's a generated app with an entry,
+   * open it in a CustomAppRunner window. Otherwise, just preview the
+   * active HTML file.
+   */
+  const runProject = () => {
+    if (!project) return;
+    // Check if this is a generated app (has manifest.json)
+    const manifestPath = `${project.rootPath}/manifest.json`;
+    const manifestRaw = vfs.readFile(manifestPath, SYSTEM_VFS_APP_ID);
+    if (manifestRaw) {
+      try {
+        const manifest = JSON.parse(manifestRaw);
+        if (manifest.id) {
+          // Open the generated app directly
+          openWindow(manifest.id);
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: open index.html in a new window if it exists
+    const entryPath = `${project.rootPath}/index.html`;
+    if (vfs.readFile(entryPath, SYSTEM_VFS_APP_ID)) {
+      openWindow('forge', { autoPrompt: project.name, content: vfs.readFile(entryPath, SYSTEM_VFS_APP_ID), autoRun: true });
+    }
+  };
 
   // ─── File operations ─────────────────────────────────────────────
   const openFile = (path: string) => {
@@ -361,6 +447,43 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
           }
         />
       )}
+
+      {/* ─── Project toolbar ───────────────────────────────────────── */}
+      {/* Shows the current project name + Run button when a project is open.
+          When no project is open, shows an "Open Project" prompt. */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0d0d12] border-b border-white/5 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <FolderOpen size={14} className="text-emerald-400 shrink-0" />
+          {project ? (
+            <>
+              <span className="text-xs font-bold text-white truncate">{project.name}</span>
+              <span className="text-[10px] text-zinc-500 font-mono truncate">{project.rootPath}</span>
+            </>
+          ) : (
+            <span className="text-xs text-zinc-500">No project open — use OS::OPEN_APP:hyperide with projectRoot, or open a generated app to edit it as a project</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {project && (
+            <>
+              <button
+                onClick={runProject}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold transition-all"
+                title="Run project (open in app runner)"
+              >
+                <Play size={12} /> Run
+              </button>
+              <button
+                onClick={() => setSidePanel('project')}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/10 text-zinc-400 text-xs transition-all"
+                title="Project overview"
+              >
+                <Files size={12} /> Overview
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       <EditorPane
         tabs={tabs}
