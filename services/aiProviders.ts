@@ -19,6 +19,33 @@ export interface AIProvider {
   headers?: Record<string, string>;
 }
 
+// ─── Native function-calling types ─────────────────────────────
+// These are provider-agnostic: each callX method translates the
+// generic AITool[] into the provider-specific schema shape and
+// parses the provider-specific tool-call response back into
+// AIToolCall[]. Used by generateWithTools() for structured OS::
+// actions instead of regex-parsing text.
+export interface AITool {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, { type: string; description: string; enum?: string[] }>;
+    required?: string[];
+  };
+}
+
+export interface AIToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface AIToolCallResult {
+  text: string;
+  toolCalls: AIToolCall[];
+}
+
 // Default provider presets (user provides their own API keys)
 export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
   {
@@ -470,22 +497,31 @@ export class AIProviderGateway {
     messages: Array<{ role: string; content: string }>,
     stream: false,
     model?: string,
-    maxTokens?: number
+    maxTokens?: number,
   ): Promise<string>;
   private async callOpenAICompatible(
     provider: AIProvider,
     messages: Array<{ role: string; content: string }>,
     stream: true,
     model?: string,
-    maxTokens?: number
+    maxTokens?: number,
   ): Promise<ReadableStream<Uint8Array>>;
+  private async callOpenAICompatible(
+    provider: AIProvider,
+    messages: Array<{ role: string; content: string }>,
+    stream: false,
+    model: string | undefined,
+    maxTokens: number | undefined,
+    tools: AITool[],
+  ): Promise<AIToolCallResult>;
   private async callOpenAICompatible(
     provider: AIProvider,
     messages: Array<{ role: string; content: string }>,
     stream: boolean,
     model?: string,
-    maxTokens?: number
-  ): Promise<string | ReadableStream<Uint8Array>> {
+    maxTokens?: number,
+    tools?: AITool[],
+  ): Promise<string | ReadableStream<Uint8Array> | AIToolCallResult> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(provider.apiKey ? { 'Authorization': `Bearer ${provider.apiKey}` } : {}),
@@ -499,13 +535,53 @@ export class AIProviderGateway {
     }
 
     const url = `${provider.baseUrl}/chat/completions`;
-    const bodyStr = JSON.stringify({
+    // Build the request body. When `tools` is provided, we enable native
+    // function calling by sending the OpenAI tool schema and `tool_choice: 'auto'`.
+    const bodyObj: Record<string, unknown> = {
       model: model || provider.defaultModel,
       messages,
       temperature: 0.7,
       max_tokens: maxTokens || provider.maxTokens || 4096,
       stream,
-    });
+    };
+    const hasTools = !!(tools && tools.length > 0);
+    if (hasTools) {
+      bodyObj.tools = tools!.map(t => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        },
+      }));
+      bodyObj.tool_choice = 'auto';
+    }
+    const bodyStr = JSON.stringify(bodyObj);
+
+    // Local parser: extracts text and (if hasTools) tool_calls from an
+    // OpenAI-format response. `arguments` is a JSON string in the API
+    // response — we parse it into a structured object for the caller.
+    const parseOpenAIResponse = (data: any): string | AIToolCallResult => {
+      const msg = data?.choices?.[0]?.message;
+      const text = (msg && typeof msg.content === 'string' && msg.content) || '';
+      if (!hasTools) return text;
+      const rawToolCalls = (msg && Array.isArray(msg.tool_calls)) ? msg.tool_calls : [];
+      const toolCalls: AIToolCall[] = rawToolCalls.map((tc: any): AIToolCall => {
+        let args: Record<string, unknown> = {};
+        const argsRaw = tc?.function?.arguments;
+        if (typeof argsRaw === 'string') {
+          try { args = JSON.parse(argsRaw) as Record<string, unknown>; } catch { /* keep empty */ }
+        } else if (argsRaw && typeof argsRaw === 'object') {
+          args = argsRaw as Record<string, unknown>;
+        }
+        const id = (typeof tc?.id === 'string' && tc.id)
+          ? tc.id
+          : `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const name = (tc?.function?.name && typeof tc.function.name === 'string') ? tc.function.name : '';
+        return { id, name, arguments: args };
+      });
+      return { text, toolCalls };
+    };
 
     // Use Electron proxy to bypass CORS when available.
     // Browser direct fetch fails with "Failed to fetch" for most AI APIs
@@ -529,7 +605,7 @@ export class AIProviderGateway {
           throw new Error(`${provider.name} API Error ${res.status}: ${errBody.slice(0, 200)}`);
         }
         const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
-        return data.choices?.[0]?.message?.content || '';
+        return parseOpenAIResponse(data);
       } catch (err: any) {
         // If proxy fails, fall through to direct fetch
         if (err.message?.includes('API Error')) throw err;
@@ -560,7 +636,7 @@ export class AIProviderGateway {
       return res.body!;
     } else {
       const data = await res.json();
-      return data.choices?.[0]?.message?.content || '';
+      return parseOpenAIResponse(data);
     }
   }
 
@@ -570,8 +646,9 @@ export class AIProviderGateway {
     messages: Array<{ role: string; content: string }>,
     stream: boolean,
     model?: string,
-    maxTokens?: number
-  ): Promise<string | ReadableStream<Uint8Array>> {
+    maxTokens?: number,
+    tools?: AITool[],
+  ): Promise<string | ReadableStream<Uint8Array> | AIToolCallResult> {
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';
     const userMsgs = messages.filter(m => m.role !== 'system');
 
@@ -582,13 +659,48 @@ export class AIProviderGateway {
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     };
-    const bodyStr = JSON.stringify({
+    // Anthropic tool schema uses `input_schema` (vs `parameters` in OpenAI).
+    const bodyObj: Record<string, unknown> = {
       model: model || provider.defaultModel,
       max_tokens: maxTokens || provider.maxTokens || 4096,
       system: systemMsg,
       messages: userMsgs,
       stream,
-    });
+    };
+    const hasTools = !!(tools && tools.length > 0);
+    if (hasTools) {
+      bodyObj.tools = tools!.map(t => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.parameters,
+      }));
+    }
+    const bodyStr = JSON.stringify(bodyObj);
+
+    // Local parser: Anthropic returns content as an array of blocks.
+    // text blocks → natural-language response, tool_use blocks → tool calls.
+    const parseAnthropicResponse = (data: any): string | AIToolCallResult => {
+      const contentArr = (data && Array.isArray(data.content)) ? data.content : [];
+      let text = '';
+      const toolCalls: AIToolCall[] = [];
+      for (const block of contentArr) {
+        if (!block || typeof block !== 'object') continue;
+        if (block.type === 'text' && typeof block.text === 'string') {
+          text += block.text;
+        } else if (block.type === 'tool_use') {
+          const id = (typeof block.id === 'string' && block.id)
+            ? block.id
+            : `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const name = (typeof block.name === 'string') ? block.name : '';
+          const input = (block.input && typeof block.input === 'object')
+            ? block.input as Record<string, unknown>
+            : {};
+          toolCalls.push({ id, name, arguments: input });
+        }
+      }
+      if (!hasTools) return text;
+      return { text, toolCalls };
+    };
 
     // Use Electron proxy for non-streaming to bypass CORS
     const hasElectron = typeof window !== 'undefined'
@@ -607,7 +719,7 @@ export class AIProviderGateway {
           throw new Error(`Anthropic API Error ${res.status}: ${errBody.slice(0, 200)}`);
         }
         const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
-        return data.content?.[0]?.text || '';
+        return parseAnthropicResponse(data);
       } catch (err: any) {
         if (err.message?.includes('API Error')) throw err;
       }
@@ -624,7 +736,7 @@ export class AIProviderGateway {
       return res.body!;
     } else {
       const data = await res.json();
-      return data.content?.[0]?.text || '';
+      return parseAnthropicResponse(data);
     }
   }
 
@@ -634,7 +746,8 @@ export class AIProviderGateway {
     messages: Array<{ role: string; content: string }>,
     stream: boolean,
     model?: string,
-  ): Promise<string | ReadableStream<Uint8Array>> {
+    tools?: AITool[],
+  ): Promise<string | ReadableStream<Uint8Array> | AIToolCallResult> {
     const modelId = model || provider.defaultModel;
     const endpoint = stream ? 'streamGenerateContent' : 'generateContent';
     const url = `${provider.baseUrl}/models/${modelId}:${endpoint}`;
@@ -645,13 +758,50 @@ export class AIProviderGateway {
       parts: [{ text: m.content }],
     }));
 
+    // Gemini expects tools wrapped in `functionDeclarations` arrays.
     const body: any = { contents };
     if (systemInstruction) {
       body.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
+    const hasTools = !!(tools && tools.length > 0);
+    if (hasTools) {
+      body.tools = [{
+        functionDeclarations: tools!.map(t => ({
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        })),
+      }];
+    }
 
     const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': provider.apiKey };
     const bodyStr = JSON.stringify(body);
+
+    // Local parser: Gemini returns parts that may contain either `text`
+    // (natural language) or `functionCall` ({name, args}) blocks.
+    const parseGoogleResponse = (data: any): string | AIToolCallResult => {
+      const parts = data?.candidates?.[0]?.content?.parts;
+      const partArr = (Array.isArray(parts)) ? parts : [];
+      let text = '';
+      const toolCalls: AIToolCall[] = [];
+      for (const part of partArr) {
+        if (!part || typeof part !== 'object') continue;
+        if (typeof part.text === 'string') {
+          text += part.text;
+        }
+        if (part.functionCall && typeof part.functionCall === 'object') {
+          const fc = part.functionCall;
+          const id = `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const name = (typeof fc.name === 'string') ? fc.name : '';
+          const args = (fc.args && typeof fc.args === 'object')
+            ? fc.args as Record<string, unknown>
+            : {};
+          toolCalls.push({ id, name, arguments: args });
+        }
+      }
+      if (!hasTools) return text;
+      return { text, toolCalls };
+    };
 
     // Use Electron proxy for non-streaming to bypass CORS
     const hasElectron = typeof window !== 'undefined'
@@ -670,7 +820,7 @@ export class AIProviderGateway {
           throw new Error(`Gemini API Error ${res.status}: ${errBody.slice(0, 200)}`);
         }
         const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return parseGoogleResponse(data);
       } catch (err: any) {
         if (err.message?.includes('API Error')) throw err;
       }
@@ -687,7 +837,7 @@ export class AIProviderGateway {
       return res.body!;
     } else {
       const data = await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return parseGoogleResponse(data);
     }
   }
 
@@ -835,6 +985,76 @@ ${suffix}`;
         if (fallback) {
           try {
             const result = await this.generateOnce(fallback, systemPrompt, userPrompt, model, maxTokens);
+            this.markSuccess(fallback.id);
+            return result;
+          } catch (fallbackErr) {
+            this.markFailure(fallback.id, fallbackErr);
+            throw fallbackErr;
+          }
+        }
+      }
+      throw err;
+    }
+  }
+
+  // ─── Native Function Calling ──────────────────────────────
+  // Preferred path for OS:: actions: ask the model to emit structured
+  // tool calls instead of OS::-prefixed text lines. Falls back to text
+  // parsing in puterService.generateOnce if the provider doesn't support
+  // tools (or if this method throws for any reason).
+  /** One non-failover tool-enabled invocation against a specific provider. */
+  private async generateWithToolsOnce(
+    provider: AIProvider,
+    systemPrompt: string,
+    userPrompt: string,
+    tools: AITool[],
+    model?: string,
+    maxTokens?: number,
+  ): Promise<AIToolCallResult> {
+    const messages: Array<{ role: string; content: string }> = [];
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: 'user', content: userPrompt });
+
+    switch (provider.type) {
+      case 'anthropic':
+        return (await this.callAnthropic(provider, messages, false, model, maxTokens, tools)) as AIToolCallResult;
+      case 'google':
+        return (await this.callGoogle(provider, messages, false, model, tools)) as AIToolCallResult;
+      case 'openai-compatible':
+      default:
+        return this.callOpenAICompatible(provider, messages, false, model, maxTokens, tools);
+    }
+  }
+
+  /**
+   * Generate with native function-calling support. Sends `tools` to the
+   * provider and returns both natural-language text and structured tool
+   * calls. Mirrors `generate()`'s failover behavior: tries the primary
+   * provider, fails over to a healthy alternative on transient errors.
+   */
+  public async generateWithTools(
+    systemPrompt: string,
+    userPrompt: string,
+    tools: AITool[],
+    model?: string,
+    maxTokens?: number,
+  ): Promise<AIToolCallResult> {
+    const primary = this.getActiveProvider();
+    if (!primary) throw new Error('No AI provider configured. Go to Settings > AI Providers.');
+
+    let provider = this.isDegraded(primary.id) ? (this.findFailoverProvider(primary.id) ?? primary) : primary;
+
+    try {
+      const result = await this.generateWithToolsOnce(provider, systemPrompt, userPrompt, tools, model, maxTokens);
+      this.markSuccess(provider.id);
+      return result;
+    } catch (err) {
+      this.markFailure(provider.id, err);
+      if (isTransientProviderError(err)) {
+        const fallback = this.findFailoverProvider(provider.id);
+        if (fallback) {
+          try {
+            const result = await this.generateWithToolsOnce(fallback, systemPrompt, userPrompt, tools, model, maxTokens);
             this.markSuccess(fallback.id);
             return result;
           } catch (fallbackErr) {

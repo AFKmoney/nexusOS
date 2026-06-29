@@ -172,34 +172,98 @@ export class PuterService {
     // ─── ROUTE 1: External AI Provider (cloud APIs) ─────────────────
     const cloudProvider = aiGateway.getActiveProvider();
     if (cloudProvider) {
+      const relevantMem = memory.recall(prompt);
+      const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem, prompt);
+      const toolCtx = await toolForge.getSystemToolContext();
+      const fullSystemPrompt = systemPrompt + toolCtx;
+      let contextualPrompt = (mode === 'chat' || mode === 'coder' || mode === 'architect')
+        ? this.getContextualPrompt(prompt)
+        : prompt;
+
+      // ─── Episodic memory enrichment ────────────────────────────
+      // Inject recent conversation context so the AI remembers what
+      // was discussed previously in this session.
       try {
-        const relevantMem = memory.recall(prompt);
-        const systemPrompt = this.buildSystemPrompt(rules, mode, relevantMem, prompt);
-        const toolCtx = await toolForge.getSystemToolContext();
-        const fullSystemPrompt = systemPrompt + toolCtx;
-        const contextualPrompt = (mode === 'chat' || mode === 'coder' || mode === 'architect')
-          ? this.getContextualPrompt(prompt)
-          : prompt;
+        const { episodicMemory } = await import('../kernel/episodicMemory');
+        await episodicMemory.load();
+        const recent = episodicMemory.getContextString(3);
+        if (recent) {
+          contextualPrompt = `${contextualPrompt}\n\n[RECENT CONVERSATIONS]\n${recent}`;
+        }
+      } catch {}
 
-        const rawResponse = await aiGateway.generate(fullSystemPrompt, contextualPrompt);
+      // ─── PREFERRED PATH: Native function calling ────────────────
+      try {
+        const { getOsActionTools } = await import('../kernel/aiTools');
+        const tools = getOsActionTools();
+        const { text: aiText, toolCalls } = await aiGateway.generateWithTools(
+          fullSystemPrompt, contextualPrompt, tools
+        );
 
-        // ErrorGuard validation
+        // ErrorGuard validates the natural-language portion only —
+        // tool calls are already structured and don't need fixing.
         const { output: response, fixApplied, errors: guardErrors } = await errorGuard.guard(
-          rawResponse, contextualPrompt, fullSystemPrompt, mode
+          aiText || '', contextualPrompt, fullSystemPrompt, mode
         );
         if (fixApplied && guardErrors.length > 0) {
           kernelLog.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
         }
 
-        await toolForge.parseAndRegister(response);
-        const osActionResults = await toolForge.executeOsActions(response);
-        const cleanedResponse = response.split('\n')
+        let result = response;
+        if (toolCalls.length > 0) {
+          const toolResults = await toolForge.executeToolCalls(toolCalls);
+          result = result + '\n' + toolResults;
+        } else {
+          // No tool calls — fall back to text parsing for backward
+          // compat. Some providers may still emit OS:: lines even when
+          // tools are offered, so we honor that path here.
+          await toolForge.parseAndRegister(response);
+          const osActionResults = await toolForge.executeOsActions(response);
+          result = result + osActionResults;
+        }
+
+        const cleanedResponse = result.split('\n')
           .filter(line => !line.trim().startsWith('OS::'))
           .join('\n');
-        return this.cleanResponse(cleanedResponse + osActionResults, mode);
-      } catch (cloudErr: any) {
-        kernelLog.warn('[AI_GATEWAY] Cloud provider failed, falling back to local:', cloudErr.message);
-        // Fall through to local inference
+        const finalResult = this.cleanResponse(cleanedResponse, mode);
+        // Record this conversation in episodic memory
+        try {
+          const { episodicMemory } = await import('../kernel/episodicMemory');
+          await episodicMemory.record(prompt, finalResult, mode);
+        } catch {}
+        return finalResult;
+      } catch (toolsErr: any) {
+        // Function-calling path failed (provider doesn't support tools,
+        // API rejected the request, network error, etc.) — fall back to
+        // the text-only path which works for every provider.
+        kernelLog.info('[AI_GATEWAY] Function-calling path failed, falling back to text parsing:', toolsErr?.message);
+
+        try {
+          const rawResponse = await aiGateway.generate(fullSystemPrompt, contextualPrompt);
+
+          // ErrorGuard validation
+          const { output: response, fixApplied, errors: guardErrors } = await errorGuard.guard(
+            rawResponse, contextualPrompt, fullSystemPrompt, mode
+          );
+          if (fixApplied && guardErrors.length > 0) {
+            kernelLog.info('[ErrorGuard] Auto-corrected:', guardErrors.map(e => e.type).join(', '));
+          }
+
+          await toolForge.parseAndRegister(response);
+          const osActionResults = await toolForge.executeOsActions(response);
+          const cleanedResponse = response.split('\n')
+            .filter(line => !line.trim().startsWith('OS::'))
+            .join('\n');
+          const fallbackResult = this.cleanResponse(cleanedResponse + osActionResults, mode);
+          try {
+            const { episodicMemory } = await import('../kernel/episodicMemory');
+            await episodicMemory.record(prompt, fallbackResult, mode);
+          } catch {}
+          return fallbackResult;
+        } catch (cloudErr: any) {
+          kernelLog.warn('[AI_GATEWAY] Cloud provider failed, falling back to local:', cloudErr.message);
+          // Fall through to local inference
+        }
       }
     }
 

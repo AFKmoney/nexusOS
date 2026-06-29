@@ -110,6 +110,18 @@ async function bootSystem() {
       } catch (e: any) {
         kernelLog.warn('[SYSTEM] AutoPilot load failed:', e?.message);
       }
+
+      // Load episodic memory so the AI remembers past conversations
+      try {
+        const { episodicMemory } = await import('./kernel/episodicMemory');
+        await episodicMemory.load();
+        const count = episodicMemory.getAll().length;
+        if (count > 0) {
+          kernelLog.info(`[SYSTEM] EpisodicMemory: ${count} episodes loaded`);
+        }
+      } catch (e: any) {
+        kernelLog.warn('[SYSTEM] EpisodicMemory load failed:', e?.message);
+      }
     }).catch(e => {
       kernelLog.error('[SYSTEM] VFS init failed:', e);
     });

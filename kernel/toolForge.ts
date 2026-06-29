@@ -1,4 +1,5 @@
 import { localBrain } from '../services/localBrain';
+import { AIToolCall } from '../services/aiProviders';
 import { parseOsActions, ParsedOsAction } from './osManifest';
 import { useOS } from '../store/osStore';
 import { commander } from './commander';
@@ -369,10 +370,14 @@ export class ToolForge {
 
         case 'BUILD_APP': {
           const desc = clampLength(toStringArg(action.args[0]), 512);
-          if (this._osActionHandler) {
-            result = await this._osActionHandler({ ...action, args: [desc] });
-          } else {
-            result = `[OS::BUILD_APP] → NeuralForge triggered for: "${desc}"`;
+          if (desc) {
+            try {
+              const { appGenerator } = await import('./appGenerator');
+              const app = await appGenerator.generate(desc);
+              result = `[OS::BUILD_APP] → ✅ Generated "${app.name}" with ${app.files.length} files at ${app.path}\nFiles:\n${app.files.map(f => `  • ${f}`).join('\n')}`;
+            } catch (e: any) {
+              result = `[OS::BUILD_APP] → ⚠ ${e?.message || 'Generation failed'}`;
+            }
           }
           break;
         }
@@ -1257,6 +1262,97 @@ export class ToolForge {
     }
 
     return results.length > 0 ? '\n\n' + results.join('\n') : '';
+  }
+
+  // ─── Native Function-Calling Entry Point ───────────────────
+  // Maps each AIToolCall (returned by AIProviderGateway.generateWithTools)
+  // back into an OS:: action string and reuses executeOsActions() so all
+  // validation, side-effects, and result formatting stay in one place.
+  // Any tool name we don't recognize is reported as `[Unknown tool: ...]`
+  // and skipped — the surrounding pipeline still returns successfully.
+  public async executeToolCalls(toolCalls: AIToolCall[]): Promise<string> {
+    const results: string[] = [];
+    for (const call of toolCalls) {
+      const args = call.arguments || {};
+      let osAction = '';
+      switch (call.name) {
+        case 'write_file':
+          osAction = `OS::WRITE_FILE:${args.path}:${args.content}`;
+          break;
+        case 'read_file':
+          osAction = `OS::READ_FILE:${args.path}`;
+          break;
+        case 'delete_file':
+          osAction = `OS::DELETE_FILE:${args.path}`;
+          break;
+        case 'list_dir':
+          osAction = `OS::LIST_DIR:${args.path}`;
+          break;
+        case 'create_folder':
+          osAction = `OS::CREATE_FOLDER:${args.path}`;
+          break;
+        case 'open_app':
+          osAction = `OS::OPEN_APP:${args.appId}`;
+          break;
+        case 'close_app':
+          osAction = `OS::CLOSE_APP:${args.appId}`;
+          break;
+        case 'notify':
+          osAction = `OS::NOTIFY:${args.title}:${args.message}`;
+          break;
+        case 'remember':
+          osAction = `OS::REMEMBER:${args.content}`;
+          break;
+        case 'set_wallpaper':
+          osAction = `OS::SET_WALLPAPER:${args.wallpaperId}`;
+          break;
+        case 'set_theme':
+          osAction = `OS::SET_THEME:${args.name}`;
+          break;
+        case 'set_accent':
+          osAction = `OS::SET_ACCENT:${args.hex}`;
+          break;
+        case 'search_files':
+          osAction = `OS::SEARCH_FILES:${args.query}`;
+          break;
+        case 'web_search':
+          osAction = `OS::WEB_SEARCH:${args.query}`;
+          break;
+        case 'browse_navigate':
+          osAction = `OS::BROWSE_NAVIGATE:${args.url}`;
+          break;
+        case 'spawn_agent':
+          osAction = `OS::SPAWN_AGENT:${args.goal}`;
+          break;
+        case 'add_goal':
+          osAction = `OS::ADD_GOAL:${args.priority || 'normal'}|${args.description}`;
+          break;
+        case 'forge_skill':
+          osAction = `OS::FORGE_SKILL:${args.name}|${args.description}|${args.code}`;
+          break;
+        case 'call_skill':
+          osAction = `OS::CALL_SKILL:${args.name}:${args.args ? JSON.stringify(args.args) : ''}`;
+          break;
+        case 'build_app':
+          osAction = `OS::BUILD_APP:${args.description}`;
+          break;
+        case 'execute_js':
+          osAction = `OS::EXECUTE_JS:${args.code}`;
+          break;
+        case 'clipboard_copy':
+          osAction = `OS::CLIPBOARD_COPY:${args.text}`;
+          break;
+        case 'take_screenshot':
+          osAction = `OS::TAKE_SCREENSHOT`;
+          break;
+        default:
+          results.push(`[Unknown tool: ${call.name}]`);
+          continue;
+      }
+      const result = await this.executeOsActions(osAction);
+      if (result) results.push(result);
+    }
+    return results.join('\n');
   }
 
   public async getAllTools(): Promise<DaemonTool[]> {
