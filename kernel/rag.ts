@@ -48,24 +48,170 @@ const CHUNK_SIZE = 500;       // characters per chunk
 const CHUNK_OVERLAP = 50;     // overlap between chunks for context continuity
 const MAX_RESULTS = 8;
 
+// ─── Persistence backends ──────────────────────────────────────────
+// IndexedDB is the primary store (no 5 MB localStorage cap), with the
+// old localStorage key kept as a fallback for very old sessions and as
+// the source of one-time migration data.
+
+const IDB_NAME = 'nexusos_rag';
+const IDB_VERSION = 1;
+const STORE_VECTORS = 'vectors';
+const LEGACY_LS_KEY = 'nexusos_rag_vectors';
+
+function idbAvailable(): boolean {
+  return typeof indexedDB !== 'undefined';
+}
+
+function openIdb(): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    if (!idbAvailable()) return resolve(null);
+    try {
+      const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_VECTORS)) {
+          db.createObjectStore(STORE_VECTORS, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function idbLoadAll(): Promise<VectorRecord[]> {
+  const db = await openIdb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_VECTORS, 'readonly');
+      const store = tx.objectStore(STORE_VECTORS);
+      const req = store.getAll();
+      req.onsuccess = () => resolve((req.result as VectorRecord[]) || []);
+      req.onerror = () => resolve([]);
+    } catch {
+      resolve([]);
+    }
+  });
+}
+
+async function idbPutMany(records: VectorRecord[]): Promise<void> {
+  const db = await openIdb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_VECTORS, 'readwrite');
+      const store = tx.objectStore(STORE_VECTORS);
+      for (const r of records) store.put(r);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function idbDeleteMany(ids: string[]): Promise<void> {
+  const db = await openIdb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_VECTORS, 'readwrite');
+      const store = tx.objectStore(STORE_VECTORS);
+      for (const id of ids) store.delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function idbClear(): Promise<void> {
+  const db = await openIdb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_VECTORS, 'readwrite');
+      tx.objectStore(STORE_VECTORS).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function lsLoadAll(): VectorRecord[] {
+  try {
+    const stored = localStorage.getItem(LEGACY_LS_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored) as VectorRecord[];
+  } catch {
+    return [];
+  }
+}
+
+function lsPutMany(records: VectorRecord[]): void {
+  try {
+    const existing = lsLoadAll();
+    const map = new Map<string, VectorRecord>();
+    for (const r of existing) map.set(r.id, r);
+    for (const r of records) map.set(r.id, r);
+    const all = Array.from(map.values()).slice(-5000);
+    localStorage.setItem(LEGACY_LS_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+function lsDeleteMany(ids: string[]): void {
+  try {
+    const existing = lsLoadAll();
+    const idSet = new Set(ids);
+    const remaining = existing.filter(r => !idSet.has(r.id));
+    localStorage.setItem(LEGACY_LS_KEY, JSON.stringify(remaining));
+  } catch {}
+}
+
 class RagModule {
   private vectors: VectorRecord[] = [];
   private documents = new Map<string, RagDocument>();
   private isInitialized = false;
+  private useIndexedDB = idbAvailable();
 
   /**
    * Initialize the RAG store. Loads any persisted vectors from
-   * IndexedDB. Called once at boot.
+   * IndexedDB (with one-time migration from the legacy localStorage
+   * key for older installs). Called once at boot.
    */
   async init(): Promise<void> {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
     try {
-      const stored = localStorage.getItem('nexusos_rag_vectors');
-      if (stored) {
-        this.vectors = JSON.parse(stored);
-        kernelLog.info(`[RAG] Loaded ${this.vectors.length} vectors from storage`);
+      if (this.useIndexedDB) {
+        const loaded = await idbLoadAll();
+        if (loaded.length > 0) {
+          this.vectors = loaded;
+          kernelLog.info(`[RAG] Loaded ${this.vectors.length} vectors from IndexedDB`);
+        } else {
+          // One-time migration from the legacy localStorage key.
+          const legacy = lsLoadAll();
+          if (legacy.length > 0) {
+            this.vectors = legacy;
+            await idbPutMany(legacy);
+            try { localStorage.removeItem(LEGACY_LS_KEY); } catch {}
+            kernelLog.info(`[RAG] Migrated ${legacy.length} vectors from localStorage → IndexedDB`);
+          }
+        }
+      } else {
+        // Fallback when IndexedDB is unavailable (private mode, etc.)
+        const legacy = lsLoadAll();
+        if (legacy.length > 0) {
+          this.vectors = legacy;
+          kernelLog.info(`[RAG] Loaded ${this.vectors.length} vectors from localStorage (IDB unavailable)`);
+        }
       }
     } catch (e: any) {
       kernelLog.warn('[RAG] Failed to load vectors:', e.message);
@@ -86,15 +232,18 @@ class RagModule {
     const chunks = this.chunkText(content, docId, source);
 
     // Generate embeddings for each chunk
+    const newRecords: VectorRecord[] = [];
     for (const chunk of chunks) {
       chunk.embedding = await this.generateEmbedding(chunk.text);
-      this.vectors.push({
+      const record: VectorRecord = {
         id: chunk.id,
         docId,
         text: chunk.text,
         embedding: chunk.embedding,
         source,
-      });
+      };
+      this.vectors.push(record);
+      newRecords.push(record);
     }
 
     const doc: RagDocument = {
@@ -105,7 +254,7 @@ class RagModule {
       indexedAt: Date.now(),
     };
     this.documents.set(docId, doc);
-    this.persist();
+    this.persist(newRecords);
 
     kernelLog.info(`[RAG] Indexed ${source}: ${chunks.length} chunks`);
     return doc;
@@ -186,14 +335,23 @@ class RagModule {
    * Remove a document and its chunks from the store.
    */
   async removeDocument(source: string): Promise<void> {
-    this.vectors = this.vectors.filter(v => v.source !== source);
+    const removedIds: string[] = [];
+    const remaining: VectorRecord[] = [];
+    for (const v of this.vectors) {
+      if (v.source === source) {
+        removedIds.push(v.id);
+      } else {
+        remaining.push(v);
+      }
+    }
+    this.vectors = remaining;
     for (const [id, doc] of this.documents) {
       if (doc.source === source) {
         this.documents.delete(id);
         break;
       }
     }
-    this.persist();
+    await this.deletePersisted(removedIds);
   }
 
   /**
@@ -209,7 +367,7 @@ class RagModule {
   clear(): void {
     this.vectors = [];
     this.documents.clear();
-    this.persist();
+    this.clearPersisted();
   }
 
   // ─── Internal helpers ──────────────────────────────────────────
@@ -343,14 +501,35 @@ class RagModule {
     return denom > 0 ? dot / denom : 0;
   }
 
-  private persist(): void {
+  private persist(newRecords?: VectorRecord[]): void {
     try {
-      // Cap storage at ~5000 vectors to avoid localStorage quota
-      const toStore = this.vectors.slice(-5000);
-      localStorage.setItem('nexusos_rag_vectors', JSON.stringify(toStore));
-    } catch (e: any) {
-      kernelLog.warn('[RAG] Failed to persist vectors:', e.message);
-    }
+      if (this.useIndexedDB) {
+        const toStore = newRecords && newRecords.length > 0 ? newRecords : this.vectors;
+        void idbPutMany(toStore).catch(() => {});
+      } else {
+        lsPutMany(newRecords && newRecords.length > 0 ? newRecords : this.vectors);
+      }
+    } catch {}
+  }
+
+  private async deletePersisted(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    try {
+      if (this.useIndexedDB) {
+        await idbDeleteMany(ids);
+      } else {
+        lsDeleteMany(ids);
+      }
+    } catch {}
+  }
+
+  private clearPersisted(): void {
+    try {
+      if (this.useIndexedDB) {
+        void idbClear().catch(() => {});
+      }
+      try { localStorage.removeItem(LEGACY_LS_KEY); } catch {}
+    } catch {}
   }
 }
 

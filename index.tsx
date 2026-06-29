@@ -6,6 +6,8 @@ import { hydrateOSRegistry, useOS } from './store/osStore';
 import { vfs } from './kernel/fileSystem';
 import { kernelLog } from './kernel/log';
 import { WALLPAPER_LIBRARY } from './kernel/wallpaperLibrary';
+import { skillForge } from './kernel/skillForge';
+import { autoPilot } from './kernel/autoPilot';
 
 // Expose the OS store as a global debug/automation handle so end-to-end
 // harnesses (and devtools) can drive the OS — open apps, inspect state — without
@@ -85,9 +87,29 @@ async function bootSystem() {
 
     // Initialize VFS in parallel with React rendering
     kernelLog.info('[SYSTEM] Initializing VFS (async)...');
-    vfs.init().then(() => {
+    vfs.init().then(async () => {
       vfs.seedSystemWallpapers(WALLPAPER_LIBRARY);
       kernelLog.info('[SYSTEM] VFS ready.');
+
+      try {
+        await skillForge.load();
+        const skills = skillForge.list();
+        if (skills.length > 0) {
+          kernelLog.info(`[SYSTEM] SkillForge: ${skills.length} skill(s) loaded`);
+        }
+      } catch (e: any) {
+        kernelLog.warn('[SYSTEM] SkillForge load failed:', e?.message);
+      }
+
+      try {
+        await autoPilot.load();
+        const goals = autoPilot.getGoals('pending');
+        if (goals.length > 0) {
+          kernelLog.info(`[SYSTEM] AutoPilot: ${goals.length} pending goal(s) restored`);
+        }
+      } catch (e: any) {
+        kernelLog.warn('[SYSTEM] AutoPilot load failed:', e?.message);
+      }
     }).catch(e => {
       kernelLog.error('[SYSTEM] VFS init failed:', e);
     });

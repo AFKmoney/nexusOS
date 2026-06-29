@@ -1,4 +1,5 @@
 import { uuid } from '../utils/uuid';
+import { useOS } from '../store/osStore';
 
 // ═══════════════════════════════════════════════════════════════════
 // POLICY ENGINE v1.0 — Centralized Autonomy Permission Gateway
@@ -178,7 +179,17 @@ class PolicyEngine {
   private readonly MAX_LOG = 500;
 
   evaluate(ctx: PolicyContext): PolicyResult {
-    const rule = this.rules.find(r => r.match(ctx));
+    let effectiveInitiator: PolicyContext['initiator'] = ctx.initiator;
+    if (ctx.initiator === 'ai') {
+      try {
+        const fullAutonomy = useOS.getState()?.kernelRules?.fullAutonomy === true;
+        if (fullAutonomy) {
+          effectiveInitiator = 'user';
+        }
+      } catch {}
+    }
+    const effectiveCtx: PolicyContext = { ...ctx, initiator: effectiveInitiator };
+    const rule = this.rules.find(r => r.match(effectiveCtx));
 
     const result: PolicyResult = {
       id: uuid(),

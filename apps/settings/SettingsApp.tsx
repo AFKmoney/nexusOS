@@ -244,6 +244,25 @@ export default function SettingsApp() {
                   </button>
                 </div>
 
+                {/* ── Full Autonomy Mode ─────────────────────────────── */}
+                <div className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20 transition-colors">
+                      <Shield size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">Full Autonomy Mode</div>
+                      <div className="text-xs text-zinc-500">Grant the AI the same access level as the user — no approval prompts</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => updateKernelRules({ fullAutonomy: !kernelRules.fullAutonomy })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${kernelRules.fullAutonomy ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-zinc-800'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${kernelRules.fullAutonomy ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
                   <div className="flex items-center gap-4">
                     <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">

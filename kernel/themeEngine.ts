@@ -41,7 +41,9 @@ class ThemeEngine {
   constructor() {
     this.theme = { ...DEFAULT_THEME };
     this.load();
-    this.apply();
+    try {
+      this.apply();
+    } catch {}
   }
 
   private load() {
@@ -52,12 +54,15 @@ class ThemeEngine {
   }
 
   private persist() {
-    localStorage.setItem(THEME_KEY, JSON.stringify(this.theme));
+    try {
+      localStorage.setItem(THEME_KEY, JSON.stringify(this.theme));
+    } catch {}
   }
 
   /** Apply theme to document root CSS variables */
   apply() {
-    const root = document.documentElement;
+    const root = (typeof document !== 'undefined' && document.documentElement) as any;
+    if (!root || !root.style) return;
     root.style.setProperty('--nx-accent', this.theme.accent);
     root.style.setProperty('--nx-accent-rgb', this.theme.accentRgb);
     root.style.setProperty('--nx-surface', this.theme.surface);

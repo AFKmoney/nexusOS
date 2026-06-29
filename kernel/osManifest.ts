@@ -103,7 +103,17 @@ OS::SET_THEME:<name>
 OS::SET_ACCENT:<#hex>
 OS::PLAY_AUDIO:<path>
 OS::TAKE_SCREENSHOT
-OS::IDE_OPEN_FILE:<path>`;
+OS::IDE_OPEN_FILE:<path>
+OS::CALL_SKILL:<name>:<json-args>
+OS::FORGE_SKILL:<name>|<description>|<code>
+OS::LIST_SKILLS
+OS::DELETE_SKILL:<name>
+OS::ADD_GOAL:<description>
+OS::GET_GOALS
+OS::COMPLETE_GOAL:<id>
+OS::SET_AUTOPILOT:<on|off>
+OS::SPAWN_AGENT:<goal>
+OS::AGENT_MESSAGE:<agentId>:<message>`;
 
 // ═══════════════════════════════════════════════════════════════
 // TIER 3: APP INDEX — Compressed (one line per app, ~200 tokens)

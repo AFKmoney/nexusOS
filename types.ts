@@ -78,6 +78,14 @@ export interface KernelRules {
   cpuSpeed: number;
   primaryBootDevice: 'VFS' | 'CLOUD' | 'GGUF';
   daemonInjected?: boolean;
+  /**
+   * When true, grants the AI the same access level as the signed-in user.
+   * The AI may perform any OS action the user could (open/close apps,
+   * write anywhere in the VFS, modify kernel rules, run shell commands,
+   * etc.) without per-action approval. Use with care: this is the
+   * "training wheels off" switch for the autonomy stack.
+   */
+  fullAutonomy?: boolean;
 }
 
 export interface ScreensaverConfig {

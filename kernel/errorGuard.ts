@@ -146,6 +146,10 @@ const VALID_OS_ACTIONS = new Set([
   'SELF_EVOLVE', 'CLUSTER_SCAN', 'CLUSTER_STATUS',
   // New actions
   'EMPTY_TRASH', 'SET_THEME', 'SET_ACCENT', 'PLAY_AUDIO', 'TAKE_SCREENSHOT', 'IDE_OPEN_FILE',
+  // SkillForge + AutoPilot + Agent messaging (SPAWN_AGENT already listed above)
+  'CALL_SKILL', 'FORGE_SKILL', 'LIST_SKILLS', 'DELETE_SKILL',
+  'ADD_GOAL', 'GET_GOALS', 'COMPLETE_GOAL', 'SET_AUTOPILOT',
+  'AGENT_MESSAGE',
 ]);
 
 function validateOsActions(text: string): ValidationError[] {

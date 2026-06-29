@@ -60,6 +60,10 @@ const ALLOWED_VERBS: ReadonlySet<string> = new Set([
   // Phase 5: Self-evolution + cluster
   'SELF_EVOLVE', 'CLUSTER_SCAN', 'CLUSTER_STATUS',
   'EMPTY_TRASH', 'SET_THEME', 'SET_ACCENT', 'PLAY_AUDIO', 'TAKE_SCREENSHOT', 'IDE_OPEN_FILE',
+  // SkillForge + AutoPilot + Agent messaging (SPAWN_AGENT already listed above)
+  'CALL_SKILL', 'FORGE_SKILL', 'LIST_SKILLS', 'DELETE_SKILL',
+  'ADD_GOAL', 'GET_GOALS', 'COMPLETE_GOAL', 'SET_AUTOPILOT',
+  'AGENT_MESSAGE',
 ]);
 
 /**
@@ -422,6 +426,13 @@ class MirrorGuard {
     const verb = proposal.type?.toUpperCase?.() || '';
     if (!HIGH_IMPACT_VERBS.has(verb)) {
       os.addAutonomyLog(`MIRROR PASS (static, low-impact): coherence=${staticResult.score.toFixed(2)}`);
+      return staticResult;
+    }
+
+    const fullAutonomy = os.kernelRules?.fullAutonomy === true;
+    // In Full Autonomy mode, skip the AI critic entirely
+    if (fullAutonomy) {
+      os.addAutonomyLog(`MIRROR PASS (full autonomy, static-only): coherence=${staticResult.score.toFixed(2)}`);
       return staticResult;
     }
 

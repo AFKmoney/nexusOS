@@ -18,7 +18,9 @@ export default function Taskbar() {
     isStartMenuOpen,
     openContextMenu,
     focusWindow,
-    pinnedApps
+    pinnedApps,
+    kernelRules,
+    updateKernelRules,
   } = useOS();
 
   const {
@@ -160,6 +162,26 @@ export default function Taskbar() {
             <Bell size={18} className="text-zinc-400 group-hover:text-white transition-colors" />
             {unreadCount > 0 && <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#030305] shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse" />}
           </button>
+
+          {/* Full Autonomy / AutoPilot indicators */}
+          {kernelRules.fullAutonomy && (
+            <button
+              onClick={() => updateKernelRules({ fullAutonomy: false })}
+              title="Full Autonomy is ON — click to disable"
+              className="p-2.5 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 transition-all group"
+            >
+              <Shield size={18} className="text-rose-400 group-hover:text-rose-300 animate-pulse" />
+            </button>
+          )}
+          {kernelRules.autonomyEnabled && !kernelRules.fullAutonomy && (
+            <button
+              onClick={() => openWindow('governance')}
+              title="Autonomy Engine is running — click to inspect"
+              className="p-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 transition-all group"
+            >
+              <Zap size={18} className="text-emerald-400 group-hover:text-emerald-300" />
+            </button>
+          )}
 
           {/* Quick Settings Toggle */}
           <button

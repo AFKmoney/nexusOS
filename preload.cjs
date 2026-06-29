@@ -14,6 +14,20 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
   },
+  // Streaming event listeners — only allowed for ai-stream-* channels
+  on: (channel, func) => {
+    if (typeof channel === 'string' && channel.startsWith('ai-stream-')) {
+      const listener = (event, ...args) => func(...args);
+      ipcRenderer.on(channel, listener);
+      return () => ipcRenderer.removeListener(channel, listener);
+    }
+    return undefined;
+  },
+  off: (channel) => {
+    if (typeof channel === 'string' && channel.startsWith('ai-stream-')) {
+      ipcRenderer.removeAllListeners(channel);
+    }
+  },
   // Real Native Hardware & Host Access
   invoke: async (channel, data) => {
     const validChannels = [
@@ -32,7 +46,7 @@ contextBridge.exposeInMainWorld('electron', {
       // Phase 5: Cluster
       'cluster-scan',
       // AI API proxy (bypasses CORS)
-      'ai-proxy',
+      'ai-proxy', 'ai-proxy-stream',
     ];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);

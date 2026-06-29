@@ -3,9 +3,12 @@ import { parseOsActions, ParsedOsAction } from './osManifest';
 import { useOS } from '../store/osStore';
 import { commander } from './commander';
 import { eventBus } from './eventBus';
-import { vfs } from './fileSystem';
+import { vfs, SYSTEM_VFS_APP_ID } from './fileSystem';
 import { memory } from './memory';
 import { kernelLog } from './log';
+import { skillForge } from './skillForge';
+import { autoPilot } from './autoPilot';
+import { agentOrchestrator } from './agentOrchestrator';
 
 interface DaemonTool {
   name: string;
@@ -26,9 +29,11 @@ type VfsModule = {
   writeFile: (path: string, content: string) => void;
   readFile: (path: string) => string | null;
   listDir: (path: string) => string[] | null;
-  stat: (path: string) => { type?: 'directory' | 'file' } | null | undefined;
+  stat: (path: string) => { type?: 'directory' | 'file' | 'symlink' } | null | undefined;
   delete: (path: string) => boolean;
   moveToTrash: (path: string) => boolean;
+  restoreFromTrash: (trashPath: string) => string | null;
+  listTrash: () => { name: string; path: string }[];
 };
 
 type MemoryModule = {
@@ -36,7 +41,16 @@ type MemoryModule = {
 };
 
 async function getVfs(): Promise<VfsModule> {
-  return vfs as VfsModule;
+  return {
+    writeFile: (path: string, content: string) => vfs.writeFile(path, content, SYSTEM_VFS_APP_ID),
+    readFile: (path: string) => vfs.readFile(path, SYSTEM_VFS_APP_ID),
+    listDir: (path: string) => vfs.listDir(path, SYSTEM_VFS_APP_ID),
+    stat: (path: string) => vfs.stat(path),
+    delete: (path: string) => vfs.delete(path, SYSTEM_VFS_APP_ID),
+    moveToTrash: (path: string) => vfs.moveToTrash(path),
+    restoreFromTrash: (trashPath: string) => vfs.restoreFromTrash(trashPath),
+    listTrash: () => vfs.listTrash(),
+  };
 }
 
 async function getMemory(): Promise<MemoryModule> {
@@ -173,11 +187,15 @@ export class ToolForge {
 
   public async getSystemToolContext(): Promise<string> {
     await this.ensureLoadedAsync();
-    if (this.tools.size === 0) return '';
-    let ctx = '\n\n[FORGED TOOLS — User-created, callable with <CALL_TOOL>]\n';
-    for (const t of this.tools.values()) {
-      ctx += `  • ${t.name}: ${t.description}\n`;
+    let ctx = '';
+    if (this.tools.size > 0) {
+      ctx += '\n\n[FORGED TOOLS — User-created, callable with <CALL_TOOL>]\n';
+      for (const t of this.tools.values()) {
+        ctx += `  • ${t.name}: ${t.description}\n`;
+      }
     }
+    const skillCtx = await skillForge.getSystemSkillContext();
+    if (skillCtx) ctx += skillCtx;
     return ctx;
   }
 
@@ -844,11 +862,11 @@ export class ToolForge {
           const goal = clampLength(toStringArg(actionArgs[0]), 2000);
           if (goal) {
             try {
-              const { agentOrchestrator } = await import('./agentOrchestrator');
               result = `[OS::SPAWN_AGENT] → Agent orchestrator launched for: "${goal}". Task running in background. Results will appear in the audit log.`;
               // Run in background — don't block the response
               void agentOrchestrator.run(goal).catch(e => {
-                kernelLog.error('[Agent] Background task failed:', e.message);
+                const msg = e instanceof Error ? e.message : String(e);
+                kernelLog.error('[Agent] Background task failed:', msg);
               });
             } catch (e: unknown) {
               const message = e instanceof Error ? e.message : String(e);
@@ -1010,12 +1028,17 @@ export class ToolForge {
           const themeName = clampLength(toStringArg(actionArgs[0]), 64);
           if (themeName) {
             try {
-              const { themeEngine } = await import('./themeEngine');
               const os = useOS.getState();
               os.setThemePreset(themeName);
+              try {
+                const { themeEngine } = await import('./themeEngine');
+                themeEngine.setAccent(themeName);
+              } catch (e: any) {
+                kernelLog.warn('[OS::SET_THEME] themeEngine apply failed (non-fatal):', e?.message);
+              }
               result = `[OS::SET_THEME] → ✅ Theme set to ${themeName}`;
-            } catch {
-              result = `[OS::SET_THEME] → ⚠ Could not set theme`;
+            } catch (e: any) {
+              result = `[OS::SET_THEME] → ⚠ Could not set theme: ${e?.message || e}`;
             }
           }
           break;
@@ -1080,6 +1103,148 @@ export class ToolForge {
               os.openWindow('hyperide', { path });
               result = `[OS::IDE_OPEN_FILE] → ✅ Opened ${path} in new HyperIDE`;
             }
+          }
+          break;
+        }
+
+        // ─── SkillForge — AI self-evolution ────────────────────────────
+        case 'CALL_SKILL': {
+          const raw = toStringArg(actionArgs[0]);
+          const colonIdx = raw.indexOf(':');
+          const skillName = colonIdx >= 0 ? raw.slice(0, colonIdx).trim() : raw.trim();
+          const skillArgs = colonIdx >= 0 ? raw.slice(colonIdx + 1) : '';
+          if (skillName) {
+            const execResult = await skillForge.execute(skillName, skillArgs);
+            if (execResult.success) {
+              const resultStr = typeof execResult.result === 'string'
+                ? execResult.result
+                : JSON.stringify(execResult.result);
+              result = `[OS::CALL_SKILL:${skillName}] → ✅ (${execResult.durationMs}ms)\n${clampLength(resultStr, 2000)}`;
+            } else {
+              result = `[OS::CALL_SKILL:${skillName}] → ⚠ ${execResult.error}`;
+            }
+          } else {
+            result = `[OS::CALL_SKILL] → ⚠ Format: OS::CALL_SKILL:<name>:<json-args>`;
+          }
+          break;
+        }
+
+        case 'FORGE_SKILL': {
+          const raw = toStringArg(actionArgs[0]);
+          const parts = raw.split('|');
+          if (parts.length >= 3) {
+            const skillName = (parts[0] || '').trim();
+            const description = (parts[1] || '').trim();
+            const code = parts.slice(2).join('|');
+            const regResult = await skillForge.register(skillName, description, code);
+            result = regResult.success
+              ? `[OS::FORGE_SKILL] → ✅ Skill '${skillName}' registered and persisted`
+              : `[OS::FORGE_SKILL] → ⚠ ${regResult.error}`;
+          } else {
+            result = `[OS::FORGE_SKILL] → ⚠ Format: OS::FORGE_SKILL:<name>|<description>|<code>`;
+          }
+          break;
+        }
+
+        case 'LIST_SKILLS': {
+          const skills = skillForge.list();
+          if (skills.length === 0) {
+            result = `[OS::LIST_SKILLS] → No skills registered. Use OS::FORGE_SKILL to create one.`;
+          } else {
+            const listing = skills.map(s =>
+              `⚡ ${s.name}: ${s.description} (used ${s.invocations}x, last: ${s.lastResult || 'never'})`
+            ).join('\n');
+            result = `[OS::LIST_SKILLS] → ${skills.length} skill(s):\n${listing}`;
+          }
+          break;
+        }
+
+        case 'DELETE_SKILL': {
+          const skillName = toStringArg(actionArgs[0]).trim();
+          if (skillName) {
+            const deleted = await skillForge.delete(skillName);
+            result = deleted
+              ? `[OS::DELETE_SKILL] → ✅ Skill '${skillName}' deleted`
+              : `[OS::DELETE_SKILL] → ⚠ Skill '${skillName}' not found`;
+          }
+          break;
+        }
+
+        // ─── AutoPilot ──────────────────────────────────────────────
+        case 'ADD_GOAL': {
+          const description = toStringArg(actionArgs[0]).trim();
+          if (description) {
+            let priority: 'low' | 'normal' | 'high' | 'critical' = 'normal';
+            let desc = description;
+            const pipeIdx = description.indexOf('|');
+            if (pipeIdx > 0 && pipeIdx < 20) {
+              const maybePriority = description.slice(0, pipeIdx).trim().toLowerCase();
+              if (['low', 'normal', 'high', 'critical'].includes(maybePriority)) {
+                priority = maybePriority as any;
+                desc = description.slice(pipeIdx + 1).trim();
+              }
+            }
+            const goal = await autoPilot.addGoal(desc, priority);
+            result = `[OS::ADD_GOAL] → ✅ Goal added (id: ${goal.id}, priority: ${priority}): ${desc}`;
+          } else {
+            result = `[OS::ADD_GOAL] → ⚠ Provide a goal description`;
+          }
+          break;
+        }
+
+        case 'GET_GOALS': {
+          const goals = autoPilot.getGoals();
+          if (goals.length === 0) {
+            result = `[OS::GET_GOALS] → Goal queue is empty. Use OS::ADD_GOAL:<description> to add one.`;
+          } else {
+            const listing = goals.map(g =>
+              `${g.status === 'pending' ? '⏳' : g.status === 'in-progress' ? '🔄' : g.status === 'completed' ? '✅' : '❌'} ${g.id} [${g.priority}] ${g.description}${g.lastError ? ` (last error: ${g.lastError})` : ''}`
+            ).join('\n');
+            result = `[OS::GET_GOALS] → ${goals.length} goal(s):\n${listing}`;
+          }
+          break;
+        }
+
+        case 'COMPLETE_GOAL': {
+          const goalId = toStringArg(actionArgs[0]).trim();
+          if (goalId) {
+            const ok = await autoPilot.completeGoal(goalId, 'Marked complete by AI');
+            result = ok
+              ? `[OS::COMPLETE_GOAL] → ✅ Goal ${goalId} marked complete`
+              : `[OS::COMPLETE_GOAL] → ⚠ Goal ${goalId} not found`;
+          }
+          break;
+        }
+
+        case 'SET_AUTOPILOT': {
+          const mode = toStringArg(actionArgs[0]).trim().toLowerCase();
+          if (mode === 'on' || mode === 'true' || mode === '1') {
+            await autoPilot.setEnabled(true);
+            result = `[OS::SET_AUTOPILOT] → ✅ AutoPilot ENGAGED.`;
+          } else if (mode === 'off' || mode === 'false' || mode === '0') {
+            await autoPilot.setEnabled(false);
+            result = `[OS::SET_AUTOPILOT] → ✅ AutoPilot DISENGAGED.`;
+          } else {
+            result = `[OS::SET_AUTOPILOT] → ⚠ Provide 'on' or 'off'`;
+          }
+          break;
+        }
+
+        // ─── Agent messaging ──────────────────────────────────────────
+        case 'AGENT_MESSAGE': {
+          const raw = toStringArg(actionArgs[0]);
+          const colonIdx = raw.indexOf(':');
+          if (colonIdx > 0) {
+            const toId = raw.slice(0, colonIdx).trim();
+            const message = raw.slice(colonIdx + 1);
+            const activeAgents = agentOrchestrator.getActiveAgents();
+            const fromId = activeAgents[0]?.id || 'ai-orchestrator';
+            const ok = agentOrchestrator.sendMessage(fromId, toId, message);
+            result = ok
+              ? `[OS::AGENT_MESSAGE] → ✅ Message sent to ${toId}`
+              : `[OS::AGENT_MESSAGE] → ⚠ Agent ${toId} not found`;
+          } else {
+            result = `[OS::AGENT_MESSAGE] → ⚠ Format: OS::AGENT_MESSAGE:<toAgentId>:<message>`;
           }
           break;
         }

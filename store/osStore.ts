@@ -149,7 +149,9 @@ export const useOS = create<OSState>()(
   )
 );
 
-(window as any).__OS_STORE__ = useOS;
+if (typeof window !== 'undefined') {
+  (window as any).__OS_STORE__ = useOS;
+}
 
 export async function hydrateOSRegistry(): Promise<void> {
   try {

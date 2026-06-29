@@ -626,6 +626,42 @@ export class VirtualFileSystem {
     return this.move(path, `${trashDir}/${name}_${Date.now()}`);
   }
 
+  /**
+   * Restore a previously trashed item back to its (approximated) original location.
+   * The original name is recovered by stripping the trailing "_<timestamp>" suffix that
+   * moveToTrash appended. Returns the destination path on success, or null if the path
+   * is not inside the Trash directory or doesn't exist.
+   */
+  public restoreFromTrash(trashPath: string): string | null {
+    const trashDir = `${this.getHomeDir()}/Trash`;
+    if (!trashPath.startsWith(trashDir + '/')) return null;
+    const node = this.resolveNode(trashPath);
+    if (!node) return null;
+
+    const trashName = trashPath.split('/').pop() || '';
+    // Strip the trailing _<digits> suffix that moveToTrash added.
+    const restoredName = trashName.replace(/_\d+$/, '') || trashName;
+    const dest = `${this.getHomeDir()}/${restoredName}`;
+    // If destination exists, leave in trash to avoid clobber.
+    if (this.resolveNode(dest)) return null;
+    const moved = this.move(trashPath, dest);
+    return moved ? dest : null;
+  }
+
+  /**
+   * List items currently in the user's Trash directory.
+   * Returns an array of { name, path } for each entry.
+   */
+  public listTrash(): { name: string; path: string }[] {
+    const trashDir = `${this.getHomeDir()}/Trash`;
+    const node = this.resolveNode(trashDir);
+    if (!node || !node.children) return [];
+    return Object.values(node.children).map(child => ({
+      name: child.name,
+      path: `${trashDir}/${child.name}`,
+    }));
+  }
+
   public updateMetadata(path: string, metadata: Partial<FileNode>): boolean {
     const node = this.resolveNode(path);
     if (!node) return false;

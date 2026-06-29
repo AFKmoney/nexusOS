@@ -48,7 +48,10 @@ export type AutonomySubsystem =
   | 'commander'
   | 'ai-pipeline'
   | 'staging-manager'
-  | 'trust-tier-engine';
+  | 'trust-tier-engine'
+  | 'skill-forge'
+  | 'autopilot'
+  | 'agent-orchestrator';
 
 export interface AutonomyEvent {
   id: string;

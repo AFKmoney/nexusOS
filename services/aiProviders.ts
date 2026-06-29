@@ -394,6 +394,60 @@ export class AIProviderGateway {
     return this.providers.some(p => p.enabled && p.apiKey);
   }
 
+  // ─── Streaming proxy (SSE passthrough via Electron IPC) ────
+  // Returns a ReadableStream<Uint8Array> whose bytes come from the
+  // ai-proxy-stream IPC handler. Lets the renderer consume server-sent
+  // events without tripping CORS preflight on the cloud AI endpoints.
+  private electronStream(
+    url: string,
+    headers: Record<string, string>,
+    body: string,
+  ): ReadableStream<Uint8Array> {
+    const channel = `ai-stream-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const electron = (window as any).electron;
+    const encoder = new TextEncoder();
+
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        let closed = false;
+        const cleanup = () => {
+          if (closed) return;
+          closed = true;
+          try { electron.off(`${channel}-chunk`); } catch {}
+          try { electron.off(`${channel}-done`); } catch {}
+          try { electron.off(`${channel}-error`); } catch {}
+        };
+
+        electron.on(`${channel}-chunk`, (chunk: string) => {
+          try { controller.enqueue(encoder.encode(chunk)); } catch {}
+        });
+        electron.on(`${channel}-done`, () => {
+          cleanup();
+          try { controller.close(); } catch {}
+        });
+        electron.on(`${channel}-error`, (err: any) => {
+          cleanup();
+          try {
+            controller.error(new Error(err?.message || `Streaming proxy error (${err?.status || 0})`));
+          } catch {}
+        });
+
+        electron.invoke('ai-proxy-stream', {
+          url, method: 'POST', headers, body, channel,
+        }).catch((err: any) => {
+          cleanup();
+          try { controller.error(err); } catch {}
+        });
+      },
+      cancel() {
+        const electron = (window as any).electron;
+        try { electron.off(`${channel}-chunk`); } catch {}
+        try { electron.off(`${channel}-done`); } catch {}
+        try { electron.off(`${channel}-error`); } catch {}
+      },
+    });
+  }
+
   // ─── Inference: OpenAI-Compatible ──────────────────────────
   private async callOpenAICompatible(
     provider: AIProvider,
@@ -440,7 +494,13 @@ export class AIProviderGateway {
     // Use Electron proxy to bypass CORS when available.
     // Browser direct fetch fails with "Failed to fetch" for most AI APIs
     // because they don't return Access-Control-Allow-Origin headers.
-    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+    const hasElectron = typeof window !== 'undefined'
+      && (window as any).electron?.invoke
+      && (window as any).electron?.on;
+
+    if (hasElectron && stream) {
+      return this.electronStream(url, headers, bodyStr);
+    }
 
     if (hasElectron && !stream) {
       // Non-streaming: use IPC proxy
@@ -515,7 +575,12 @@ export class AIProviderGateway {
     });
 
     // Use Electron proxy for non-streaming to bypass CORS
-    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+    const hasElectron = typeof window !== 'undefined'
+      && (window as any).electron?.invoke
+      && (window as any).electron?.on;
+    if (hasElectron && stream) {
+      return this.electronStream(url, headers, bodyStr);
+    }
     if (hasElectron && !stream) {
       try {
         const res = await (window as any).electron.invoke('ai-proxy', {
@@ -573,7 +638,12 @@ export class AIProviderGateway {
     const bodyStr = JSON.stringify(body);
 
     // Use Electron proxy for non-streaming to bypass CORS
-    const hasElectron = typeof window !== 'undefined' && (window as any).electron?.invoke;
+    const hasElectron = typeof window !== 'undefined'
+      && (window as any).electron?.invoke
+      && (window as any).electron?.on;
+    if (hasElectron && stream) {
+      return this.electronStream(url, headers, bodyStr);
+    }
     if (hasElectron && !stream) {
       try {
         const res = await (window as any).electron.invoke('ai-proxy', {

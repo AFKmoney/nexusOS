@@ -645,3 +645,51 @@ ipcMain.handle('ai-proxy', async (event, { url, method, headers, body }) => {
     return { ok: false, status: 0, error: err.message };
   }
 });
+
+// ─── Streaming AI Proxy (SSE passthrough) ──────────────────────────
+// Same CORS-bypass purpose as `ai-proxy`, but forwards SSE chunks to
+// the renderer as they arrive, instead of buffering the whole response.
+// Used for stream=true calls in aiProviders.ts.
+//
+// Protocol:
+//   renderer → invoke('ai-proxy-stream', { url, method, headers, body, channel })
+//   main     → sender.send(`${channel}-chunk`,  chunkText)
+//              sender.send(`${channel}-done`,   {})
+//              sender.send(`${channel}-error`, { message, status })
+ipcMain.handle('ai-proxy-stream', async (event, { url, method, headers, body, channel }) => {
+  try {
+    const fetchHeaders = { ...headers };
+    delete fetchHeaders['Host'];
+
+    const response = await fetch(url, {
+      method: method || 'POST',
+      headers: fetchHeaders,
+      body: body || undefined,
+    });
+
+    if (!response.ok || !response.body) {
+      const text = await response.text().catch(() => '');
+      event.sender.send(`${channel}-error`, {
+        status: response.status,
+        message: `API Error ${response.status}: ${text.slice(0, 500)}`,
+      });
+      return { ok: false, status: response.status };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) event.sender.send(`${channel}-chunk`, chunk);
+    }
+
+    event.sender.send(`${channel}-done`, {});
+    return { ok: true, status: response.status };
+  } catch (err) {
+    event.sender.send(`${channel}-error`, { message: err.message });
+    return { ok: false, status: 0, error: err.message };
+  }
+});
