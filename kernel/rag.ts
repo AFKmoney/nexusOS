@@ -316,6 +316,8 @@ class RagModule {
     if (this.vectors.length === 0) return '';
 
     const queryEmbedding = await this.generateEmbedding(question);
+    if (!queryEmbedding || queryEmbedding.length === 0) return '';
+
     const scored = this.vectors.map(v => ({
       vector: v,
       score: this.cosineSimilarity(queryEmbedding, v.embedding),
@@ -389,8 +391,11 @@ class RagModule {
         startChar: start,
       });
 
-      start = end - CHUNK_OVERLAP;
-      if (start >= text.length) break;
+      // If we've reached the end of the text, stop.
+      if (end >= text.length) break;
+      // Advance with overlap, but never go backwards (which would
+      // cause an infinite loop when text.length < CHUNK_OVERLAP).
+      start = Math.max(end - CHUNK_OVERLAP, start + 1);
       chunkIndex++;
     }
 
@@ -489,8 +494,8 @@ class RagModule {
     return vec.map(v => v / mag);
   }
 
-  private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
+  private cosineSimilarity(a: number[] | undefined | null, b: number[] | undefined | null): number {
+    if (!a || !b || a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
     let dot = 0, magA = 0, magB = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i]! * b[i]!;

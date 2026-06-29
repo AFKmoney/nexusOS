@@ -226,8 +226,10 @@ class SkillForgeEngine {
     }
 
     try {
+      // Wrap in an async IIFE so skills can use `await` at the top level.
+      // Without this, `await` is a syntax error in a regular Function().
       // eslint-disable-next-line no-new-func
-      new Function('ctx', `"use strict";\n${code}`);
+      new Function('ctx', `"use strict";\nreturn (async () => {\n${code}\n})();`);
     } catch (e: any) {
       return { success: false, error: `Syntax error: ${e.message}` };
     }
@@ -289,10 +291,11 @@ class SkillForgeEngine {
     const ctx = this.buildContext(args, argsRaw);
 
     try {
+      // Wrap in an async IIFE so skills can use `await` at the top level.
       // eslint-disable-next-line no-new-func
-      const fn = new Function('ctx', `"use strict";\n${skill.code}`) as (ctx: SkillExecutionContext) => unknown;
+      const fn = new Function('ctx', `"use strict";\nreturn (async () => {\n${skill.code}\n})();`) as (ctx: SkillExecutionContext) => Promise<unknown>;
       const result = await Promise.race([
-        Promise.resolve().then(() => fn(ctx)),
+        fn(ctx),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error(`Skill timed out after ${MAX_EXECUTION_MS}ms`)), MAX_EXECUTION_MS)
         ),

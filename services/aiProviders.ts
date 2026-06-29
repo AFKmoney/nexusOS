@@ -323,11 +323,27 @@ export class AIProviderGateway {
       const raw = localStorage.getItem(PROVIDERS_STORAGE_KEY);
       if (raw) {
         this.providers = JSON.parse(raw);
+      } else {
+        // First boot: seed from PROVIDER_PRESETS so the user has a
+        // working provider list to configure (otherwise getActiveProvider
+        // always returns null until they manually add providers).
+        this.providers = PROVIDER_PRESETS.map(p => ({
+          ...p,
+          apiKey: '',
+          enabled: false,
+        }));
+        this.saveProviders();
       }
       const active = localStorage.getItem(ACTIVE_PROVIDER_KEY);
       if (active) this.activeProviderId = active;
     } catch {
-      this.providers = [];
+      // If localStorage is corrupt or unavailable, fall back to presets
+      // so the gateway is still functional.
+      this.providers = PROVIDER_PRESETS.map(p => ({
+        ...p,
+        apiKey: '',
+        enabled: false,
+      }));
     }
   }
 
