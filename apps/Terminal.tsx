@@ -12,7 +12,7 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
                 </div>
             }
         >
-            <TerminalCore />
+            <TerminalCore windowId={windowId} />
         </Suspense>
     );
 }

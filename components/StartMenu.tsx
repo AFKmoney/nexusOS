@@ -39,7 +39,7 @@ export default function StartMenu() {
 
   const CATEGORIES: Record<string, string[]> = {
     'All': [],
-    'System': ['dashboard', 'settings', 'monitor', 'task_manager', 'clipboard', 'notifications', 'device_manager', 'recycle_bin'],
+    'System': ['dashboard', 'settings', 'monitor', 'task_manager', 'clipboard', 'notifications', 'device_manager', 'recyclebin'],
     'AI & Dev': ['hyperide', 'forge', 'daemon_chat', 'aion_agent', 'model_manager', 'nfr', 'terminal', 'ubuntu', 'snippets'],
     'Media': ['paint', 'video_player', 'image_viewer', 'music', 'wallpaper', 'fractal'],
     'Productivity': ['notepad', 'explorer', 'calculator', 'calendar', 'rich_editor', 'kanban', 'pomodoro', 'habits', 'contacts'],

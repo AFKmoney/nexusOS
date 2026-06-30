@@ -14,9 +14,9 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
   },
-  // Streaming event listeners — only allowed for ai-stream-* channels
+  // Streaming event listeners — allowed for ai-stream-* and terminal-* channels
   on: (channel, func) => {
-    if (typeof channel === 'string' && channel.startsWith('ai-stream-')) {
+    if (typeof channel === 'string' && (channel.startsWith('ai-stream-') || channel.startsWith('terminal-'))) {
       const listener = (event, ...args) => func(...args);
       ipcRenderer.on(channel, listener);
       return () => ipcRenderer.removeListener(channel, listener);
@@ -24,7 +24,7 @@ contextBridge.exposeInMainWorld('electron', {
     return undefined;
   },
   off: (channel) => {
-    if (typeof channel === 'string' && channel.startsWith('ai-stream-')) {
+    if (typeof channel === 'string' && (channel.startsWith('ai-stream-') || channel.startsWith('terminal-'))) {
       ipcRenderer.removeAllListeners(channel);
     }
   },
@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld('electron', {
       'cluster-scan',
       // AI API proxy (bypasses CORS)
       'ai-proxy', 'ai-proxy-stream',
+      // Real terminal (Electron-only, child_process-based pty fallback)
+      'terminal-create', 'terminal-write', 'terminal-resize', 'terminal-kill',
     ];
     if (validChannels.includes(channel)) {
       return await ipcRenderer.invoke(channel, data);

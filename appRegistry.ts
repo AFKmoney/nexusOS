@@ -47,7 +47,7 @@ const FractalVisualizerApp = lazy(() => import('./apps/FractalVisualizer'));
 const TaskManagerApp = lazy(() => import('./apps/TaskManager'));
 const DeviceManagerApp = lazy(() => import('./apps/DeviceManagerApp'));
 const NativeZipApp = lazy(() => import('./apps/NativeZipApp'));
-const RecycleBinApp = lazy(() => import('./apps/RecycleBinApp'));
+const RecycleBinApp = lazy(() => import('./apps/RecycleBin'));
 const NotificationCenterApp = lazy(() => import('./apps/NotificationCenter'));
 const ClipboardManagerApp = lazy(() => import('./apps/ClipboardManager'));
 const StickyNotesApp = lazy(() => import('./apps/StickyNotes'));
@@ -57,6 +57,7 @@ const ImageViewerApp = lazy(() => import('./apps/ImageViewer'));
 const MusicPlayerApp = lazy(() => import('./apps/MusicPlayer'));
 const RichEditorApp = lazy(() => import('./apps/RichEditor'));
 const GovernanceDashboardApp = lazy(() => import('./apps/GovernanceDashboard'));
+const PluginMarketApp = lazy(() => import('./apps/PluginMarket'));
 
 import {
   Terminal, FileText, Activity, Grid, Image, Cpu, FolderOpen, Globe,
@@ -65,7 +66,7 @@ import {
   Clipboard, Bell, StickyNote, Calculator, Calendar, Music, Pen,
   Search, MonitorDot, Trash2, Server, FileArchive,
   Palette, Video, Cloud, Info, FileCode, Users, Timer, LayoutGrid, 
-  Key, Mic, Rss, Accessibility, Target, Camera
+  Key, Mic, Rss, Accessibility, Target, Camera, Package
 } from 'lucide-react';
 
 export const CORE_APP_IDS = ['welcome', 'dashboard', 'explorer', 'terminal', 'notepad', 'settings', 'netrunner'] as const;
@@ -233,6 +234,15 @@ export const SYSTEM_APPS: AppManifest[] = [
     description: 'Discover and install curated OS extensions.'
   },
   {
+    id: 'marketplace',
+    name: 'Marketplace',
+    icon: Package,
+    component: PluginMarketApp,
+    permissions: ['vfs.read', 'vfs.write', 'network'],
+    defaultSize: { width: 880, height: 640 },
+    description: 'AI-generated plugin marketplace. Describe what you need and the AI builds it.'
+  },
+  {
     id: 'notepad',
     name: 'Notepad',
     icon: FileText,
@@ -307,13 +317,13 @@ export const SYSTEM_APPS: AppManifest[] = [
     description: 'High-speed archive compression and extraction.'
   },
   {
-    id: 'recycle_bin',
+    id: 'recyclebin',
     name: 'Recycle Bin',
     icon: Trash2,
     component: RecycleBinApp,
     permissions: ['vfs.read', 'vfs.write'],
-    defaultSize: { width: 700, height: 500 },
-    description: 'Recovery system for deleted neural segments.'
+    defaultSize: { width: 720, height: 560 },
+    description: 'Restore or permanently delete trashed files.'
   },
   {
     id: 'notifications',

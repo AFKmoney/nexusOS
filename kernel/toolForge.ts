@@ -34,7 +34,7 @@ type VfsModule = {
   delete: (path: string) => boolean;
   moveToTrash: (path: string) => boolean;
   restoreFromTrash: (trashPath: string) => string | null;
-  listTrash: () => { name: string; path: string }[];
+  listTrash: () => { name: string; path: string; trashedAt: number | null }[];
 };
 
 type MemoryModule = {

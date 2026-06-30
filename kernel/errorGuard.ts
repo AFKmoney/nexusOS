@@ -43,7 +43,7 @@ function getValidAppIds(): Set<string> {
     'webrunner', 'ubuntu', 'wallpaper', 'daemon_chat', 'aion_agent',
     'monitor', 'paint', 'video_player', 'image_viewer', 'music',
     'welcome', 'governance', 'nfr', 'fractal', 'appstore', 'silence',
-    'native_zip', 'recycle_bin', 'notifications', 'clipboard',
+    'native_zip', 'recyclebin', 'notifications', 'clipboard',
     'sticky_notes', 'calendar', 'rich_editor', 'daemon_journal',
     'snippets', 'rss', 'accessibility', 'habits', 'screenshot',
     'sysinfo', 'weather', 'contacts', 'pomodoro', 'kanban', 'vault',

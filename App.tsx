@@ -75,6 +75,18 @@ function DesktopIconGrid({
   openWindow
 }: DesktopIconGridProps) {
   const desktopPath = getDesktopPath(currentUserId);
+  const desktopRef = useRef<HTMLDivElement>(null);
+
+  // Persisted icon positions — survive reboot. Keyed by filename.
+  const [iconPositions, setIconPositions] = useState<Record<string, { x: number; y: number }>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('nexusos_desktop_positions') || '{}');
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nexusos_desktop_positions', JSON.stringify(iconPositions));
+  }, [iconPositions]);
 
   const handleFileOpen = useCallback((path: string) => {
     const node = vfs.stat(path);
@@ -82,7 +94,6 @@ function DesktopIconGrid({
     if (node.type === 'directory') {
       openWindow('explorer', { path });
     } else if (path.endsWith('.lnk')) {
-      // App shortcut — read the file content to get the appId
       const content = vfs.readFile(path, SYSTEM_VFS_APP_ID);
       if (content && content.startsWith('NEXUSOS_APP_SHORTCUT:')) {
         const appId = content.slice('NEXUSOS_APP_SHORTCUT:'.length);
@@ -107,6 +118,19 @@ function DesktopIconGrid({
 
   const handleDesktopDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    const rect = desktopRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // Check if this is a desktop icon reposition (custom MIME type)
+    const iconName = e.dataTransfer.getData('text/nexusos-desktop-icon');
+    if (iconName) {
+      // Snap to 10px grid
+      const x = Math.round((e.clientX - rect.left) / 10) * 10;
+      const y = Math.round((e.clientY - rect.top) / 10) * 10;
+      setIconPositions(prev => ({ ...prev, [iconName]: { x, y } }));
+      return; // Don't move the file — just reposition the icon
+    }
+
     const sourcePath = e.dataTransfer.getData('text/plain');
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -126,20 +150,30 @@ function DesktopIconGrid({
     }
   }, [desktopPath]);
 
+  const desktopItems = vfs.listDir(desktopPath, SYSTEM_VFS_APP_ID) || [];
+  // Icons with custom positions use absolute positioning; others use grid
+  const positionedItems = desktopItems.filter(name => iconPositions[name]);
+  const gridItems = desktopItems.filter(name => !iconPositions[name]);
+
   return (
     <div
+      ref={desktopRef}
       className="absolute inset-0 bottom-16 p-5 overflow-hidden"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDesktopDrop}
     >
+      {/* Grid items (default position) */}
       <div className="grid grid-cols-[repeat(auto-fill,96px)] grid-rows-[repeat(auto-fill,96px)] gap-3 h-full content-start">
-        {(vfs.listDir(desktopPath, SYSTEM_VFS_APP_ID) || []).map(name => {
+        {gridItems.map(name => {
           const itemPath = `${desktopPath}/${name}`;
           return (
             <div
               key={name}
               draggable
-              onDragStart={(e) => { e.dataTransfer.setData('text/plain', itemPath); }}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', itemPath);
+                e.dataTransfer.setData('text/nexusos-desktop-icon', name);
+              }}
               className="flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
               onDoubleClick={() => handleFileOpen(itemPath)}
               onContextMenu={(e) => {
@@ -156,6 +190,35 @@ function DesktopIconGrid({
           );
         })}
       </div>
+
+      {/* Positioned items (absolute, user-moved) */}
+      {positionedItems.map(name => {
+        const itemPath = `${desktopPath}/${name}`;
+        const pos = iconPositions[name]!;
+        return (
+          <div
+            key={name}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', itemPath);
+              e.dataTransfer.setData('text/nexusos-desktop-icon', name);
+            }}
+            className="absolute flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
+            style={{ left: pos.x, top: pos.y, width: 96 }}
+            onDoubleClick={() => handleFileOpen(itemPath)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
+            }}
+          >
+            <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+              {getSmartIcon(itemPath, 24)}
+            </div>
+            <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -175,6 +238,7 @@ function DesktopWidgets() {
 }
 
 const GlobalSearchOverlay = React.lazy(() => import('./components/GlobalSearch'));
+const Spotlight = React.lazy(() => import('./components/Spotlight'));
 
 
 export default function App() {
@@ -200,6 +264,19 @@ export default function App() {
   } = useOS();
   const { lockShell, unlockShell, isShellLocked: locked } = useOS();
   const [bootTimedOut, setBootTimedOut] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+
+  // Spotlight: Cmd/Ctrl+K toggles global search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSpotlightOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     kernelLog.info('[SYSTEM] App component mounted, checking boot state...');
@@ -374,6 +451,13 @@ export default function App() {
       <DaemonLockScreen />
       <NeuralHoloUI />
       <ToastContainer />
+
+      {/* Spotlight global search — Cmd/Ctrl+K */}
+      {spotlightOpen && (
+        <Suspense fallback={null}>
+          <Spotlight onClose={() => setSpotlightOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

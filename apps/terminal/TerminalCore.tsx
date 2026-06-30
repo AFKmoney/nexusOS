@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useOS } from '../../store/osStore';
 import { commander } from '../../kernel/commander';
 import { vfs } from '../../kernel/fileSystem';
@@ -30,11 +30,11 @@ SYSTEM COMMANDS:
 APP CONTROL:
   open <appId>            Open an application
   close [appId]           Close application
-  
+
 NEURAL FORGE:
   build "description"     Create an app with AI
   forge "description"     Alias for build
-  
+
 MEMORY:
   remember "text"         Store a memory
   recall "query"          Search memory
@@ -44,18 +44,38 @@ SYSTEM:
   alias <name> <cmd>      Create command alias
 `.trim();
 
-export default function TerminalCore() {
-  const [history, setHistory] = useState<{ type: 'in' | 'out' | 'ai'; text: string }[]>(INITIAL_MESSAGES);
+type Line = { type: 'in' | 'out' | 'ai'; text: string };
+
+interface ElectronApi {
+  invoke: (channel: string, data?: any) => Promise<any>;
+  on: (channel: string, func: (...args: any[]) => void) => (() => void) | undefined;
+  off: (channel: string) => void;
+}
+
+export default function TerminalCore({ windowId }: { windowId: string }) {
+  const [history, setHistory] = useState<Line[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [cmdHistoryIdx, setCmdHistoryIdx] = useState(-1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentDir, setCurrentDir] = useState('/home/user');
   const [aliases, setAliases] = useState<Record<string, string>>({});
+  // When true, we are talking to a real shell via Electron IPC and the
+  // shell is responsible for echoing input + printing its own prompt.
+  const [realMode, setRealMode] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { kernelRules, windows, registry, addNotification } = useOS();
+
+  // Detect Electron once. In browser mode this is null and we always
+  // fall back to the mock shell.
+  const electron: ElectronApi | null = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const e = (window as any).electron as ElectronApi | undefined;
+    if (!e || typeof e.invoke !== 'function') return null;
+    return e;
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,6 +85,66 @@ export default function TerminalCore() {
     setHistory(prev => [...prev, { type, text }]);
   }, []);
 
+  // ── Real shell lifecycle (Electron only) ───────────────────────────
+  useEffect(() => {
+    if (!electron || !windowId) return;
+    let cancelled = false;
+    const unsubs: Array<() => void> = [];
+
+    (async () => {
+      try {
+        const res = await electron.invoke('terminal-create', {
+          terminalId: windowId,
+          cwd: '/home/user',
+        });
+        if (cancelled) {
+          try { await electron.invoke('terminal-kill', { terminalId: windowId }); } catch {}
+          return;
+        }
+        if (!res?.success) {
+          // Real shell unavailable — keep mock welcome banner.
+          return;
+        }
+        setRealMode(true);
+        // Clear the mock welcome banner — the real shell will print
+        // its own prompt (bash/zsh/cmd).
+        setHistory([]);
+
+        const dataUnsub = electron.on(`terminal-data-${windowId}`, (data: string) => {
+          if (typeof data !== 'string') return;
+          setHistory(prev => {
+            // Coalesce consecutive chunks onto the last 'out' line so
+            // the shell's streamed output looks continuous, not chunky.
+            const last = prev[prev.length - 1];
+            if (last && last.type === 'out') {
+              return [...prev.slice(0, -1), { type: 'out', text: last.text + data }];
+            }
+            return [...prev, { type: 'out', text: data }];
+          });
+        });
+        if (typeof dataUnsub === 'function') unsubs.push(dataUnsub);
+
+        const exitUnsub = electron.on(`terminal-exit-${windowId}`, (code: number) => {
+          setHistory(prev => [...prev, { type: 'out', text: `\n[process exited with code ${code}]` }]);
+          setRealMode(false);
+        });
+        if (typeof exitUnsub === 'function') unsubs.push(exitUnsub);
+      } catch {
+        // Fall back to mock shell silently.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      for (const u of unsubs) {
+        try { u(); } catch {}
+      }
+      try { electron.off(`terminal-data-${windowId}`); } catch {}
+      try { electron.off(`terminal-exit-${windowId}`); } catch {}
+      try { electron.invoke('terminal-kill', { terminalId: windowId }); } catch {}
+    };
+  }, [electron, windowId]);
+
   const handleCommand = async (rawCmd: string) => {
     const cmdInput = rawCmd.trim();
     if (!cmdInput) return;
@@ -72,30 +152,30 @@ export default function TerminalCore() {
     const cmdParts = cmdInput.split(' ');
     const cmdName = cmdParts[0] || '';
     const expanded = aliases[cmdName] ? `${aliases[cmdName]} ${cmdParts.slice(1).join(' ')}`.trim() : cmdInput;
-    
+
     setCmdHistory(prev => [cmdInput, ...prev.slice(0, 99)]);
     setCmdHistoryIdx(-1);
     addLine(`${currentDir} $ ${cmdInput}`, 'in');
 
     if (cmdName === 'clear') { setHistory([]); return; }
     if (cmdName === 'help') { addLine(HELP_TEXT); return; }
-    
+
     if (cmdName === 'host') {
         const hostCmd = cmdInput.substring(5).trim();
         if (!hostCmd) {
             addLine('Usage: host <command>');
             return;
         }
-        
-        const electron = (window as any).electron;
-        if (!electron || !electron.invoke) {
+
+        const electronApi = (window as any).electron;
+        if (!electronApi || !electronApi.invoke) {
             addLine('[ERR] Host commands only available in Electron desktop mode.', 'out');
             return;
         }
-        
+
         setIsProcessing(true);
         try {
-            const res = await electron.invoke('native-exec', hostCmd);
+            const res = await electronApi.invoke('native-exec', hostCmd);
             if (res.stdout) addLine(res.stdout);
             if (res.stderr) addLine(res.stderr, 'out');
             if (res.error) addLine(`[PROCESS ERR] ${res.error}`, 'out');
@@ -225,16 +305,33 @@ export default function TerminalCore() {
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isProcessing) {
-      handleCommand(input);
+      const cmd = input;
       setInput('');
+      if (realMode && electron) {
+        // Real shell mode: forward the line to the spawned shell. The
+        // shell is responsible for echoing input and printing its own
+        // prompt, so we don't add anything to local history.
+        try {
+          electron.invoke('terminal-write', {
+            terminalId: windowId,
+            data: cmd + '\n',
+          });
+        } catch (err) {
+          addLine(`[write error] ${(err as Error).message}`, 'out');
+        }
+        return;
+      }
+      handleCommand(cmd);
     }
-    if (e.key === 'ArrowUp') {
+    // Command history (arrow keys) only meaningful in mock mode — the
+    // real shell handles its own line editing.
+    if (!realMode && e.key === 'ArrowUp') {
       e.preventDefault();
       const nextIdx = Math.min(cmdHistoryIdx + 1, cmdHistory.length - 1);
       setCmdHistoryIdx(nextIdx);
       setInput(cmdHistory[nextIdx] || '');
     }
-    if (e.key === 'ArrowDown') {
+    if (!realMode && e.key === 'ArrowDown') {
       e.preventDefault();
       const nextIdx = Math.max(cmdHistoryIdx - 1, -1);
       setCmdHistoryIdx(nextIdx);
@@ -280,10 +377,16 @@ export default function TerminalCore() {
       </div>
 
       <div className="flex gap-2 items-center border-t border-green-900/30 pt-3 shrink-0">
-        <span className="text-blue-400 font-bold text-xs shrink-0">
-          <ChevronRight size={16} className="inline" />
-          {currentDir.replace('/home/user', '~')} $
-        </span>
+        {realMode ? (
+          <span className="text-emerald-500 font-bold text-[10px] shrink-0 uppercase tracking-widest px-2 py-0.5 bg-emerald-500/10 rounded">
+            shell
+          </span>
+        ) : (
+          <span className="text-blue-400 font-bold text-xs shrink-0">
+            <ChevronRight size={16} className="inline" />
+            {currentDir.replace('/home/user', '~')} $
+          </span>
+        )}
         <input
           ref={inputRef}
           autoFocus

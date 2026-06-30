@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useOS } from '../../store/osStore';
 import {
-  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle, Globe, Plus, Trash2, TestTube2, Loader2
+  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle, Globe, Plus, Trash2, TestTube2, Loader2, Cloud
 } from 'lucide-react';
 import { aiPipelineBridge } from '../../kernel/aiPipelineBridge';
 import { localBrain } from '../../services/localBrain';
 import { aiGateway, PROVIDER_PRESETS, type AIProvider } from '../../services/aiProviders';
+import { vfs } from '../../kernel/fileSystem';
+import { cloudSync } from '../../kernel/cloudSync';
 import ModelManager from '../ModelManager';
 
 export default function SettingsApp() {
@@ -29,6 +31,7 @@ export default function SettingsApp() {
   const [progress, setProgress] = useState(0);
   const [aiPrompt, setAiPrompt] = useState('');
   const [daemonNote, setDaemonNote] = useState('');
+  const [githubToken, setGithubToken] = useState(cloudSync.getToken());
   const [profileName, setProfileName] = useState(currentUser?.name ?? 'System');
   const [profileBio, setProfileBio] = useState((currentUser as any)?.bio ?? '');
   const [enableAIAssist, setEnableAIAssist] = useState(Boolean(kernelRules.autonomyEnabled));
@@ -277,6 +280,152 @@ export default function SettingsApp() {
                     <button onClick={() => setUiScale(Math.max(0.7, uiScale - 0.1))} className="px-3 py-1 rounded-lg bg-white/5 text-zinc-300">-</button>
                     <div className="text-xs font-mono text-emerald-400">{Math.round(uiScale * 100)}%</div>
                     <button onClick={() => setUiScale(Math.min(1.6, uiScale + 0.1))} className="px-3 py-1 rounded-lg bg-white/5 text-zinc-300">+</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Backup & Restore ────────────────────────────────── */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest px-1">Backup &amp; Restore</h3>
+
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+                      <Database size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">Export VFS</div>
+                      <div className="text-xs text-zinc-500">Download your entire filesystem as a JSON backup</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const json = vfs.exportToJSON();
+                      const blob = new Blob([json], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `nexusos-backup-${new Date().toISOString().slice(0,10)}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      addNotification({ title: 'Backup Exported', message: 'VFS backup downloaded', type: 'success' });
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 text-sm font-bold transition-all"
+                  >
+                    Export Backup
+                  </button>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+                      <AlertCircle size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">Restore VFS</div>
+                      <div className="text-xs text-zinc-500">Import a backup JSON — overwrites all current files</div>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    id="vfs-restore-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const json = reader.result as string;
+                        const result = vfs.importFromJSON(json);
+                        if (result.success) {
+                          addNotification({ title: 'Restore Complete', message: `${result.fileCount} files restored. Reloading...`, type: 'success' });
+                          setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                          addNotification({ title: 'Restore Failed', message: result.error || 'Unknown error', type: 'error' });
+                        }
+                      };
+                      reader.readAsText(file);
+                      e.target.value = ''; // reset so same file can be re-selected
+                    }}
+                  />
+                  <button
+                    onClick={() => document.getElementById('vfs-restore-input')?.click()}
+                    className="w-full py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm font-bold transition-all"
+                  >
+                    Select Backup File
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Cloud Sync (GitHub Gist) ────────────────────────── */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest px-1">Cloud Sync</h3>
+
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400">
+                      <Cloud size={18} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">GitHub Gist Sync</div>
+                      <div className="text-xs text-zinc-500">Sync your VFS across devices via private GitHub Gist</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-zinc-400 font-bold mb-1 block">GitHub Personal Access Token</label>
+                      <input
+                        type="password"
+                        value={githubToken}
+                        onChange={(e) => setGithubToken(e.target.value)}
+                        onBlur={() => {
+                          cloudSync.setToken(githubToken);
+                          addNotification({ title: 'Token Saved', message: 'GitHub token stored locally', type: 'success' });
+                        }}
+                        placeholder="ghp_..."
+                        className="w-full px-3 py-2 bg-zinc-900/50 rounded-xl text-sm text-white placeholder-zinc-600 border border-white/5 outline-none focus:border-violet-500/30"
+                      />
+                      <p className="text-[10px] text-zinc-600 mt-1">Needs 'gist' scope. Stored locally only — never sent anywhere except api.github.com.</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          addNotification({ title: 'Syncing...', message: 'Uploading VFS to GitHub Gist', type: 'info' });
+                          const result = await cloudSync.export();
+                          if (result.success) {
+                            const gistTail = result.gistId ? result.gistId.slice(0, 8) : '';
+                            addNotification({ title: 'Synced', message: `VFS uploaded to gist ${gistTail}...`, type: 'success' });
+                          } else {
+                            addNotification({ title: 'Sync Failed', message: result.error ?? 'Unknown error', type: 'error' });
+                          }
+                        }}
+                        disabled={!githubToken}
+                        className="flex-1 py-2.5 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-400 text-sm font-bold transition-all disabled:opacity-50"
+                      >
+                        Export to Cloud
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Import will OVERWRITE your local VFS. Continue?')) return;
+                          addNotification({ title: 'Importing...', message: 'Downloading VFS from GitHub Gist', type: 'info' });
+                          const result = await cloudSync.import();
+                          if (result.success) {
+                            const count = result.fileCount ?? 0;
+                            addNotification({ title: 'Imported', message: `${count} files restored. Reloading...`, type: 'success' });
+                            setTimeout(() => window.location.reload(), 1500);
+                          } else {
+                            addNotification({ title: 'Import Failed', message: result.error ?? 'Unknown error', type: 'error' });
+                          }
+                        }}
+                        disabled={!githubToken}
+                        className="flex-1 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-sm font-bold transition-all disabled:opacity-50"
+                      >
+                        Import from Cloud
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

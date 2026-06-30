@@ -35,6 +35,12 @@ export interface MarketplacePlugin {
   homepage?: string;
   installed?: boolean;
   installedVersion?: string;
+  /**
+   * True when this plugin was produced on-demand by the AI app generator
+   * (rather than fetched from a remote registry). Used by the marketplace
+   * UI to show an "AI" badge and to allow deletion.
+   */
+  isGenerated?: boolean;
 }
 
 export interface MarketplaceRegistry {
@@ -219,6 +225,63 @@ class PluginMarket {
 
   private saveRegistries(): void {
     localStorage.setItem(REGISTRY_KEY, JSON.stringify(this.registries));
+  }
+
+  /**
+   * Return the static (built-in) plugin catalog. In the AI-managed
+   * marketplace this is intentionally minimal — the focus is on
+   * {@link generatePlugin} which produces plugins on demand.
+   */
+  getCatalog(): MarketplacePlugin[] {
+    // No bundled static plugins for now — the AI generator is the
+    // primary source of plugins. Remote registries are still
+    // available via {@link fetchPlugins} for backward compatibility.
+    return [];
+  }
+
+  /**
+   * Ask the AI to generate a new plugin based on a description.
+   * The AI generates the app code, and we install it.
+   */
+  async generatePlugin(description: string): Promise<{ success: boolean; appId?: string; error?: string }> {
+    try {
+      const { appGenerator } = await import('./appGenerator');
+      const app = await appGenerator.generate(description);
+      return { success: true, appId: app.appId };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Generation failed' };
+    }
+  }
+
+  /**
+   * Get available plugins. Combines the static catalog with
+   * AI-generated suggestions based on what the user has installed.
+   */
+  async getAvailablePlugins(): Promise<MarketplacePlugin[]> {
+    const staticPlugins = this.getCatalog();
+    // Also include already-generated apps from the AppGenerator
+    try {
+      const { appGenerator } = await import('./appGenerator');
+      const generated = appGenerator.list();
+      const generatedPlugins: MarketplacePlugin[] = generated.map(manifest => {
+        const plugin: MarketplacePlugin = {
+          id: manifest.id,
+          name: manifest.name,
+          description: manifest.description,
+          version: manifest.version,
+          author: manifest.author,
+          category: (manifest.category as MarketplacePlugin['category']) || 'app',
+          downloadUrl: '', // not applicable — already in VFS
+          installed: true, // already generated = installed
+        };
+        plugin.isGenerated = true;
+        if (manifest.icon) plugin.icon = manifest.icon;
+        return plugin;
+      });
+      return [...generatedPlugins, ...staticPlugins];
+    } catch {
+      return staticPlugins;
+    }
   }
 }
 

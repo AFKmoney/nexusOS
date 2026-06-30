@@ -646,6 +646,77 @@ ipcMain.handle('ai-proxy', async (event, { url, method, headers, body }) => {
   }
 });
 
+// ─── Real Terminal (Electron only) ───────────────────────────────
+// Spawns a real shell process (bash on Linux/Mac, cmd.exe on Windows)
+// and streams stdin/stdout/stderr to the renderer via IPC events.
+// Uses child_process.spawn as a fallback (always available) so we
+// don't need to depend on node-pty.
+const activeTerminals = new Map();
+
+ipcMain.handle('terminal-create', async (event, { terminalId, cwd, shell }) => {
+  try {
+    const isWin = process.platform === 'win32';
+    const shellCmd = shell || (isWin ? 'cmd.exe' : (process.env.SHELL || 'bash'));
+    const args = isWin ? [] : ['-l']; // login shell on Unix
+
+    const proc = spawn(shellCmd, args, {
+      cwd: cwd || process.env.HOME || process.env.USERPROFILE || '/',
+      env: { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' },
+      shell: false,
+    });
+
+    activeTerminals.set(terminalId, proc);
+
+    proc.stdout.on('data', (data) => {
+      try {
+        event.sender.send(`terminal-data-${terminalId}`, data.toString());
+      } catch { /* sender may be gone */ }
+    });
+
+    proc.stderr.on('data', (data) => {
+      try {
+        event.sender.send(`terminal-data-${terminalId}`, data.toString());
+      } catch { /* sender may be gone */ }
+    });
+
+    proc.on('exit', (code) => {
+      try {
+        event.sender.send(`terminal-exit-${terminalId}`, code);
+      } catch { /* sender may be gone */ }
+      activeTerminals.delete(terminalId);
+    });
+
+    return { success: true, pid: proc.pid };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('terminal-write', async (event, { terminalId, data }) => {
+  const proc = activeTerminals.get(terminalId);
+  if (proc) {
+    proc.stdin.write(data);
+    return { success: true };
+  }
+  return { success: false, error: 'Terminal not found' };
+});
+
+ipcMain.handle('terminal-resize', async (event, { terminalId, cols, rows }) => {
+  // node-pty supports resize, but child_process doesn't directly.
+  // For now this is a no-op — the shell will use default size.
+  return { success: true };
+});
+
+ipcMain.handle('terminal-kill', async (event, { terminalId }) => {
+  const proc = activeTerminals.get(terminalId);
+  if (proc) {
+    proc.kill();
+    activeTerminals.delete(terminalId);
+    return { success: true };
+  }
+  return { success: false, error: 'Terminal not found' };
+});
+
 // ─── Streaming AI Proxy (SSE passthrough) ──────────────────────────
 // Same CORS-bypass purpose as `ai-proxy`, but forwards SSE chunks to
 // the renderer as they arrive, instead of buffering the whole response.

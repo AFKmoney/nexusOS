@@ -1,6 +1,6 @@
 import { Box } from 'lucide-react';
 import { uuid } from '../utils/uuid';
-import { AppManifest, ContextMenuState, KernelRules, Notification, UserProfile, WindowState } from '../types.ts';
+import type { AppManifest, ContextMenuState, KernelRules, Notification as NotifType, UserProfile, WindowState } from '../types.ts';
 import { DEFAULT_SINGLETON_APPS } from './osStoreConstants';
 import type { OverrideMode } from '../kernel/humanOverride';
 import type { HealthStatus } from '../kernel/autonomyHealthMonitor';
@@ -30,7 +30,7 @@ export interface OSStateShape {
   pinnedApps: string[];
   kernelRules: KernelRules;
   contextMenu: ContextMenuState;
-  notifications: Notification[];
+  notifications: NotifType[];
   autonomyState: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING';
   autonomyLog: string[];
   currentObjective: string;
@@ -88,7 +88,7 @@ export interface OSStateShape {
   registerCustomApp: (manifest: AppManifest) => void;
   pinApp: (appId: string) => void;
   unpinApp: (appId: string) => void;
-  addNotification: (n: Omit<Notification, 'id' | 'timestamp'>) => void;
+  addNotification: (n: Omit<NotifType, 'id' | 'timestamp'>) => void;
   removeNotification: (id: string) => void;
   setAutonomyState: (s: 'IDLE' | 'ANALYZING' | 'PROMPTING' | 'EXECUTING') => void;
   addAutonomyLog: (log: string) => void;
@@ -121,8 +121,25 @@ export const createUIActions = (
 export const createNotificationAndAutonomyActions = (
   set: (partial: Partial<OSStateShape> | ((state: OSStateShape) => Partial<OSStateShape>)) => void
 ) => ({
-  addNotification: (n: Omit<Notification, 'id' | 'timestamp'>) =>
-    set(state => ({ notifications: [...state.notifications, { ...n, id: uuid(), timestamp: Date.now() }] })),
+  addNotification: (n: Omit<NotifType, 'id' | 'timestamp'>) => {
+    // Also fire a native browser notification so the user sees it
+    // even when the tab is in the background. Silent-fail if not
+    // supported or permission denied.
+    try {
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') {
+          new Notification(n.title, { body: n.message || '', icon: '/nexus_logo.png' });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+              new Notification(n.title, { body: n.message || '', icon: '/nexus_logo.png' });
+            }
+          });
+        }
+      }
+    } catch {}
+    set(state => ({ notifications: [...state.notifications, { ...n, id: uuid(), timestamp: Date.now() }] }));
+  },
   removeNotification: (id: string) =>
     set(state => ({ notifications: state.notifications.filter(not => not.id !== id) })),
   setAutonomyState: (autonomyState: OSStateShape['autonomyState']) => set({ autonomyState }),

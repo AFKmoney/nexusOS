@@ -650,16 +650,71 @@ export class VirtualFileSystem {
 
   /**
    * List items currently in the user's Trash directory.
-   * Returns an array of { name, path } for each entry.
+   * Returns an array of { name, path, trashedAt } for each entry. `trashedAt`
+   * is parsed from the trailing `_<timestamp>` suffix that `moveToTrash`
+   * appends; if the suffix is absent or unparseable it falls back to the
+   * node's `modified` time, and finally to `null`.
    */
-  public listTrash(): { name: string; path: string }[] {
+  public listTrash(): { name: string; path: string; trashedAt: number | null }[] {
     const trashDir = `${this.getHomeDir()}/Trash`;
     const node = this.resolveNode(trashDir);
     if (!node || !node.children) return [];
-    return Object.values(node.children).map(child => ({
-      name: child.name,
-      path: `${trashDir}/${child.name}`,
-    }));
+    return Object.values(node.children).map(child => {
+      let trashedAt: number | null = null;
+      const match = child.name.match(/_(\d+)$/);
+      if (match && match[1]) {
+        const parsed = parseInt(match[1], 10);
+        if (!Number.isNaN(parsed)) trashedAt = parsed;
+      }
+      if (trashedAt === null && typeof child.modified === 'number') {
+        trashedAt = child.modified;
+      }
+      return {
+        name: child.name,
+        path: `${trashDir}/${child.name}`,
+        trashedAt,
+      };
+    });
+  }
+
+  /**
+   * Export the entire VFS as a JSON string. The user can save this
+   * file as a backup. Includes all files, folders, and their content.
+   */
+  exportToJSON(): string {
+    return JSON.stringify({
+      version: 1,
+      exportedAt: Date.now(),
+      root: this.root,
+    }, null, 2);
+  }
+
+  /**
+   * Import a VFS from a JSON string (previously exported). Replaces
+   * the current VFS entirely. Use with caution — this overwrites
+   * all existing files.
+   */
+  importFromJSON(json: string): { success: boolean; error?: string; fileCount?: number } {
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed.root) {
+        return { success: false, error: 'Invalid backup format: missing root' };
+      }
+      this.root = parsed.root;
+      this.save();
+      const count = this.countNodes(this.root);
+      return { success: true, fileCount: count };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to parse JSON' };
+    }
+  }
+
+  private countNodes(node: any): number {
+    if (node.type === 'file') return 1;
+    if (node.children) {
+      return Object.values(node.children).reduce((sum: number, child: any) => sum + this.countNodes(child), 0);
+    }
+    return 0;
   }
 
   public updateMetadata(path: string, metadata: Partial<FileNode>): boolean {
