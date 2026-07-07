@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
 import { useSystemControls } from '../hooks/useSystemControls';
 import { Zap, Wifi, Volume2, VolumeX, Lock, Droplet, Bell, ChevronUp, Moon, Shield, Settings, Sun, BatteryFull, BatteryCharging, WifiOff } from 'lucide-react';
@@ -21,6 +21,8 @@ export default function Taskbar() {
     pinnedApps,
     kernelRules,
     updateKernelRules,
+    toggleShowDesktop,
+    showDesktopState,
   } = useOS();
 
   const {
@@ -33,6 +35,8 @@ export default function Taskbar() {
   const [time, setTime] = useState(new Date());
   const [unreadCount, setUnreadCount] = useState(0);
   const [showQuickSettings, setShowQuickSettings] = useState(false);
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -48,9 +52,22 @@ export default function Taskbar() {
   };
 
   const handleWindowClick = (w: any) => {
-    if (activeWindowId === w.id && !w.isMinimized) minimizeWindow(w.id);
-    else if (w.isMinimized) restoreWindow(w.id);
-    else focusWindow(w.id);
+    if (w.isMinimized) {
+      restoreWindow(w.id);
+    } else if (activeWindowId === w.id) {
+      minimizeWindow(w.id);   // toggle off — was active & visible
+    } else {
+      focusWindow(w.id);
+    }
+  };
+
+  const handleTabEnter = (id: string) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHoveredTab(id), 400);
+  };
+  const handleTabLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setHoveredTab(null);
   };
 
   const safePinnedApps = Array.isArray(pinnedApps) ? pinnedApps : [];
@@ -113,16 +130,21 @@ export default function Taskbar() {
             const app = registry.find(a => a.id === w.appId);
             const Icon = app?.icon || Lock;
             const isFocused = activeWindowId === w.id;
+            const stateLabel = w.isMinimized ? 'Minimized' : w.snapZone ? `Snapped: ${w.snapZone}` : isFocused ? 'Active' : 'Running';
             return (
-              <div key={w.id} className="relative group">
+              <div
+                key={w.id}
+                className="relative group"
+                onMouseEnter={() => handleTabEnter(w.id)}
+                onMouseLeave={handleTabLeave}
+              >
                 <button
                   onClick={() => handleWindowClick(w)}
                   onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    e.preventDefault(); e.stopPropagation();
                     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'window', targetId: w.id });
                   }}
-                  className={`px-3 h-9 rounded-lg text-xs font-medium truncate max-w-[160px] transition-all border flex items-center gap-2 ${
+                  className={`relative px-3 h-9 rounded-lg text-xs font-medium truncate max-w-[160px] transition-all border flex items-center gap-2 ${
                     isFocused && !w.isMinimized
                       ? 'bg-white/10 border-white/15 text-white'
                       : 'bg-black/30 border-white/5 text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
@@ -130,7 +152,26 @@ export default function Taskbar() {
                 >
                   <Icon size={13} className={isFocused ? 'text-accent' : 'text-zinc-500'} />
                   <span className="truncate">{w.title}</span>
+                  {/* Progress badge — thin ring under the tab when an app reports progress. */}
+                  {typeof w.progress === 'number' && w.progress < 100 && (
+                    <svg className="absolute -bottom-1 left-1/2 -translate-x-1/2" width="28" height="3" viewBox="0 0 28 3">
+                      <rect x="0" y="0" width="28" height="3" rx="1.5" className="fill-white/10" />
+                      <rect x="0" y="0" width={Math.max(2, (28 * w.progress) / 100)} height="3" rx="1.5" className="fill-accent" />
+                    </svg>
+                  )}
                 </button>
+                {/* Hover preview info-card (after 400ms hover). */}
+                {hoveredTab === w.id && (
+                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-[#0a0a0c]/95 backdrop-blur-xl border border-white/10 rounded-lg p-2.5 shadow-xl min-w-[180px] pointer-events-none" style={{ zIndex: 9600 }}>
+                    <div className="flex items-center gap-2">
+                      <Icon size={16} className="text-accent shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">{w.title}</div>
+                        <div className="text-[9px] text-zinc-500 uppercase tracking-wider">{stateLabel}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -220,9 +261,9 @@ export default function Taskbar() {
 
           {/* Show Desktop */}
           <button
-            className="w-8 h-9 bg-white/5 hover:bg-accent/20 rounded-lg transition-colors flex items-center justify-center"
+            className={`w-8 h-9 rounded-lg transition-colors flex items-center justify-center ${showDesktopState === 'showing-desktop' ? 'bg-accent/20' : 'bg-white/5 hover:bg-accent/20'}`}
             title="Show Desktop"
-            onClick={() => windows.forEach(w => minimizeWindow(w.id))}
+            onClick={() => toggleShowDesktop()}
           >
             <div className="w-3 h-3 border border-white/20 rounded-sm" />
           </button>
