@@ -119,3 +119,50 @@ test('detectSnapZone - edges and corners', () => {
   // Center of screen → no snap.
   assert.equal(detectSnapZone(VP.width / 2, h / 2, VP), null);
 });
+
+import { assignZIndex, maybeCompact, layerFor } from '../windowManager/zIndexManager.ts';
+import { LAYERS, Z_INDEX_SEED } from '../windowManager/constants.ts';
+
+test('layerFor - normal window in DESKTOP_UI band', () => {
+  assert.equal(layerFor({ ...makeWindow(), pinned: false }), LAYERS.DESKTOP_UI);
+});
+
+test('layerFor - pinned window in ALWAYS_ON_TOP band', () => {
+  assert.equal(layerFor({ ...makeWindow(), pinned: true }), LAYERS.ALWAYS_ON_TOP);
+});
+
+test('assignZIndex - normal window gets DESKTOP_UI + counter', () => {
+  const s = makeState([makeWindow({ id: 'w1' })]);
+  const next = assignZIndex(s, 'w1', 5);
+  assert.equal(next.windows[0]!.zIndex, LAYERS.DESKTOP_UI + 5);
+});
+
+test('assignZIndex - pinned window sits above any normal window', () => {
+  const s = makeState([
+    makeWindow({ id: 'normal', pinned: false }),
+    makeWindow({ id: 'pinned', pinned: true }),
+  ]);
+  const normalZ = assignZIndex(s, 'normal', 100).windows[0]!.zIndex;
+  const pinnedZ = assignZIndex(s, 'pinned', 1).windows.find(w => w.id === 'pinned')!.zIndex;
+  assert.ok(pinnedZ > normalZ, 'pinned window must be above normal');
+});
+
+test('maybeCompact - preserves relative order', () => {
+  const s = makeState([
+    makeWindow({ id: 'oldest', zIndex: LAYERS.DESKTOP_UI + 1 }),
+    makeWindow({ id: 'middle', zIndex: LAYERS.DESKTOP_UI + 2 }),
+    makeWindow({ id: 'newest', zIndex: LAYERS.DESKTOP_UI + 3 }),
+  ]);
+  // Force a compaction by passing a huge globalZIndex.
+  const compacted = maybeCompact({ ...s, globalZIndex: 9999 });
+  const zs = compacted.windows.map(w => w.zIndex);
+  // newest must still be above middle above oldest.
+  assert.ok(zs[2]! > zs[1]! && zs[1]! > zs[0]!, 'relative order preserved');
+  assert.ok(compacted.globalZIndex < 9999, 'globalZIndex reduced');
+});
+
+test('maybeCompact - no-op below threshold', () => {
+  const s = makeState([makeWindow({ id: 'w1', zIndex: 11 })]);
+  const out = maybeCompact({ ...s, globalZIndex: 50 });
+  assert.equal(out.windows[0]!.zIndex, 11);
+});
