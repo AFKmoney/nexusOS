@@ -1,9 +1,18 @@
 import { Box } from 'lucide-react';
 import { uuid } from '../utils/uuid';
-import type { AppManifest, ContextMenuState, KernelRules, Notification as NotifType, UserProfile, WindowState } from '../types.ts';
+import type { AppManifest, ContextMenuState, KernelRules, Notification as NotifType, UserProfile, WindowState, SnapZone } from '../types.ts';
 import { DEFAULT_SINGLETON_APPS } from './osStoreConstants';
 import type { OverrideMode } from '../kernel/humanOverride';
 import type { HealthStatus } from '../kernel/autonomyHealthMonitor';
+import {
+  focus as wmFocus, closeWindow as wmClose, minimizeWindow as wmMin,
+  restoreWindow as wmRestore, snapWindow as wmSnap, unsnapWindow as wmUnsnap,
+  focusNextInWorkspace as wmNext,
+} from '../kernel/windowManager/index.ts';
+import { beginDragRestore } from '../kernel/windowManager/snapEngine.ts';
+import { autoArrange, snapIconToGrid, sortIconPositions } from '../kernel/windowManager/layoutEngine.ts';
+import type { ManagerState } from '../kernel/windowManager/types.ts';
+import { TASKBAR_RESERVED } from '../kernel/windowManager/constants.ts';
 
 export interface GovernanceState {
   overrideMode: OverrideMode;
@@ -83,6 +92,31 @@ export interface OSStateShape {
   toggleMaximizeWindow: (id: string) => void;
   updateWindow: (id: string, updates: Partial<WindowState>) => void;
   autoArrangeWindows: () => void;
+  // Snap-aware window operations
+  snapWindow: (id: string, zone: SnapZone) => void;
+  unsnapWindow: (id: string) => void;
+  beginDragRestore: (id: string, cursorX: number, cursorY: number) => void;
+  togglePinned: (id: string) => void;
+  setWindowOpacity: (id: string, opacity: number) => void;
+  setWindowProgress: (id: string, progress: number | undefined) => void;
+  toggleShowDesktop: () => void;
+  focusNextInWorkspace: () => void;
+  autoArrangeWindowsMode: (mode: 'cascade' | 'side-by-side' | 'stacked' | 'grid') => void;
+  // Desktop icons (migrated from raw localStorage into the store)
+  desktopIconPositions: Record<string, { x: number; y: number }>;
+  desktopIconSelection: string[];
+  desktopGridSnap: boolean;
+  snapAssistEnabled: boolean;
+  showDesktopState: 'none' | 'showing-desktop';
+  showDesktopSnapshot: string[];
+  setIconPosition: (name: string, x: number, y: number) => void;
+  setIconPositions: (positions: Record<string, { x: number; y: number }>) => void;
+  toggleIconSelection: (name: string) => void;
+  selectIcons: (names: string[]) => void;
+  clearIconSelection: () => void;
+  setDesktopGridSnap: (v: boolean) => void;
+  setSnapAssistEnabled: (v: boolean) => void;
+  sortDesktopIcons: (names: string[]) => void;
   installApp: (appId: string) => void;
   uninstallApp: (appId: string) => void;
   registerCustomApp: (manifest: AppManifest) => void;
@@ -180,75 +214,178 @@ export const createRegistryActions = (
 export const createWindowActions = (
   set: (partial: Partial<OSStateShape> | ((state: OSStateShape) => Partial<OSStateShape>)) => void,
   get: () => OSStateShape
-) => ({
-  openWindow: (appId: string, data?: { title?: string; [key: string]: unknown }) => {
-    const shouldReuseExistingWindow = DEFAULT_SINGLETON_APPS.has(appId);
-    const existingWin = shouldReuseExistingWindow ? get().windows.find(w => w.appId === appId) : undefined;
-    if (existingWin) {
-      get().focusWindow(existingWin.id);
-      if (existingWin.isMinimized) get().restoreWindow(existingWin.id);
-      return;
-    }
-
-    const app = get().registry.find(a => a.id === appId);
-    if (!app) return;
-    const id = uuid();
-    const nextZ = get().globalZIndex + 1;
-
-    const newWin: WindowState = {
-      id,
-      appId,
-      title: data?.title || app.name,
-      x: 50 + (get().windows.length * 20),
-      y: 50 + (get().windows.length * 20),
-      width: app.defaultSize?.width || 800,
-      height: app.defaultSize?.height || 600,
-      zIndex: nextZ,
-      isMinimized: false,
-      isMaximized: false,
-      data,
-      workspaceId: get().activeWorkspace
+) => {
+  // Build the ManagerState the engine expects, from the Zustand store.
+  // __focusStack is untyped plumbing (most-recent-first window ids).
+  const mgr = (): ManagerState => {
+    const s = get() as any;
+    const focusStack: string[] = Array.isArray(s.__focusStack) ? s.__focusStack : [];
+    // Defensive: prune ids whose windows no longer exist (windows may be removed
+    // by code paths that don't go through the engine's closeWindow).
+    const liveIds = new Set(s.windows.map((w: any) => w.id));
+    const cleanStack = focusStack.filter(id => liveIds.has(id));
+    return {
+      windows: s.windows,
+      activeWindowId: s.activeWindowId,
+      globalZIndex: s.globalZIndex,
+      activeWorkspace: s.activeWorkspace,
+      focusStack: cleanStack,
     };
+  };
+  const apply = (next: ManagerState, extra: Partial<OSStateShape> = {}) =>
+    set({
+      windows: next.windows as any,
+      activeWindowId: next.activeWindowId,
+      globalZIndex: next.globalZIndex,
+      __focusStack: next.focusStack,
+      ...extra,
+    } as any);
 
-    set(state => ({
-      windows: [...state.windows, newWin],
-      activeWindowId: id,
-      globalZIndex: nextZ
-    }));
-  },
-  closeWindow: (id: string) => set(state => ({ windows: state.windows.filter(w => w.id !== id) })),
-  focusWindow: (id: string) =>
-    set(state => {
-      const nextZ = state.globalZIndex + 1;
-      return {
+  const viewport = () => ({ width: window.innerWidth, height: window.innerHeight - TASKBAR_RESERVED });
+
+  return {
+    openWindow: (appId: string, data?: { title?: string; [key: string]: unknown }) => {
+      const shouldReuseExistingWindow = DEFAULT_SINGLETON_APPS.has(appId);
+      const existingWin = shouldReuseExistingWindow ? get().windows.find(w => w.appId === appId) : undefined;
+      if (existingWin) {
+        get().focusWindow(existingWin.id);
+        if (existingWin.isMinimized) get().restoreWindow(existingWin.id);
+        return;
+      }
+      const app = get().registry.find(a => a.id === appId);
+      if (!app) return;
+      const id = uuid();
+      const nextZ = get().globalZIndex + 1;
+      const newWin: WindowState = {
+        id, appId,
+        title: data?.title || app.name,
+        x: 50 + (get().windows.length * 20),
+        y: 50 + (get().windows.length * 20),
+        width: app.defaultSize?.width || 800,
+        height: app.defaultSize?.height || 600,
+        zIndex: nextZ,
+        isMinimized: false,
+        isMaximized: false,
+        data,
+        workspaceId: get().activeWorkspace,
+        opacity: 1,
+        pinned: false,
+      };
+      set((state: any) => ({
+        windows: [...state.windows, newWin],
         activeWindowId: id,
         globalZIndex: nextZ,
-        windows: state.windows.map(w => w.id === id ? { ...w, zIndex: nextZ, isMinimized: false } : w)
-      };
-    }),
-  minimizeWindow: (id: string) =>
-    set(state => ({ windows: state.windows.map(w => w.id === id ? { ...w, isMinimized: true } : w) })),
-  restoreWindow: (id: string) => get().focusWindow(id),
-  toggleMaximizeWindow: (id: string) =>
-    set(state => ({ windows: state.windows.map(w => w.id === id ? { ...w, isMaximized: !w.isMaximized } : w) })),
-  updateWindow: (id: string, updates: Partial<WindowState>) =>
-    set(state => ({ windows: state.windows.map(w => w.id === id ? { ...w, ...updates } : w) })),
-  autoArrangeWindows: () => {
-    const { windows, globalZIndex } = get();
-    const grid = 50;
-    set({
-      windows: windows.map((w, i) => ({
-        ...w,
-        x: grid + (i % 3) * 200,
-        y: grid + Math.floor(i / 3) * 200,
-        isMaximized: false,
-        isMinimized: false,
-        zIndex: globalZIndex + i + 1
+        // New windows go to the HEAD of the focus stack (most-recent-first).
+        __focusStack: [id, ...(Array.isArray(state.__focusStack) ? state.__focusStack : [])],
+      }));
+    },
+
+    closeWindow: (id: string) => apply(wmClose(mgr(), id)),
+
+    focusWindow: (id: string) => apply(wmFocus(mgr(), id, get().globalZIndex + 1)),
+
+    minimizeWindow: (id: string) => apply(wmMin(mgr(), id)),
+
+    restoreWindow: (id: string) => apply(wmRestore(mgr(), id, get().globalZIndex + 1)),
+
+    toggleMaximizeWindow: (id: string) => {
+      const w = get().windows.find(x => x.id === id);
+      if (!w) return;
+      if (w.isMaximized) {
+        apply(wmUnsnap(mgr(), id));
+      } else {
+        // Snap to maximize, then focus so it becomes the active topmost window.
+        let next = wmSnap(mgr(), id, 'maximize', viewport());
+        next = wmFocus(next, id, get().globalZIndex + 1);
+        apply(next);
+      }
+    },
+
+    snapWindow: (id: string, zone: SnapZone) => {
+      // Compose focus ∘ snap: snapped window becomes active (real-OS behavior).
+      let next = wmSnap(mgr(), id, zone, viewport());
+      next = wmFocus(next, id, get().globalZIndex + 1);
+      apply(next);
+    },
+
+    unsnapWindow: (id: string) => apply(wmUnsnap(mgr(), id)),
+
+    beginDragRestore: (id: string, cursorX: number, cursorY: number) =>
+      apply(beginDragRestore(mgr(), id, cursorX, cursorY)),
+
+    togglePinned: (id: string) =>
+      set((state: any) => ({ windows: state.windows.map((w: WindowState) => w.id === id ? { ...w, pinned: !w.pinned } : w) })),
+
+    setWindowOpacity: (id: string, opacity: number) =>
+      set((state: any) => ({ windows: state.windows.map((w: WindowState) => w.id === id ? { ...w, opacity } : w) })),
+
+    setWindowProgress: (id: string, progress: number | undefined) =>
+      set((state: any) => ({
+        windows: state.windows.map((w: WindowState) =>
+          w.id === id
+            ? (progress === undefined ? { ...w, progress: undefined } : { ...w, progress })
+            : w
+        )
       })),
-      globalZIndex: globalZIndex + windows.length + 1
-    });
-  }
-});
+
+    updateWindow: (id: string, updates: Partial<WindowState>) =>
+      set((state: any) => ({ windows: state.windows.map((w: WindowState) => w.id === id ? { ...w, ...updates } : w) })),
+
+    focusNextInWorkspace: () => apply(wmNext(mgr(), get().globalZIndex + 1)),
+
+    autoArrangeWindows: () => apply(autoArrange(mgr(), 'cascade', viewport())),
+
+    autoArrangeWindowsMode: (mode: 'cascade' | 'side-by-side' | 'stacked' | 'grid') => {
+      let next = autoArrange(mgr(), mode, viewport());
+      // Clamp sizes so cascade can't go negative on huge N.
+      next = {
+        ...next,
+        windows: next.windows.map(w => ({ ...w, width: Math.max(200, w.width), height: Math.max(200, w.height) })),
+      };
+      apply(next);
+    },
+
+    toggleShowDesktop: () =>
+      set((state: any) => {
+        if (state.showDesktopState === 'showing-desktop') {
+          const ids = new Set(state.showDesktopSnapshot);
+          return {
+            windows: state.windows.map((w: WindowState) => ids.has(w.id) ? { ...w, isMinimized: false } : w),
+            showDesktopState: 'none',
+            showDesktopSnapshot: [],
+          };
+        }
+        const visibleIds = state.windows.filter((w: WindowState) => !w.isMinimized).map((w: WindowState) => w.id);
+        return {
+          windows: state.windows.map((w: WindowState) => visibleIds.includes(w.id) ? { ...w, isMinimized: true } : w),
+          showDesktopState: 'showing-desktop',
+          showDesktopSnapshot: visibleIds,
+          activeWindowId: null,
+        };
+      }),
+
+    // --- Desktop icon actions ---
+    setIconPosition: (name: string, x: number, y: number) =>
+      set((state: OSStateShape) => {
+        const grid = state.desktopGridSnap ? snapIconToGrid(x, y) : { x, y };
+        return { desktopIconPositions: { ...state.desktopIconPositions, [name]: grid } };
+      }),
+    setIconPositions: (positions: Record<string, { x: number; y: number }>) =>
+      set((state: OSStateShape) => ({ desktopIconPositions: { ...state.desktopIconPositions, ...positions } })),
+    toggleIconSelection: (name: string) =>
+      set((state: OSStateShape) => ({
+        desktopIconSelection: state.desktopIconSelection.includes(name)
+          ? state.desktopIconSelection.filter(n => n !== name)
+          : [...state.desktopIconSelection, name],
+      })),
+    selectIcons: (names: string[]) => set({ desktopIconSelection: names }),
+    clearIconSelection: () => set({ desktopIconSelection: [] }),
+    setDesktopGridSnap: (v: boolean) => set({ desktopGridSnap: v }),
+    setSnapAssistEnabled: (v: boolean) => set({ snapAssistEnabled: v }),
+    sortDesktopIcons: (names: string[]) =>
+      set({ desktopIconPositions: sortIconPositions(names, viewport()) }),
+  };
+};
 
 export const createSessionActions = (
   set: (partial: Partial<OSStateShape> | ((state: OSStateShape) => Partial<OSStateShape>)) => void

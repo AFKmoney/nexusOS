@@ -4,7 +4,7 @@ import { Box } from 'lucide-react';
 import { KernelRules } from '../types.ts';
 import { localBrain } from '../services/localBrain';
 import { kernelLog } from '../kernel/log';
-import { DEFAULT_KERNEL_RULES, DEFAULT_PINNED_APPS, DEFAULT_PROFILES, STORE_PERSIST_KEY } from './osStoreConstants';
+import { DEFAULT_KERNEL_RULES, DEFAULT_PINNED_APPS, DEFAULT_PROFILES, STORE_PERSIST_KEY, DEFAULT_DESKTOP_GRID_SNAP, DEFAULT_SNAP_ASSIST_ENABLED, LEGACY_DESKTOP_POSITIONS_KEY } from './osStoreConstants';
 import {
   createNotificationAndAutonomyActions,
   createRegistryActions,
@@ -52,10 +52,13 @@ const partializeOSState = (state: OSState) => ({
   wallpaper: state.wallpaper,
   accentColor: state.accentColor,
   installedApps: state.installedApps,
-  globalZIndex: state.globalZIndex,
+  // NOTE: globalZIndex intentionally NOT persisted — re-seeded on boot.
   activeWorkspace: state.activeWorkspace,
   uiScale: state.uiScale,
   customManifests: state.customManifests,
+  desktopIconPositions: state.desktopIconPositions,
+  desktopGridSnap: state.desktopGridSnap,
+  snapAssistEnabled: state.snapAssistEnabled,
 });
 
 export const useOS = create<OSState>()(
@@ -71,6 +74,13 @@ export const useOS = create<OSState>()(
       activeWindowId: null,
       activeWorkspace: 1,
       globalZIndex: 100,
+      desktopIconPositions: {} as Record<string, { x: number; y: number }>,
+      desktopIconSelection: [] as string[],
+      desktopGridSnap: DEFAULT_DESKTOP_GRID_SNAP,
+      snapAssistEnabled: DEFAULT_SNAP_ASSIST_ENABLED,
+      showDesktopState: 'none' as 'none' | 'showing-desktop',
+      showDesktopSnapshot: [] as string[],
+      __focusStack: [] as string[],
       registry: [],
       installedApps: [],
       customManifests: [],
@@ -176,5 +186,23 @@ export async function hydrateOSRegistry(): Promise<void> {
     });
   } catch (error) {
     kernelLog.warn('[OS_STORE] Failed to hydrate app registry:', error);
+  }
+}
+
+// One-shot migration: import desktop icon positions from the legacy raw localStorage key.
+export function migrateLegacyDesktopIcons(): void {
+  try {
+    const current = useOS.getState().desktopIconPositions;
+    if (current && Object.keys(current).length > 0) return; // already migrated
+    const raw = localStorage.getItem(LEGACY_DESKTOP_POSITIONS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      useOS.setState({ desktopIconPositions: parsed });
+      localStorage.removeItem(LEGACY_DESKTOP_POSITIONS_KEY);
+      kernelLog.info('[OS_STORE] Migrated legacy desktop icon positions into store.');
+    }
+  } catch (e) {
+    kernelLog.warn('[OS_STORE] Legacy icon migration skipped:', e);
   }
 }

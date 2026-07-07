@@ -20,3 +20,10 @@ export const DEFAULT_KERNEL_RULES: KernelRules = {
   cpuSpeed: 3.4,
   primaryBootDevice: 'VFS'
 };
+
+// Desktop icon defaults
+export const DEFAULT_DESKTOP_GRID_SNAP = true;
+export const DEFAULT_SNAP_ASSIST_ENABLED = false;
+
+// Legacy localStorage key (one-shot import target, then deleted).
+export const LEGACY_DESKTOP_POSITIONS_KEY = 'nexusos_desktop_positions';
