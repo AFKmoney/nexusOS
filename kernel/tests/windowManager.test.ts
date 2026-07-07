@@ -147,17 +147,28 @@ test('assignZIndex - pinned window sits above any normal window', () => {
   assert.ok(pinnedZ > normalZ, 'pinned window must be above normal');
 });
 
-test('maybeCompact - preserves relative order', () => {
-  const s = makeState([
+test('maybeCompact - preserves relative order (stack built via focus, most-recent-first)', () => {
+  // Build the focus stack the way the real store does: by calling focus() on each
+  // window in chronological order. The head of focusStack must end up with the
+  // highest zIndex after compaction.
+  const { focus } = require('../windowManager/focusManager.ts');
+  let s = makeState([
     makeWindow({ id: 'oldest', zIndex: LAYERS.DESKTOP_UI + 1 }),
     makeWindow({ id: 'middle', zIndex: LAYERS.DESKTOP_UI + 2 }),
     makeWindow({ id: 'newest', zIndex: LAYERS.DESKTOP_UI + 3 }),
   ]);
+  // Focus oldest first, then middle, then newest — so focusStack head == 'newest'.
+  s = focus(s, 'oldest', 100);
+  s = focus(s, 'middle', 101);
+  s = focus(s, 'newest', 102);
+  assert.equal(s.focusStack[0], 'newest', 'fixture: stack head is newest');
+
   // Force a compaction by passing a huge globalZIndex.
   const compacted = maybeCompact({ ...s, globalZIndex: 9999 });
-  const zs = compacted.windows.map(w => w.zIndex);
+  const byId = (id: string) => compacted.windows.find(w => w.id === id)!.zIndex;
   // newest must still be above middle above oldest.
-  assert.ok(zs[2]! > zs[1]! && zs[1]! > zs[0]!, 'relative order preserved');
+  assert.ok(byId('newest') > byId('middle'), 'newest above middle');
+  assert.ok(byId('middle') > byId('oldest'), 'middle above oldest');
   assert.ok(compacted.globalZIndex < 9999, 'globalZIndex reduced');
 });
 
