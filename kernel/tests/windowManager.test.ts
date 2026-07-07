@@ -166,3 +166,78 @@ test('maybeCompact - no-op below threshold', () => {
   const out = maybeCompact({ ...s, globalZIndex: 50 });
   assert.equal(out.windows[0]!.zIndex, 11);
 });
+
+import { focus, closeWindow, minimizeWindow, restoreWindow, focusNextInWorkspace, validateActiveWindow } from '../windowManager/focusManager.ts';
+
+function freshState(): ManagerState {
+  return makeState([
+    makeWindow({ id: 'a', zIndex: 10 }),
+    makeWindow({ id: 'b', zIndex: 11 }),
+    makeWindow({ id: 'c', zIndex: 12 }),
+  ]);
+}
+
+test('focus - bumps zIndex, moves id to stack head, clears minimized', () => {
+  let s = freshState();
+  s = focus(s, 'a', 100);
+  const a = s.windows.find(w => w.id === 'a')!;
+  assert.equal(a.isMinimized, false);
+  assert.equal(s.focusStack[0], 'a');
+  assert.ok(a.zIndex > 12, 'a got a higher zIndex than everyone');
+});
+
+test('closeWindow on active - picks a new valid active from stack top', () => {
+  let s = freshState();
+  s = focus(s, 'c', 100);
+  s = closeWindow(s, 'c');
+  assert.equal(s.windows.find(w => w.id === 'c'), undefined);
+  assert.equal(s.activeWindowId, 'b', 'new active is the previous stack top');
+});
+
+test('closeWindow on non-active - leaves active unchanged', () => {
+  let s = freshState();
+  s = focus(s, 'c', 100);
+  s = closeWindow(s, 'a');
+  assert.equal(s.activeWindowId, 'c');
+});
+
+test('minimizeWindow - removes from stack, recomputes active', () => {
+  let s = freshState();
+  s = focus(s, 'c', 100);
+  s = minimizeWindow(s, 'c');
+  assert.equal(s.windows.find(w => w.id === 'c')!.isMinimized, true);
+  assert.equal(s.activeWindowId, 'b');
+});
+
+test('restoreWindow - clears minimized and focuses', () => {
+  let s = freshState();
+  s = minimizeWindow(s, 'c');
+  s = restoreWindow(s, 'c', 101);
+  const c = s.windows.find(w => w.id === 'c')!;
+  assert.equal(c.isMinimized, false);
+  assert.equal(s.activeWindowId, 'c');
+});
+
+test('focusNextInWorkspace - cycles within workspace, skips minimized', () => {
+  let s = freshState();
+  s = focus(s, 'a', 100);
+  s = minimizeWindow(s, 'b');   // b now skipped
+  s = focusNextInWorkspace(s, 200);
+  // a is active → next non-minimized in stack after a is c (b minimized).
+  assert.equal(s.activeWindowId, 'c');
+});
+
+test('validateActiveWindow - clears active when in another workspace', () => {
+  let s = freshState();
+  s = focus(s, 'a', 100);
+  s = { ...s, activeWorkspace: 2 };   // a is in workspace 1
+  s = validateActiveWindow(s);
+  assert.equal(s.activeWindowId, null);
+});
+
+test('validateActiveWindow - keeps active when in current workspace', () => {
+  let s = freshState();
+  s = focus(s, 'a', 100);
+  s = validateActiveWindow(s);   // workspace 1, a is workspace 1
+  assert.equal(s.activeWindowId, 'a');
+});
