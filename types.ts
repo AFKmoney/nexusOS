@@ -13,6 +13,21 @@ export type AppComponent =
   | ComponentType<any>
   | LazyExoticComponent<ComponentType<any>>;
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type SnapZone =
+  | 'maximize'
+  | 'left-half' | 'right-half'
+  | 'top-half' | 'bottom-half'
+  | 'top-left' | 'top-right'
+  | 'bottom-left' | 'bottom-right'
+  | 'center';
+
 export interface WindowState {
   id: string;
   appId: string;
@@ -26,6 +41,12 @@ export interface WindowState {
   isMaximized: boolean;
   workspaceId?: number;
   data?: any;
+  // New fields — all optional for backward compatibility with persisted state.
+  pinned?: boolean;
+  opacity?: number;
+  restoreRect?: Rect;
+  snapZone?: SnapZone;
+  progress?: number;
 }
 
 export interface AppManifest {
