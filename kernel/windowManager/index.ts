@@ -1,4 +1,7 @@
 // kernel/windowManager/index.ts
-// Public API re-exported here. Filled in as modules land.
 export * from './constants';
 export * from './types';
+export * from './snapEngine';
+export * from './zIndexManager';
+export * from './focusManager';
+export * from './layoutEngine';

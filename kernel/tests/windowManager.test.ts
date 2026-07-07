@@ -241,3 +241,49 @@ test('validateActiveWindow - keeps active when in current workspace', () => {
   s = validateActiveWindow(s);   // workspace 1, a is workspace 1
   assert.equal(s.activeWindowId, 'a');
 });
+
+import { autoArrange, snapIconToGrid, sortIconPositions } from '../windowManager/layoutEngine.ts';
+
+test('autoArrange - side-by-side produces N equal columns within viewport', () => {
+  const s = makeState([
+    makeWindow({ id: 'w1' }),
+    makeWindow({ id: 'w2' }),
+    makeWindow({ id: 'w3' }),
+  ]);
+  const out = autoArrange(s, 'side-by-side', { width: 1920, height: 1080 - TASKBAR_RESERVED });
+  const cols = out.windows.map(w => w.width);
+  assert.ok(cols.every(c => Math.abs(c - 640) <= 1), 'three equal columns of ~640px');
+  // x positions: 0, 640, 1280
+  assert.deepEqual(out.windows.map(w => w.x).sort((a,b)=>a-b), [0, 640, 1280]);
+});
+
+test('autoArrange - grid for 5 windows produces 3x2 layout', () => {
+  const s = makeState(['w1','w2','w3','w4','w5'].map(id => makeWindow({ id })));
+  const out = autoArrange(s, 'grid', { width: 1920, height: 1080 - TASKBAR_RESERVED });
+  assert.equal(out.windows.length, 5);
+  // 3 columns × 2 rows: width = 640, height = (1080-taskbar)/2
+  assert.ok(out.windows.every(w => Math.abs(w.width - 640) <= 1));
+});
+
+test('autoArrange - cascade uses diagonal offset', () => {
+  const s = makeState(['w1','w2','w3'].map(id => makeWindow({ id })));
+  const out = autoArrange(s, 'cascade', { width: 1920, height: 1080 - TASKBAR_RESERVED });
+  assert.ok(out.windows[1]!.x > out.windows[0]!.x, 'cascade x increases');
+  assert.ok(out.windows[1]!.y > out.windows[0]!.y, 'cascade y increases');
+});
+
+test('snapIconToGrid - rounds to ICON_GRID_SIZE', () => {
+  assert.deepEqual(snapIconToGrid(13, 27), { x: 10, y: 30 });
+  assert.deepEqual(snapIconToGrid(0, 5), { x: 0, y: 0 });
+});
+
+test('sortIconPositions - arranges alphabetically in columns from top-left', () => {
+  const names = ['charlie', 'alpha', 'bravo'];
+  const out = sortIconPositions(names, { width: 1920, height: 1000 });
+  // alpha first
+  assert.equal(Object.keys(out)[0], 'alpha');
+  assert.equal(Object.keys(out)[1], 'bravo');
+  // first icon at grid origin
+  assert.equal(out['alpha']!.x, 0);
+  assert.equal(out['alpha']!.y, 0);
+});
