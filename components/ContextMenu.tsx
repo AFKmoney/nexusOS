@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useOS } from '../store/osStore';
 import {
   Sparkles, Copy, ClipboardPaste, Scissors, Maximize2,
-  X, Minimize, Minus, ExternalLink,
+  X, Minimize, Minimize2, Minus, ExternalLink,
   Trash2, FilePlus, Terminal as TerminalIcon,
   Monitor, Bot, FileText, Lock,
   Wand2, Pin, Settings, RefreshCw, Edit3, Info, Activity, Zap, Layers, PinOff,
@@ -35,7 +35,8 @@ export default function ContextMenu() {
     minimizeWindow, closeWindow, toggleMaximizeWindow, restoreWindow,
     windows, openWindow, clipboard, setClipboard, addNotification, kernelRules,
     pinApp, unpinApp, pinnedApps, registry, logout, updateWindow, setWallpaper, lockShell,
-    currentUser, activeWindowId
+    currentUser, activeWindowId,
+    snapWindow, unsnapWindow, togglePinned, switchWorkspace, autoArrangeWindowsMode
   } = useOS();
   
   const menuRef = useRef<HTMLDivElement>(null);
@@ -653,20 +654,47 @@ export default function ContextMenu() {
         {/* 4. WINDOWS */}
         {contextMenu.targetType === 'window' && targetWindow && (
             <>
+                <SubHeader label="Snap" />
+                <div className="grid grid-cols-3 gap-1 px-2 pb-1">
+                  {(['top-left','top-half','top-right','left-half','maximize','right-half','bottom-left','bottom-half','bottom-right'] as const).map(z => (
+                    <button
+                      key={z}
+                      onClick={() => { snapWindow(targetWindow.id, z); closeContextMenu(); }}
+                      className={`h-7 rounded-md border text-[9px] transition-colors ${targetWindow.snapZone === z ? 'border-accent bg-accent/15 text-accent' : 'border-white/10 text-zinc-500 hover:bg-white/10 hover:text-white'}`}
+                      title={z}
+                    >
+                      {z.includes('top') ? '▲' : z.includes('bottom') ? '▼' : z === 'maximize' ? '■' : z.includes('left') ? '◀' : '▶'}
+                    </button>
+                  ))}
+                </div>
+                {targetWindow.snapZone && (
+                  <MenuItem icon={Minimize2} label="Unsnap (restore)" onClick={() => { unsnapWindow(targetWindow.id); closeContextMenu(); }} />
+                )}
+                <Separator />
+
+                <MenuItem icon={Pin} label={targetWindow.pinned ? "Disable Always on Top" : "Always on Top"} onClick={() => { togglePinned(targetWindow.id); closeContextMenu(); }} />
                 <MenuItem icon={targetWindow.isMaximized ? Minimize : Maximize2} label={targetWindow.isMaximized ? "Restore" : "Maximize"} onClick={() => { toggleMaximizeWindow(targetWindow.id); closeContextMenu(); }} />
                 <MenuItem icon={Minimize} label="Minimize" onClick={() => { minimizeWindow(targetWindow.id); closeContextMenu(); }} />
+
                 <Separator />
-                
+                <SubHeader label="Move to workspace" />
+                <div className="flex gap-1 px-2 pb-1">
+                  {[1, 2, 3].filter(i => i !== targetWindow.workspaceId).map(i => (
+                    <button key={i} onClick={() => { updateWindow(targetWindow.id, { workspaceId: i }); closeContextMenu(); }}
+                      className="flex-1 h-7 rounded-md bg-white/5 hover:bg-accent/20 text-zinc-300 hover:text-accent text-xs font-bold transition-colors">
+                      {i}
+                    </button>
+                  ))}
+                </div>
+
+                <Separator />
                 {isWeb && <NeuralItem icon={FileCode} label="Inspect Source" onClick={handleModifyApp} />}
                 <NeuralItem icon={Bot} label="Explain App" onClick={() => handleAskAI()} />
-                
-                {/* NEW FEATURE: MODIFY WINDOW CONTENT */}
                 {targetWindow.data?.content !== undefined && (
                     <NeuralItem icon={Wand2} label="Modify with AI" onClick={handleModifyWindowContent} />
                 )}
-                
                 <Separator />
-                <MenuItem icon={X} label="Close Window" onClick={() => { closeWindow(targetWindow.id); closeContextMenu(); }} danger shortcut="Alt+F4" />
+                <MenuItem icon={X} label="Close Window" onClick={() => { closeWindow(targetWindow.id); closeContextMenu(); }} danger shortcut="Ctrl+W" />
             </>
         )}
 
@@ -717,10 +745,15 @@ export default function ContextMenu() {
                 <SubHeader label="Workspace" />
                 <MenuItem icon={ArrowDownFromLine} label="Minimize All" onClick={() => { windows.forEach(w => minimizeWindow(w.id)); closeContextMenu(); }} />
                 <MenuItem icon={ArrowUpFromLine} label="Restore All" onClick={() => { windows.forEach(w => restoreWindow(w.id)); closeContextMenu(); }} />
-                <NeuralItem icon={Sparkles} label="Neural Arrange" onClick={() => { 
-                    useOS.getState().autoArrangeWindows(); 
-                    closeContextMenu(); 
-                }} />
+                <SubHeader label="Arrange Windows" />
+                <div className="grid grid-cols-2 gap-1 px-2 pb-1">
+                  {(['cascade','side-by-side','stacked','grid'] as const).map(m => (
+                    <button key={m} onClick={() => { autoArrangeWindowsMode(m); closeContextMenu(); }}
+                      className="h-7 rounded-md bg-white/5 hover:bg-accent/20 text-zinc-300 hover:text-accent text-[10px] capitalize transition-colors">
+                      {m.replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
                 
                 <Separator />
                 <SubHeader label="System" />
