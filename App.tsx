@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
-import { useOS, hydrateOSRegistry } from './store/osStore';
+import { useOS, hydrateOSRegistry, migrateLegacyDesktopIcons } from './store/osStore';
 import { WindowFrame } from './components/WindowFrame';
+import { MarqueeRect } from './components/MarqueeRect';
 import TaskSwitcher from './components/TaskSwitcher';
 import ContextMenu from './components/ContextMenu';
 import StartMenu from './components/StartMenu';
@@ -77,16 +78,19 @@ function DesktopIconGrid({
   const desktopPath = getDesktopPath(currentUserId);
   const desktopRef = useRef<HTMLDivElement>(null);
 
-  // Persisted icon positions — survive reboot. Keyed by filename.
-  const [iconPositions, setIconPositions] = useState<Record<string, { x: number; y: number }>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('nexusos_desktop_positions') || '{}');
-    } catch { return {}; }
-  });
+  const {
+    desktopIconPositions: iconPositions,
+    setIconPosition,
+    setIconPositions,
+    desktopIconSelection: iconSelection,
+    selectIcons,
+    toggleIconSelection,
+    clearIconSelection,
+  } = useOS();
 
-  useEffect(() => {
-    localStorage.setItem('nexusos_desktop_positions', JSON.stringify(iconPositions));
-  }, [iconPositions]);
+  // Marquee (box-select) state.
+  const [marquee, setMarquee] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null);
+  const [draggingIcon, setDraggingIcon] = useState<string | null>(null);
 
   const handleFileOpen = useCallback((path: string) => {
     const node = vfs.stat(path);
@@ -101,7 +105,7 @@ function DesktopIconGrid({
       } else {
         openWindow('notepad', { path });
       }
-    } else if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.gif')) {
+    } else if (path.match(/\.(png|jpg|jpeg|gif)$/)) {
       openWindow('image_viewer', { path });
     } else if (path.endsWith('.mp4') || path.endsWith('.webm')) {
       openWindow('video_player', { path });
@@ -121,18 +125,30 @@ function DesktopIconGrid({
     const rect = desktopRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    // Check if this is a desktop icon reposition (custom MIME type)
     const iconName = e.dataTransfer.getData('text/nexusos-desktop-icon');
     if (iconName) {
-      // Snap to 10px grid
-      const x = Math.round((e.clientX - rect.left) / 10) * 10;
-      const y = Math.round((e.clientY - rect.top) / 10) * 10;
-      setIconPositions(prev => ({ ...prev, [iconName]: { x, y } }));
-      return; // Don't move the file — just reposition the icon
+      const dx = e.clientX - rect.left;
+      const dy = e.clientY - rect.top;
+      if (draggingIcon && iconSelection.length > 1 && iconSelection.includes(draggingIcon)) {
+        // Grouped drag: move all selected icons by the same delta from the dragged one.
+        const origin = iconPositions[draggingIcon];
+        if (origin) {
+          const deltaX = dx - origin.x;
+          const deltaY = dy - origin.y;
+          const updates: Record<string, { x: number; y: number }> = {};
+          iconSelection.forEach(name => {
+            const o = iconPositions[name];
+            if (o) updates[name] = { x: o.x + deltaX, y: o.y + deltaY };
+          });
+          setIconPositions(updates);
+        }
+      } else {
+        setIconPosition(iconName, dx, dy);
+      }
+      return;
     }
 
     const sourcePath = e.dataTransfer.getData('text/plain');
-
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       Array.from(e.dataTransfer.files).forEach(fileLike => {
         const file = fileLike as File;
@@ -144,82 +160,114 @@ function DesktopIconGrid({
       });
       return;
     }
-
     if (sourcePath && !sourcePath.startsWith(`${desktopPath}/`)) {
       vfs.move(sourcePath, `${desktopPath}/${sourcePath.split('/').pop()}`);
     }
-  }, [desktopPath]);
+  }, [desktopPath, draggingIcon, iconSelection, iconPositions, setIconPosition, setIconPositions]);
 
   const desktopItems = vfs.listDir(desktopPath, SYSTEM_VFS_APP_ID) || [];
-  // Icons with custom positions use absolute positioning; others use grid
   const positionedItems = desktopItems.filter(name => iconPositions[name]);
   const gridItems = desktopItems.filter(name => !iconPositions[name]);
 
-  return (
-    <div
-      ref={desktopRef}
-      className="absolute inset-0 bottom-16 p-5 overflow-hidden"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDesktopDrop}
-    >
-      {/* Grid items (default position) */}
-      <div className="grid grid-cols-[repeat(auto-fill,96px)] grid-rows-[repeat(auto-fill,96px)] gap-3 h-full content-start">
-        {gridItems.map(name => {
-          const itemPath = `${desktopPath}/${name}`;
-          return (
-            <div
-              key={name}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('text/plain', itemPath);
-                e.dataTransfer.setData('text/nexusos-desktop-icon', name);
-              }}
-              className="flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
-              onDoubleClick={() => handleFileOpen(itemPath)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
-              }}
-            >
-              <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                {getSmartIcon(itemPath, 24)}
-              </div>
-              <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
-            </div>
-          );
-        })}
-      </div>
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only start marquee if the user clicked the desktop background itself.
+    if (!(e.target as HTMLElement).classList.contains('desktop-bg')) return;
+    if (e.button !== 0) return;
+    clearIconSelection();
+    const rect = desktopRef.current!.getBoundingClientRect();
+    setMarquee({ start: { x: e.clientX, y: e.clientY }, end: { x: e.clientX, y: e.clientY } });
 
-      {/* Positioned items (absolute, user-moved) */}
-      {positionedItems.map(name => {
-        const itemPath = `${desktopPath}/${name}`;
-        const pos = iconPositions[name]!;
-        return (
-          <div
-            key={name}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('text/plain', itemPath);
-              e.dataTransfer.setData('text/nexusos-desktop-icon', name);
-            }}
-            className="absolute flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
-            style={{ left: pos.x, top: pos.y, width: 96 }}
-            onDoubleClick={() => handleFileOpen(itemPath)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
-            }}
-          >
-            <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-              {getSmartIcon(itemPath, 24)}
-            </div>
-            <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
-          </div>
-        );
-      })}
-    </div>
+    const onMove = (ev: MouseEvent) => {
+      setMarquee(m => m ? { ...m, end: { x: ev.clientX, y: ev.clientY } } : m);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setMarquee(current => {
+        if (current) {
+          const left = Math.min(current.start.x, current.end.x) - rect.left;
+          const top = Math.min(current.start.y, current.end.y) - rect.top;
+          const right = Math.max(current.start.x, current.end.x) - rect.left;
+          const bottom = Math.max(current.start.y, current.end.y) - rect.top;
+          const hits: string[] = [];
+          positionedItems.forEach(name => {
+            const p = iconPositions[name]!;
+            // Icon bbox: roughly 96×96 at (p.x, p.y) relative to desktop.
+            if (p.x < right && p.x + 96 > left && p.y < bottom && p.y + 96 > top) hits.push(name);
+          });
+          if (hits.length > 0) selectIcons(hits);
+        }
+        return null;
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const renderIcon = (name: string, positioned: boolean) => {
+    const itemPath = `${desktopPath}/${name}`;
+    const pos = iconPositions[name];
+    const selected = iconSelection.includes(name);
+    const posStyle = positioned ? { left: pos!.x, top: pos!.y, width: 96 } : undefined;
+    return (
+      <div
+        key={name}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/plain', itemPath);
+          e.dataTransfer.setData('text/nexusos-desktop-icon', name);
+          setDraggingIcon(name);
+          if (!selected) selectIcons([name]);
+        }}
+        onDragEnd={() => setDraggingIcon(null)}
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) toggleIconSelection(name);
+          else if (e.shiftKey) {
+            // Range select: alphabetical between anchor and this.
+            const sorted = [...desktopItems].sort();
+            const anchor = iconSelection[0] ?? name;
+            const i1 = sorted.indexOf(anchor);
+            const i2 = sorted.indexOf(name);
+            const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+            selectIcons(sorted.slice(lo, hi + 1));
+          } else {
+            selectIcons([name]);
+          }
+        }}
+        className={`${positioned ? 'absolute' : ''} flex flex-col items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors ${selected ? 'ring-2 ring-emerald-400 bg-emerald-400/5' : ''}`}
+        style={posStyle}
+        onDoubleClick={() => handleFileOpen(itemPath)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!selected) selectIcons([name]);
+          openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
+        }}
+      >
+        <div className={`w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border ${selected ? 'border-emerald-400/50' : 'border-white/5'} group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]`}>
+          {getSmartIcon(itemPath, 24)}
+        </div>
+        <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {marquee && <MarqueeRect start={marquee.start} end={marquee.end} />}
+      <div
+        ref={desktopRef}
+        className="desktop-bg absolute inset-0 bottom-16 p-5 overflow-hidden"
+        onMouseDown={handleMouseDown}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDesktopDrop}
+      >
+        <div className="grid grid-cols-[repeat(auto-fill,96px)] grid-rows-[repeat(auto-fill,96px)] gap-3 h-full content-start pointer-events-none">
+          {gridItems.map(name => <div key={name} className="pointer-events-auto">{renderIcon(name, false)}</div>)}
+        </div>
+        {positionedItems.map(name => renderIcon(name, true))}
+      </div>
+    </>
   );
 }
 
@@ -312,6 +360,9 @@ export default function App() {
     themeEngine.apply();
 
     bindOsStore(() => ({ ...useOS.getState(), windows: useOS.getState().windows }));
+
+    // One-shot migration of legacy desktop icon positions into the store.
+    migrateLegacyDesktopIcons();
 
     toolForge.bindOsActions(async (action) => {
       const store = useOS.getState();
