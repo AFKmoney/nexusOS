@@ -113,8 +113,9 @@ Test files run in the order returned by `readdir` after `.sort()`. This means al
 | `kernel/tests/releaseReadiness.test.ts` | `package.json` and `electron-builder.yml` NexusOS branding alignment; `TESTING.md` validation sequence; runner auto-discovery contract. |
 | `kernel/tests/stagingTrustTier.test.ts` | `stagingManager` (13 tests): stage, seal, sealAll, promote, revert, subscribe, event emission. `trustTierEngine` (24 tests): all tier classifications, approval gates, rank ordering, canActAtTier, subscribeOverride. |
 | `kernel/tests/store.test.ts` | `createDefaultStoreState()` shape, `makeStoreId()` determinism. |
+| `kernel/tests/windowManager.test.ts` | Pure window engine: snap geometry (9 zones), z-index layering + compaction (order preserved), focus stack (active recomputed on close/minimize, workspace validation), Alt+Tab cycling, layout engine (cascade/side-by-side/stacked/grid), desktop icon snap-to-grid + sort. 29 assertions. |
 
-Total: 154 assertions across 22 files. All passing on `main`.
+Total: 160 assertions across 21 test files. All passing on `main`.
 
 ---
 
@@ -163,7 +164,7 @@ Total: 154 assertions across 22 files. All passing on `main`.
 | `services/aiProviders.ts` | none | Provider routing, streaming. |
 | `electron-main.cjs` | none | IPC handlers (25 channels), native bridge contract. |
 | `daemon-bridge-server.cjs` | none | CORS allow-list, WebSocket origin verification, exec validation. |
-| Shell components | none | Window manager, taskbar, start menu. |
+| Shell components | partial | The window manager **engine** (`kernel/windowManager/`) is fully unit-tested (focus, z-index, snap, layouts). The React **components** (`WindowFrame`, `Taskbar`, `StartMenu`, `ContextMenu`) still have no component-level tests. |
 
 The dominant gap is the agent pipeline. The 10 new modules (git, webSearch, codeExecution, agentOrchestrator, vision, voice, rag, sync, pluginMarket, selfEvolution, cluster) have no dedicated test coverage yet; this is the highest-priority contribution area.
 

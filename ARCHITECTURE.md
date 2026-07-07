@@ -12,7 +12,7 @@ NexusOS is structured as five concentric layers. Privilege increases as one move
 |---|---|---|
 | 1. Shell UI | `App.tsx`, `components/`, `apps/` | Render system state, capture user input, mount applications. |
 | 2. State | `store/` | Single source of runtime truth (Zustand). |
-| 3. Kernel | `kernel/` | Virtual file system, autonomy engine, governance pipeline, command engine, permission system, event bus, process manager, action protocol. |
+| 3. Kernel | `kernel/` | Virtual file system, autonomy engine, governance pipeline, command engine, permission system, event bus, process manager, action protocol, **window manager** (`kernel/windowManager/`). |
 | 4. Services | `services/` | AI inference (local and remote), memory graph, cloud fallback. |
 | 5. Native | `electron-main.cjs`, `preload.cjs`, `daemon-bridge-server.cjs` | Host operating-system access through Electron IPC and a localhost-bound bridge server. |
 
@@ -36,7 +36,7 @@ The shell is rendered by React 19. The entry point is `index.tsx`, which mounts 
 - Hydration of the Zustand store.
 - Kernel initialization (`vfs.init()`, `daemonBridge.boot()`, `autonomy.start()` if enabled).
 - Window rendering.
-- Global keyboard shortcuts (`Ctrl+Space`, `Ctrl+T`, `Ctrl+E`, etc.).
+- Global keyboard shortcuts (`Ctrl+Space`, `Ctrl+T`, `Ctrl+E`, `Ctrl+W`, `Alt+Tab`, `Win+←/→/↑/↓`, `Alt+Z`).
 
 The shell deliberately contains no business logic. Application state is read from the store; mutations are dispatched through store actions. Where the shell needs kernel capabilities (open a file, create a window), it calls store actions, which in turn call kernel modules.
 
@@ -70,9 +70,26 @@ The registry is consumed by:
 
 ### 2.2 Window management
 
-Windows are stored in the Zustand store as `WindowState` records (id, appId, geometry, z-index, minimized/maximized flags, optional workspace id, optional payload). The shell renders each non-minimized window through `react-rnd`. Focus changes update z-index by remapping the entire window list.
+Windows are stored in the Zustand store as `WindowState` records (id, appId, geometry, `zIndex`, `isMinimized`/`isMaximized`, optional `workspaceId`, optional `pinned`/`opacity`/`restoreRect`/`snapZone`/`progress`, optional `data` payload). The shell renders each non-minimized window through `react-rnd`.
 
-The current implementation re-maps the entire `windows` array on every focus change. This is correct but produces O(n) re-render cost on focus; the architectural roadmap recommends splitting window position state into a separate slice consumed by selectors.
+Window logic — focus ordering, z-index assignment, snapping, and layouts — is owned by a dedicated pure engine in `kernel/windowManager/` (see §4.x). The store's window actions are thin delegates: they build a `ManagerState` snapshot, call the engine, and write the result back. This keeps the logic unit-testable without React or the DOM.
+
+**Z-index is layered**, not a single flat counter. Each window's effective z-index is `layerFor(window) + relativeZ`, where the layer is one of five bands (`LAYERS` in `kernel/windowManager/constants.ts`):
+
+| Layer | Value | Occupant |
+|---|---|---|
+| `BACKGROUND` | 0 | Desktop widgets, icons |
+| `DESKTOP_UI` | 10 | Normal windows |
+| `ALWAYS_ON_TOP` | 9000 | Pinned windows (below OS overlays) |
+| `OVERLAY_UI` | 9500 | Start menu, taskbar flyouts, hover previews |
+| `MODAL` | 9900 | Task switcher, lock screen |
+| `CONTEXT_MENU` | 9999 | Context menu (always topmost) |
+
+A single `globalZIndex` counter seeds the `relativeZ` values and is compacted back toward the seed when it exceeds 5000 (preserving relative order exactly). `globalZIndex` is **not** persisted.
+
+**Focus** is tracked through an internal `focusStack` (most-recent-first). `activeWindowId` is always derived from the stack head — it can never point at a closed or minimized window. Workspace switches and render gates validate the active window against the current workspace.
+
+**Snapping** (Windows 11 style) is handled by `snapEngine.ts`. Windows can be snapped to nine zones (`maximize`, four halves, four quarters, `center`) via drag-to-edge (with a live `SnapOverlay` preview), the `SnapLayoutsPicker` popover on Maximize-button hover, or keyboard shortcuts. The original geometry is saved as `restoreRect` before a snap, so unsnap / drag-to-restore returns the window to its previous position.
 
 ---
 
@@ -85,17 +102,18 @@ The store is a Zustand store under `store/osStore.ts`. It is currently monolithi
 | Domain | Purpose |
 |---|---|
 | Session | Active user, authentication state, profile metadata |
-| Windows | Open windows, focused window id, z-index ordering |
+| Windows | Open windows, active window id, layered z-index ordering, focus stack |
 | Registry | Installed applications, pinned applications |
 | Notifications | System notification queue |
 | Autonomy | DAEMON state machine, autonomy log, current objective, kill switch |
 | Theme | Color palette, wallpaper id, accent, dark/light flag |
 | Clipboard | Persistent clipboard history with favorites |
+| Desktop icons | Icon positions, selection, snap-to-grid toggle |
 | UI | Start menu open, search active, BIOS mode, lock state |
 
 ### 3.2 Persistence
 
-Selective persistence is implemented at the slice level: durable state (preferences, installed apps, autonomy log, clipboard, wallpaper) is mirrored to `localStorage`; transient state (window positions, focused window, BIOS mode) is not.
+Selective persistence is implemented at the slice level: durable state (preferences, installed apps, autonomy log, clipboard, wallpaper, **desktop icon positions**, icon snap toggle) is mirrored to `localStorage`; transient state (window positions, focused window, `globalZIndex`, BIOS mode) is not. Desktop icon positions are migrated once on boot from the legacy `nexusos_desktop_positions` localStorage key into the store (`migrateLegacyDesktopIcons()`).
 
 The VFS does **not** live in the Zustand store. It is a separate kernel singleton with its own persistence path (IndexedDB) and its own cache. The store is informed of VFS changes through the event bus.
 
@@ -107,7 +125,7 @@ The VFS does **not** live in the Zustand store. It is a separate kernel singleto
 
 ## 4. Kernel layer
 
-The kernel is implemented as 53 TypeScript modules under `kernel/`. Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
+The kernel is implemented as 60 TypeScript modules under `kernel/` (plus the `kernel/windowManager/` sub-module of 7 files). Each module is a singleton (either an exported class instance or a module-scoped state object). Direct dependencies between kernel modules are kept minimal; cross-module communication preferentially uses the event bus.
 
 ### 4.1 Virtual file system — `fileSystem.ts`
 
@@ -421,11 +439,11 @@ Both modes share the shell, store, kernel, and services. The Electron mode adds 
 
 1. `openWindow(appId, data?)` is called from the shell, the kernel, or an OS action.
 2. The application registry is consulted; if no manifest is present, the call is rejected.
-3. A `WindowState` record is created with default geometry and a fresh z-index.
+3. A `WindowState` record is created with default geometry, `opacity: 1`, `pinned: false`, and a z-index derived from the layered counter (`LAYERS.DESKTOP_UI + globalZIndex`). The window id is pushed onto the focus stack head.
 4. The process manager allocates a PID and tracks the window.
-5. The shell renders the window component.
-6. Focus, minimize, and resize events update the store; the renderer reacts.
-7. `closeWindow(id)` removes the record, releases the PID, and triggers any cleanup hooks the application registered.
+5. The shell renders the window component via `react-rnd`.
+6. Focus, minimize, resize, and snap events call the store actions, which delegate to `kernel/windowManager/`; the renderer reacts.
+7. `closeWindow(id)` removes the record (and its focus-stack entry), recomputes `activeWindowId` from the stack head, releases the PID, and triggers any cleanup hooks.
 
 ---
 
@@ -460,6 +478,7 @@ A contributor opening the repository for the first time is best served by readin
 | `appRegistry.ts` | Inventory of every application and its declared permissions |
 | `types.ts` | Shared type vocabulary |
 | `store/osStore.ts` | Runtime state shape |
+| `kernel/windowManager/` | Pure window engine: focus stack, layered z-index, snap geometry, layouts |
 | `kernel/fileSystem.ts` | The VFS and its safety guarantees |
 | `kernel/permissions.ts` | The capability model |
 | `kernel/autonomy.ts` | The autonomy loop and mission scheduler |
@@ -487,7 +506,7 @@ A contributor opening the repository for the first time is best served by readin
 |---|---|
 | TypeScript strict compilation | passing |
 | Production build | passing (Vite 8, ~1.7s) |
-| Test suite | 154 / 154 passing across 22 test files |
+| Test suite | 160 / 160 passing across 21 test files |
 | Electron packaging (Windows NSIS) | functional, unsigned |
 | 54 applications registered | functional |
 | VFS permission enforcement | enforced; `appId` required |

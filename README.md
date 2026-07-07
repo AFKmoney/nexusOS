@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-installer-10b981?style=flat-square" alt="Download" /></a>
   <img src="https://img.shields.io/badge/version-2.1-10b981?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/tests-308%20passing-22c55e?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-160%20passing-22c55e?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/OS%3A%3A%20actions-75-8b5cf6?style=flat-square" alt="Actions" />
 </p>
@@ -93,7 +93,7 @@ Tell the DAEMON chat:
 - **Electron** for native mode (Chromium WebContentsView browser, IPC proxy, host fs)
 - **Wllama** for local GGUF inference (runs entirely in-browser)
 - **isomorphic-git** for VFS git operations
-- **308 tests passing** (unit + AI component audit + OS action audit)
+- **160 unit tests passing** (`node:test`, 0 failing) + e2e app smoke harness
 
 ---
 

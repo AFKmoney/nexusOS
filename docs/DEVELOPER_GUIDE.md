@@ -11,13 +11,13 @@ Instead:
 - **To add a new context target:**
   1. Add a specific class or `data-` attribute to the HTML element (e.g., `data-vfs-path="/path"`).
   2. In `App.tsx`, intercept it BEFORE the Desktop Background check.
-  3. Example order of priority: Text Selection > Input Fields > Taskbar > Icons (VFS) > Window Frames > Desktop.
+  3. Example order of priority: Text Selection > Input Fields > Taskbar > Icons (VFS file) > Window Frames > Desktop. (Note: desktop **icon positions** live in the Zustand store, not the VFS — the VFS only stores the underlying files.)
 
 ## 2. Window Frame Modifications
-The `WindowFrame.tsx` handles drag, drop, minimize, and restore states via `react-rnd`.
-- **Do not modify the Z-index management manually.** It is globally synchronized by `globalZIndex` in `osStore.ts`.
-- **Data-Attributes**: The main container has `data-window-id`. DO NOT remove this. The Context Menu relies on it to identify which window is being right-clicked.
-- **Custom Apps**: If an app lacks a built-in React component, `WindowFrame` falls back to `VfsAppRunner`, loading an HTML file from the VFS via `sourcePath`. Do not remove `VfsAppRunner`.
+The `WindowFrame.tsx` handles drag, drop, minimize, restore, **snapping**, and **drag-to-restore** via `react-rnd`. It reads `pinned` and `opacity` from the store (not local state).
+- **Do not modify z-index manually.** Z-index is **layered** and managed by `kernel/windowManager/zIndexManager.ts`. Each window's effective z-index is `layerFor(window) + relativeZ` where the layer is one of `LAYERS.DESKTOP_UI` (10, normal), `LAYERS.ALWAYS_ON_TOP` (9000, pinned), below the OS overlay bands (`OVERLAY_UI` 9500, `MODAL` 9900, `CONTEXT_MENU` 9999). The `globalZIndex` counter seeds `relativeZ` and is compacted when it exceeds 5000; it is **not** persisted.
+- **Window logic lives in `kernel/windowManager/`** (focus stack, z-index, snap geometry, layouts). The store actions in `store/osStoreSlices.ts` are thin delegates — call those, do not re-implement focus/z-index logic in components.
+- **Custom Apps**: If an app lacks a built-in React component, `WindowFrame` falls back to `CustomAppRunner` (`apps/CustomAppRunner.tsx`), loading code from the VFS via `sourcePath`. Do not remove `CustomAppRunner`.
 
 ## 3. Modifying the VFS (Virtual File System)
 The VFS (`kernel/fileSystem.ts`) is a singleton.
@@ -29,7 +29,7 @@ The VFS (`kernel/fileSystem.ts`) is a singleton.
 When expanding the AI App generation:
 1. Ensure the output is a *single self-contained HTML file*.
 2. Write the file to `/home/user/Apps/`.
-3. Register the metadata via `registerCustomApp` in `osStore.ts`.
+3. Register the metadata via `registerCustomApp` in `store/osStoreSlices.ts`.
 4. Ensure the metadata `sourcePath` accurately points to the VFS location.
 
 ## 5. Security & IPC (`electron-main.cjs`)

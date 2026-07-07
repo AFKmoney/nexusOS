@@ -12,8 +12,13 @@ const SHORTCUTS = [
   { category: 'Window Management', items: [
     { keys: 'Ctrl + W', desc: 'Close Active Window' },
     { keys: 'Ctrl + L', desc: 'Lock Screen' },
+    { keys: 'Alt + Tab', desc: 'Cycle focus to next window' },
+    { keys: 'Alt + Z', desc: 'Toggle maximize active window' },
+    { keys: 'Win + ← / →', desc: 'Snap active window to half' },
+    { keys: 'Win + ↑', desc: 'Maximize active window' },
+    { keys: 'Win + ↓', desc: 'Restore / minimize active window' },
     { keys: 'Double-click Title', desc: 'Maximize/Restore' },
-    { keys: 'Right-click Desktop', desc: 'Context Menu' },
+    { keys: 'Right-click Window', desc: 'Snap / Move-to-workspace / Always-on-top' },
   ]},
   { category: 'Editing', items: [
     { keys: 'Ctrl + C', desc: 'Copy' },

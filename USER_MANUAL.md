@@ -216,19 +216,23 @@ For optimal efficiency, internalize these keybindings:
 | Shortcut | Action |
 |---|---|
 | `Ctrl+Space` | Invoke Global Search and the DAEMON Omni-Bar. |
+| `Ctrl+K` | Invoke Spotlight (alternate global search). |
 | `Ctrl+T` | Spawn a Terminal instance. |
 | `Ctrl+E` | Open the File Explorer. |
-| `Ctrl+W` | Terminate the currently focused application process. |
+| `Ctrl+W` | Close the **active** window. |
 | `Ctrl+L` | Engage the screen lock. |
 | `Ctrl+D` | Launch the DAEMON Dashboard telemetry. |
 | `Ctrl+N` | Open a new Notepad instance. |
-| `Ctrl+Z` | Trigger a global VFS undo operation. |
-| `Ctrl+Shift+Z` | Trigger a global VFS redo operation. |
-| `Ctrl+Shift+A` | Instantly toggle my autonomy loop (Enable/Disable). |
+| `Alt+Tab` | Cycle focus to the next window in the active workspace. |
+| `Alt+Z` | Toggle maximize for the active window. |
+| `Win+←` / `Win+→` | Snap the active window to the left / right half. |
+| `Win+↑` | Maximize the active window. |
+| `Win+↓` | Restore (if snapped/maximized) or minimize the active window. |
+| `Ctrl+Q` (hold) | Open the task switcher (release to focus the selected window). |
 | `F2` | Access the BIOS interface (only during boot sequence). |
 | `F11` | Toggle fullscreen presentation (Electron mode only). |
 
-*Note: Application-specific bindings are documented within their respective internal help dialogues.*
+*Note: On keyboards without a Win/Meta key, `Ctrl+Shift+←/→/↑/↓` is honored as a snap fallback. Application-specific bindings (copy/paste/save inside editors) are documented within their respective internal help dialogues.*
 
 ---
 

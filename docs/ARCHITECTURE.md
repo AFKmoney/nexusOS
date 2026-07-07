@@ -1,7 +1,7 @@
 # NexusOS Architecture
 
 > The canonical architecture document lives at the repository root in
-> [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (478 lines, version 2.0.6).
+> [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (515+ lines, version 2.0.6).
 >
 > This file used to hold a 30-line stub that drifted out of sync with the
 > real architecture. To avoid duplicate sources of truth, the canonical
