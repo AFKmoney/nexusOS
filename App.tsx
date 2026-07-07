@@ -398,20 +398,52 @@ export default function App() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const st = useOS.getState();
+      const activeWin = st.windows.find(w => w.id === st.activeWindowId);
+
+      // Existing app-launch shortcuts.
       if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); toggleSearch(); return; }
       if (e.ctrlKey && e.key === 't') { e.preventDefault(); openWindow('terminal'); sounds.windowOpen(); return; }
       if (e.ctrlKey && e.key === 'e') { e.preventDefault(); openWindow('explorer'); sounds.windowOpen(); return; }
       if (e.ctrlKey && e.key === 'l') { e.preventDefault(); lockShell(); return; }
-      if (e.ctrlKey && e.key === 'w') {
-        e.preventDefault();
-        const ws = useOS.getState().windows;
-        const focusedWindow = ws.at(-1);
-        const focused = focusedWindow?.id ?? null;
-        if (focused) { closeWindow(focused); sounds.windowClose(); }
-        return;
-      }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); openWindow('dashboard'); sounds.windowOpen(); return; }
       if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openWindow('notepad'); sounds.windowOpen(); return; }
+
+      // Ctrl+W — close the ACTIVE window (was: last opened — bug fix).
+      if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        if (activeWin) { closeWindow(activeWin.id); sounds.windowClose(); }
+        return;
+      }
+
+      // Alt+Tab — cycle focus within the active workspace.
+      if (e.altKey && e.key === 'Tab') {
+        e.preventDefault();
+        st.focusNextInWorkspace();
+        return;
+      }
+
+      // Snap shortcuts: Meta (Win) or Ctrl+Shift as a fallback.
+      const snap = e.metaKey || (e.ctrlKey && e.shiftKey);
+      if (snap && activeWin) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); st.snapWindow(activeWin.id, 'left-half'); return; }
+        if (e.key === 'ArrowRight') { e.preventDefault(); st.snapWindow(activeWin.id, 'right-half'); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); st.snapWindow(activeWin.id, 'maximize'); return; }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (activeWin.isMaximized || activeWin.snapZone) st.unsnapWindow(activeWin.id);
+          else st.minimizeWindow(activeWin.id);
+          return;
+        }
+      }
+
+      // Alt+Z — toggle maximize for the active window (stand-in for the layouts picker).
+      if (e.altKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (activeWin) st.toggleMaximizeWindow(activeWin.id);
+        return;
+      }
+
       if (e.key === 'F11') {
         e.preventDefault();
         (window as any).electron?.send('toggle-fullscreen');
@@ -419,7 +451,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [openWindow, closeWindow, toggleSearch]);
+  }, [openWindow, closeWindow, toggleSearch, lockShell]);
 
   const handleGlobalClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
