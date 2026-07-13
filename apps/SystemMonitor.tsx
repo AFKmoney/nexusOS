@@ -70,23 +70,23 @@ export default function MonitorApp() {
   return (
     <div className="h-full bg-[#050505] p-6 text-zinc-300 font-mono text-base overflow-hidden flex flex-col selection:bg-cyan-900/30">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className={`p-5 rounded-xl border transition-all flex flex-col justify-between ${kernelRules.autonomyEnabled ? 'bg-emerald-950/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)]' : 'bg-zinc-900/30 border-zinc-800'}`}>
+          <div className={`p-5 rounded-xl border transition-all flex flex-col justify-between ${kernelRules.autonomyEnabled ? 'bg-emerald-950/10 border-accent/30 shadow-accent' : 'bg-zinc-900/30 border-zinc-800'}`}>
              <div>
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                        <Brain className={kernelRules.autonomyEnabled ? "text-emerald-400 animate-pulse" : "text-zinc-600"} size={20} />
+                        <Brain className={kernelRules.autonomyEnabled ? "text-accent animate-pulse" : "text-zinc-600"} size={20} />
                         <div>
                             <div className="font-bold text-white tracking-widest uppercase text-sm">NEXUS.AUTONOMY</div>
                             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">
                                 MODE: <span className={
-                                    autonomyState === 'ANALYZING' ? "text-blue-400 animate-pulse" :
+                                    autonomyState === 'ANALYZING' ? "text-accent animate-pulse" :
                                     autonomyState === 'PROMPTING' ? "text-purple-400 animate-pulse" :
-                                    autonomyState === 'EXECUTING' ? "text-emerald-400" : "text-zinc-500"
+                                    autonomyState === 'EXECUTING' ? "text-accent" : "text-zinc-500"
                                 }>{autonomyState}</span>
                             </div>
                         </div>
                     </div>
-                    <button onClick={toggleAutonomy} className={`p-2 rounded-lg transition-all ${kernelRules.autonomyEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-600'}`}>
+                    <button onClick={toggleAutonomy} className={`p-2 rounded-lg transition-all ${kernelRules.autonomyEnabled ? 'bg-accent/20 text-accent' : 'bg-zinc-800 text-zinc-600'}`}>
                         <Power size={18} />
                     </button>
                 </div>
@@ -94,14 +94,14 @@ export default function MonitorApp() {
                 {kernelRules.autonomyEnabled ? (
                     <div className="space-y-2">
                         <div className="bg-black/40 p-3 rounded border border-emerald-900/30 text-sm relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                            <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
                             <div className="font-bold text-emerald-700 uppercase text-xs mb-1 flex items-center gap-1">
                                 <Target size={14} /> Neural Objective
                             </div>
                             <div className="text-emerald-100 truncate">{currentObjective}</div>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-zinc-600 font-bold uppercase">
-                            <ShieldCheck size={14} className="text-emerald-500" /> System Self-Modification Enabled
+                            <ShieldCheck size={14} className="text-accent" /> System Self-Modification Enabled
                         </div>
                     </div>
                 ) : (
@@ -114,12 +114,12 @@ export default function MonitorApp() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-              <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-blue-500/30 transition-colors">
+              <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-accent/30 transition-colors">
                   <div className="flex justify-between items-start z-10">
                       <div className="flex items-center gap-2 text-zinc-500 text-sm font-bold uppercase"><Cpu size={18} /> CPU</div>
                       <span className="text-xl font-bold text-white">{stats.cpu}%</span>
                   </div>
-                  <Sparkline data={history.cpu} color="bg-blue-500" />
+                  <Sparkline data={history.cpu} color="bg-accent" />
               </div>
 
               <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-pink-500/30 transition-colors">
@@ -130,14 +130,14 @@ export default function MonitorApp() {
                   <Sparkline data={history.mem} color="bg-pink-500" />
               </div>
 
-              <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+              <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-accent/30 transition-colors">
                   <div className="flex justify-between items-start z-10">
                       <div className="flex items-center gap-2 text-zinc-500 text-sm font-bold uppercase"><Wifi size={18} /> NET</div>
                       <div className="text-right">
                           <div className="text-sm text-zinc-400 flex items-center gap-1 justify-end"><ArrowDown size={14}/> {stats.netDown}</div>
                       </div>
                   </div>
-                  <Sparkline data={history.net} color="bg-cyan-500" />
+                  <Sparkline data={history.net} color="bg-accent" />
               </div>
 
               <div className="bg-zinc-900/30 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between h-28 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
@@ -155,19 +155,19 @@ export default function MonitorApp() {
       <div className="flex-1 flex flex-col bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-inner min-h-0">
           <div className="bg-zinc-900/80 p-2 text-xs font-bold text-zinc-500 flex items-center justify-between border-b border-zinc-800 px-4">
               <span className="flex items-center gap-2"><Terminal size={16} /> NEURAL EVENT STREAM</span>
-              <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/> ACTIVE</span>
+              <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-accent animate-pulse"/> ACTIVE</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 font-mono text-sm space-y-2 custom-scrollbar">
               {autonomyLog.map((log, i) => (
                   <div key={i} className={`flex gap-3 border-b border-white/5 pb-1 ${
                       log.includes('ERR') ? 'text-red-400' :
-                      log.includes('EXEC') ? 'text-emerald-400 font-bold' :
-                      log.includes('STRATEGY') ? 'text-blue-400' :
+                      log.includes('EXEC') ? 'text-accent font-bold' :
+                      log.includes('STRATEGY') ? 'text-accent' :
                       'text-zinc-400'
                   }`}>
-                      <span className="opacity-30 shrink-0 select-none w-14">{new Date().toLocaleTimeString().split(' ')[0]}</span>
+                      <span className="opacity-30 shrink-0 select-none w-14">{new Date().toLocaleTimeString('en-US').split(' ')[0]}</span>
                       <span className="break-all flex gap-2">
-                           {log.includes('EXEC') && <ChevronRight size={16} className="mt-0.5 text-emerald-500" />}
+                           {log.includes('EXEC') && <ChevronRight size={16} className="mt-0.5 text-accent" />}
                            {log}
                       </span>
                   </div>

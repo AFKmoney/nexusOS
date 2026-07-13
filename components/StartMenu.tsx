@@ -64,9 +64,20 @@ export default function StartMenu() {
     openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'app-icon', appId });
   };
 
-  const handleAccentChange = (preset: string, color: string) => {
-    setAccentColor(color);
-    setThemePreset(preset === 'blue' ? 'midnight-cyan' : themePreset);
+  
+  const ACCENTS = [
+    { name: 'Emerald', color: '#10b981' },
+    { name: 'Amber', color: '#f59e0b' },
+    { name: 'Blue', color: '#3b82f6' },
+    { name: 'Rose', color: '#f43f5e' },
+    { name: 'Violet', color: '#8b5cf6' },
+    { name: 'Zinc', color: '#71717a' },
+  ];
+
+  const handleAccentCycle = () => {
+    const currentIndex = ACCENTS.findIndex(a => a.color === useOS.getState().accentColor);
+    const nextIndex = (currentIndex + 1) % ACCENTS.length;
+    setAccentColor(ACCENTS[nextIndex].color);
   };
 
   return (
@@ -132,20 +143,27 @@ export default function StartMenu() {
                   <div className="text-[10px] text-zinc-500 truncate">{wallpaperEffect === 'aurora' ? 'Aurora' : 'Cycle'}</div>
                 </div>
               </button>
-              <button onClick={() => setThemePreset(themePreset === 'neo-emerald' ? 'midnight-cyan' : 'neo-emerald')}
+              
+              <button onClick={() => setThemePreset(themePreset === 'midnight-cyan' ? 'obsidian-emerald' : 'midnight-cyan')}
                 className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-colors text-left">
                 <Palette size={14} className="text-accent shrink-0" />
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-300">Theme</div>
-                  <div className="text-[10px] text-zinc-500 truncate">Swap</div>
+                  <div className="text-[10px] text-zinc-500 truncate">{themePreset === 'midnight-cyan' ? 'Midnight Cyan' : 'Obsidian Emerald'}</div>
                 </div>
               </button>
-              <button onClick={() => handleAccentChange('blue', '#3b82f6')}
+
+              <button onClick={() => {
+                  const currentHex = useOS.getState().accentColor.toLowerCase();
+                  const currentIndex = ACCENTS.findIndex(a => a.color.toLowerCase() === currentHex);
+                  const nextIndex = (currentIndex + 1) % ACCENTS.length;
+                  setAccentColor(ACCENTS[nextIndex].color);
+                }}
                 className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-colors text-left">
                 <Layers3 size={14} className="text-accent shrink-0" />
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-300">Accent</div>
-                  <div className="text-[10px] text-zinc-500 truncate">Blue</div>
+                  <div className="text-[10px] text-zinc-500 truncate">Cycle</div>
                 </div>
               </button>
               <button onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
@@ -181,7 +199,7 @@ export default function StartMenu() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[11px] font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{file.name}</div>
-                      <div className="text-[9px] font-mono text-zinc-500 truncate">{new Date(file.modified).toLocaleTimeString()}</div>
+                      <div className="text-[9px] font-mono text-zinc-500 truncate">{new Date(file.modified).toLocaleTimeString('en-US')}</div>
                     </div>
                   </button>
                 ))}
@@ -235,16 +253,16 @@ export default function StartMenu() {
           className="flex items-center gap-3 hover:bg-white/5 p-2 -ml-2 rounded-xl transition-colors group"
           onClick={() => { openWindow('settings'); toggleStartMenu(); }}
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-blue-600 flex items-center justify-center text-base font-bold text-black border-2 border-[#08080c] group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center text-base font-bold text-black border-2 border-[#08080c] group-hover:scale-105 transition-transform">
             {currentUser?.name?.[0] || <User size={20} />}
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">{currentUser?.name || "Admin"}</span>
-              <Shield size={11} className="text-emerald-500" />
+              <Shield size={11} className="text-accent" />
             </div>
             <span className="text-[9px] text-zinc-500 font-mono tracking-wider flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-accent" />
               AUTHENTICATED
             </span>
           </div>
@@ -260,7 +278,7 @@ export default function StartMenu() {
           </button>
           <button
             onClick={() => { openWindow('appstore'); toggleStartMenu(); }}
-            className="w-9 h-9 flex items-center justify-center hover:bg-emerald-500/20 hover:text-emerald-300 rounded-lg text-zinc-400 transition-colors"
+            className="w-9 h-9 flex items-center justify-center hover:bg-accent/20 hover:text-emerald-300 rounded-lg text-zinc-400 transition-colors"
             title="App Store"
           >
             <Store size={16} />

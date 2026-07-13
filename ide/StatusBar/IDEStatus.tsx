@@ -6,12 +6,12 @@ export const IDEStatus = ({ isAiWorking, lineCount }: { isAiWorking: boolean, li
   return (
     <div className="h-6 bg-[#18181b] border-t border-white/5 flex items-center justify-between px-3 text-[9px] font-medium text-zinc-500 uppercase tracking-tight shrink-0 select-none">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 text-emerald-500">
+        <div className="flex items-center gap-1.5 text-accent">
           <GitBranch size={10} />
           <span>main*</span>
         </div>
         <div className="flex items-center gap-1.5 hover:text-white cursor-pointer transition-colors">
-          <CheckCircle2 size={10} className="text-emerald-500" />
+          <CheckCircle2 size={10} className="text-accent" />
           <span>No Problems</span>
         </div>
       </div>
@@ -32,7 +32,7 @@ export const IDEStatus = ({ isAiWorking, lineCount }: { isAiWorking: boolean, li
           <span>Ln {lineCount}, Col 1</span>
           <span>Spaces: 2</span>
           <span>UTF-8</span>
-          <span className="text-emerald-500 font-bold tracking-widest">TypeScript</span>
+          <span className="text-accent font-bold tracking-widest">TypeScript</span>
         </div>
       </div>
     </div>

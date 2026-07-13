@@ -95,7 +95,7 @@ export default function WallpaperApp() {
         id: name,
         name: name.replace('.html', '').replace('Synthesis_', 'Custom '),
         category: 'Custom',
-        desc: `Generated ${new Date(stat?.created || 0).toLocaleDateString()}`,
+        desc: `Generated ${new Date(stat?.created || 0).toLocaleDateString('en-US')}`,
         preview: 'from-zinc-900 to-zinc-800',
         code: path
       };
@@ -193,7 +193,7 @@ export default function WallpaperApp() {
     <div className="h-full bg-[#050508] text-white flex flex-col overflow-hidden font-sans">
       {/* Compact Header */}
       <div className="px-5 py-3 border-b border-white/5 shrink-0 bg-gradient-to-b from-white/5 to-transparent flex items-center gap-3">
-        <div className="p-2 bg-emerald-500/15 rounded-xl text-emerald-400 border border-emerald-500/20">
+        <div className="p-2 bg-accent/15 rounded-xl text-accent border border-accent/20">
           <Paintbrush size={18} />
         </div>
         <div className="flex-1">
@@ -207,7 +207,7 @@ export default function WallpaperApp() {
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/20">
           {/* Category bar */}
           <div className="sticky top-0 z-10 bg-[#050508]/95 backdrop-blur-sm px-5 py-3 border-b border-white/5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-emerald-400 shrink-0">
+            <div className="flex items-center gap-2 text-accent shrink-0">
               <Zap size={14} />
               <span className="text-[10px] font-black uppercase tracking-[0.25em]">{filtered.length} Wallpapers</span>
             </div>
@@ -217,7 +217,7 @@ export default function WallpaperApp() {
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeCategory === cat
-                    ? 'bg-emerald-500 text-black'
+                    ? 'bg-accent text-black'
                     : 'text-zinc-500 hover:text-zinc-300 bg-white/5 hover:bg-white/10'
                   }`}
                 >
@@ -239,7 +239,7 @@ export default function WallpaperApp() {
                     onMouseEnter={() => setHoveredId(preset.id)}
                     onMouseLeave={() => setHoveredId(null)}
                     className={`group relative rounded-xl overflow-hidden border transition-colors text-left ${isActive
-                      ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+                      ? 'border-accent ring-2 ring-accent/30'
                       : 'border-white/5 hover:border-white/20'
                     }`}
                   >
@@ -248,12 +248,12 @@ export default function WallpaperApp() {
                       <WallpaperPreview code={preset.code} preview={preset.preview} isHovered={hoveredId === preset.id} />
 
                       {/* LIVE badge */}
-                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-[0.15em] rounded-full z-10">LIVE</div>
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-accent text-black text-[8px] font-black uppercase tracking-[0.15em] rounded-full z-10">LIVE</div>
 
                       {/* Active overlay */}
                       {isActive && (
-                        <div className="absolute inset-0 bg-emerald-500/15 flex items-center justify-center z-10">
-                          <div className="p-2 bg-emerald-500 rounded-full">
+                        <div className="absolute inset-0 bg-accent/15 flex items-center justify-center z-10">
+                          <div className="p-2 bg-accent rounded-full">
                             <Check size={18} className="text-black" strokeWidth={3} />
                           </div>
                         </div>
@@ -293,7 +293,7 @@ export default function WallpaperApp() {
         {/* Right: AI Generator Panel */}
         <div className="w-72 border-l border-white/5 bg-[#030305] flex flex-col shrink-0">
           <div className="p-4 border-b border-white/5">
-            <div className="flex items-center gap-2 text-emerald-400">
+            <div className="flex items-center gap-2 text-accent">
               <Sparkles size={16} />
               <h2 className="text-xs font-black uppercase tracking-[0.2em]">Neural Synthesis</h2>
             </div>
@@ -303,7 +303,7 @@ export default function WallpaperApp() {
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Vision Prompt</label>
               <textarea
-                className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500/50 transition-colors resize-none placeholder:text-zinc-600"
+                className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-accent/50 transition-colors resize-none placeholder:text-zinc-600"
                 placeholder="e.g. A flowing river of binary code in a neon forest..."
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
@@ -322,7 +322,7 @@ export default function WallpaperApp() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt}
-                className="flex-[2] h-10 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
+                className="flex-[2] h-10 bg-accent hover:bg-accent text-black rounded-xl flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
               >
                 {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
                 Manifest
@@ -330,15 +330,15 @@ export default function WallpaperApp() {
             </div>
 
             {isGenerating && (
-              <div className="flex items-center gap-2 text-emerald-400 text-[10px] font-mono">
+              <div className="flex items-center gap-2 text-accent text-[10px] font-mono">
                 <Loader2 size={12} className="animate-spin" />
                 <span>Architecting visual logic...</span>
               </div>
             )}
 
             <div className="pt-4 border-t border-white/5">
-              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3">
-                <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-2">
+              <div className="bg-accent/5 border border-accent/10 rounded-xl p-3">
+                <div className="flex items-center gap-1.5 text-accent text-[10px] font-bold uppercase tracking-widest mb-2">
                   <Star size={10} /> System Capabilities
                 </div>
                 <div className="text-[10px] text-zinc-500 leading-relaxed">
@@ -359,7 +359,7 @@ export default function WallpaperApp() {
               </div>
               <div className="flex justify-between text-zinc-600">
                 <span>Current:</span>
-                <span className="text-emerald-400 truncate max-w-[140px] ml-2">
+                <span className="text-accent truncate max-w-[140px] ml-2">
                   {currentWallpaper ? currentWallpaper.split('/').pop() : 'none'}
                 </span>
               </div>

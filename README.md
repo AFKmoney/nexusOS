@@ -43,7 +43,7 @@ It's not a wrapper around ChatGPT. It's an OS built from the ground up for auton
 | Module | What it does |
 |---|---|
 | **75 `OS::` actions** | Structured tool surface — files, apps, browser, agents, RAG, git, vision, voice, skills, goals |
-| **19 AI providers** | OpenAI, Anthropic, Google, Mistral, NVIDIA NIM, Groq, xAI, DeepSeek, Cerebras, Perplexity, local models (LM Studio, Ollama, Wllama) + failover |
+| **20 AI providers** | Z.AI Coding Plan (GLM-5.1/5.2, Turbo, Coding Series), OpenAI, Anthropic, Google, Mistral, NVIDIA NIM, Groq, xAI, DeepSeek, Cerebras, Perplexity, local models (LM Studio, Ollama, Wllama) + failover |
 | **SkillForge v2** | AI writes + persists + executes JS skills in a Web Worker sandbox |
 | **AutoPilot** | Goal queue with self-prompting — the AI picks goals and works through them autonomously |
 | **Multi-Agent v2** | Parallel sub-agents with dependency graph + shared workspace + inter-agent messaging |

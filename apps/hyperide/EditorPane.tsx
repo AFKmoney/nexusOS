@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fileIcon } from './syntax';
 import type { EditorTab, CursorPos } from './types';
+import Editor, { useMonaco } from '@monaco-editor/react';
 
 interface EditorPaneProps {
   tabs: EditorTab[];
@@ -28,7 +29,7 @@ interface EditorPaneProps {
   onToggleFindReplace: () => void;
   onCloseFindReplace: () => void;
   onContentChange: (content: string) => void;
-  onCursorChange: () => void;
+  onCursorChange: (pos?: { line: number, col: number }) => void;
   onSearchQueryChange: (v: string) => void;
   onReplaceQueryChange: (v: string) => void;
   onFindAndReplace: () => void;
@@ -50,20 +51,47 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
     onBrowseFiles, onNewManifest,
   } = props;
 
+  const monaco = useMonaco();
+  
+  const getLanguage = (extension: string) => {
+    switch(extension) {
+      case 'ts':
+      case 'tsx': return 'typescript';
+      case 'js':
+      case 'jsx': return 'javascript';
+      case 'html': return 'html';
+      case 'css': return 'css';
+      case 'json': return 'json';
+      case 'md': return 'markdown';
+      case 'py': return 'python';
+      case 'sh': return 'shell';
+      default: return 'plaintext';
+    }
+  };
+
+  const handleEditorMount = (editor: any, monaco: any) => {
+    editor.onDidChangeCursorPosition((e: any) => {
+      onCursorChange({ line: e.position.lineNumber, col: e.position.column });
+    });
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      onSave();
+    });
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0E0E11] relative">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#1E1E1E] relative">
       {/* Top Header / Tabs */}
-      <div className="flex flex-col shrink-0 bg-[#09090B]">
+      <div className="flex flex-col shrink-0 bg-[#252526]">
         {/* Action Bar */}
-        <div className="h-11 flex items-center justify-between px-4 border-b border-white/5 bg-gradient-to-r from-white/[0.02] to-transparent">
+        <div className="h-11 flex items-center justify-between px-4 border-b border-[#333] bg-[#252526]">
           <div className="flex items-center gap-2">
             <button
               onClick={onSave}
               disabled={!activeTab || !activeTab.modified}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all shadow-sm ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-black uppercase tracking-widest transition-all ${
                 activeTab?.modified
-                  ? 'bg-blue-500 text-white hover:bg-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]'
-                  : 'bg-white/5 text-zinc-500'
+                  ? 'bg-[#007ACC] text-white hover:bg-[#005A9E]'
+                  : 'text-zinc-500'
               }`}
             >
               {savedIndicator ? <CheckCheck size={14} /> : <Save size={14} />}{' '}
@@ -72,20 +100,20 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
             {ext === 'html' && (
               <button
                 onClick={onTogglePreview}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-black uppercase tracking-widest transition-all ${
                   showPreview
-                    ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                    : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
+                    ? 'bg-[#007ACC] text-white'
+                    : 'text-zinc-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
                 <Play size={14} className={showPreview ? 'animate-pulse' : ''} /> Preview
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 bg-black/40 rounded-xl p-1 border border-white/5">
+          <div className="flex items-center gap-2">
             <button
               onClick={onToggleFindReplace}
-              className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+              className="p-1.5 text-zinc-500 hover:text-[#007ACC] hover:bg-[#007ACC]/10 rounded transition-all"
               title="Find / Replace"
             >
               <Replace size={14} />
@@ -95,17 +123,17 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
 
         {/* Find & Replace Overlay */}
         {showFindReplace && (
-          <div className="px-4 py-2.5 bg-zinc-900 border-b border-white/5 flex items-center gap-3 shrink-0 animate-in slide-in-from-top-2 shadow-lg">
-            <Replace size={16} className="text-blue-400" />
+          <div className="px-4 py-2.5 bg-[#252526] border-b border-[#333] flex items-center gap-3 shrink-0 shadow-lg">
+            <Replace size={16} className="text-[#007ACC]" />
             <input
-              className="flex-1 max-w-xs bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-blue-500/50 text-white font-mono shadow-inner transition-colors"
+              autoFocus
+              className="w-48 bg-[#3C3C3C] border border-[#3C3C3C] rounded px-3 py-1.5 text-xs text-white outline-none focus:border-[#007ACC]"
               placeholder="Find..."
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
             />
-            <ChevronRight size={14} className="text-zinc-600" />
             <input
-              className="flex-1 max-w-xs bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-yellow-500/50 text-white font-mono shadow-inner transition-colors"
+              className="w-48 bg-[#3C3C3C] border border-[#3C3C3C] rounded px-3 py-1.5 text-xs text-white outline-none focus:border-[#007ACC]"
               placeholder="Replace with..."
               value={replaceQuery}
               onChange={(e) => onReplaceQueryChange(e.target.value)}
@@ -113,13 +141,13 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
             <button
               onClick={onFindAndReplace}
               disabled={!activeTab || !searchQuery}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest text-white transition-all disabled:opacity-30 shadow-md"
+              className="px-4 py-1.5 bg-[#007ACC] hover:bg-[#005A9E] rounded text-[10px] font-black uppercase tracking-widest text-white transition-all disabled:opacity-30"
             >
               Replace All
             </button>
             <button
               onClick={onCloseFindReplace}
-              className="p-1 text-zinc-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors ml-auto"
+              className="p-1 text-zinc-500 hover:text-red-400 rounded hover:bg-red-500/10 transition-colors ml-auto"
             >
               <X size={14} />
             </button>
@@ -128,29 +156,29 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
 
         {/* Tabs Row */}
         {tabs.length > 0 && (
-          <div className="flex items-end bg-[#0A0A0C] border-b border-white/5 overflow-x-auto custom-scrollbar h-10 px-2 gap-1 pt-2">
+          <div className="flex items-end bg-[#2D2D2D] border-b border-[#1E1E1E] overflow-x-auto custom-scrollbar h-9">
             {tabs.map((tab, i) => (
               <div
                 key={tab.path}
                 onClick={() => onSelectTab(i)}
-                className={`group flex items-center gap-2 px-4 py-2 min-w-[140px] max-w-[220px] cursor-pointer select-none rounded-t-xl transition-all relative ${
+                className={`group flex items-center gap-2 px-3 h-full min-w-[120px] max-w-[200px] cursor-pointer select-none transition-all relative ${
                   i === activeIdx
-                    ? 'bg-[#0E0E11] text-white shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-10 before:absolute before:top-0 before:left-2 before:right-2 before:h-0.5 before:bg-blue-500 before:rounded-b-full'
-                    : 'bg-transparent text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                    ? 'bg-[#1E1E1E] text-[#CCCCCC] border-t-2 border-[#007ACC]'
+                    : 'bg-[#2D2D2D] text-[#969696] hover:bg-[#2D2D2D]'
                 }`}
               >
-                <div className={`transition-transform drop-shadow-md ${i === activeIdx ? 'scale-110' : ''}`}>
+                <div className="opacity-80">
                   {fileIcon(tab.name, 14)}
                 </div>
-                <span className="truncate text-xs font-medium flex-1">{tab.name}</span>
+                <span className="truncate text-[13px] font-sans flex-1">{tab.name}</span>
                 {tab.modified ? (
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                  <div className="w-2 h-2 rounded-full bg-white shrink-0" />
                 ) : (
                   <button
                     onClick={(e) => { e.stopPropagation(); onCloseTab(i); }}
-                    className="opacity-0 group-hover:opacity-100 hover:bg-red-500/20 p-1 rounded-md text-zinc-400 hover:text-red-400 transition-all shrink-0"
+                    className={`p-0.5 rounded text-zinc-400 hover:text-white transition-all shrink-0 ${i === activeIdx ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 )}
               </div>
@@ -162,106 +190,78 @@ export const EditorPane: React.FC<EditorPaneProps> = (props) => {
       {/* Editor Content */}
       <div className="flex-1 flex overflow-hidden relative">
         {!activeTab ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0E0E11]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1E1E1E]">
             <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
-              <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full animate-pulse" />
-              <Code size={80} className="text-zinc-800 relative z-10 drop-shadow-2xl" />
+              <Code size={80} className="text-[#333]" />
             </div>
-            <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-white mb-3">
-              HyperIDE <span className="text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Core</span>
+            <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-[#CCCCCC] mb-3">
+              HyperIDE
             </h2>
-            <p className="text-zinc-500 font-mono text-sm max-w-md text-center mb-10 leading-relaxed">
-              The integrated development environment. Open a manifest from the explorer or instantiate a new node.
+            <p className="text-[#969696] font-mono text-sm max-w-md text-center mb-10 leading-relaxed">
+              VS Code style editor powered by Monaco
             </p>
             <div className="flex gap-4">
               <button
                 onClick={onBrowseFiles}
-                className="px-8 py-3.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm font-black text-blue-400 uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+                className="px-8 py-3.5 bg-[#007ACC] hover:bg-[#005A9E] rounded text-sm font-black text-white uppercase tracking-[0.2em] transition-all"
               >
                 Browse Files
               </button>
               <button
                 onClick={onNewManifest}
-                className="px-8 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-black text-white uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-lg"
+                className="px-8 py-3.5 bg-transparent border border-[#007ACC] hover:bg-[#007ACC]/10 rounded text-sm font-black text-[#007ACC] uppercase tracking-[0.2em] transition-all"
               >
-                New Manifest
+                New App
               </button>
             </div>
           </div>
         ) : (
-          <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'w-1/2 border-r border-white/10' : ''}`}>
-            <div className="flex-1 flex overflow-hidden bg-[#0E0E11]">
-              {/* Line Numbers Gutter */}
-              <div className="w-14 shrink-0 bg-[#0A0A0C] border-r border-white/5 flex flex-col items-end py-4 pr-3 select-none overflow-hidden">
-                {Array.from({ length: lineCount }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`text-[13px] leading-6 font-mono transition-colors ${
-                      i + 1 === cursorPos.line
-                        ? 'text-blue-400 font-bold drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]'
-                        : 'text-zinc-500'
-                    }`}
-                  >
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-
-              {/* Text Area / Highlight Overlay */}
-              <div
-                className="flex-1 relative overflow-auto custom-scrollbar"
-                onClick={onCursorChange}
-                onKeyUp={onCursorChange}
-              >
-                <pre
-                  className={`absolute inset-0 p-4 text-[13px] leading-6 font-mono pointer-events-none ${
-                    wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'
-                  } overflow-hidden text-transparent`}
-                  dangerouslySetInnerHTML={{ __html: highlighted }}
-                  aria-hidden
-                />
-                <textarea
-                  ref={editorRef}
-                  className={`absolute inset-0 w-full h-full p-4 text-[13px] leading-6 font-mono bg-transparent text-transparent caret-blue-400 outline-none resize-none selection:bg-blue-500/30 z-10 ${
-                    wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'
-                  }`}
+          <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'w-1/2 border-r border-[#333]' : ''}`}>
+            <div className="flex-1 flex overflow-hidden bg-[#1E1E1E]">
+              <div className="flex-1 relative">
+                <Editor
+                  height="100%"
+                  theme="vs-dark"
+                  language={getLanguage(ext)}
                   value={activeTab.content}
-                  onChange={(e) => onContentChange(e.target.value)}
-                  spellCheck={false}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab') {
-                      e.preventDefault();
-                      const s = e.currentTarget.selectionStart ?? 0;
-                      const end = e.currentTarget.selectionEnd ?? s;
-                      const v = activeTab.content.substring(0, s) + '  ' + activeTab.content.substring(end);
-                      onContentChange(v);
-                      setTimeout(() => {
-                        if (editorRef.current) {
-                          editorRef.current.selectionStart = editorRef.current.selectionEnd = s + 2;
-                        }
-                      }, 0);
-                    }
+                  onChange={(val) => onContentChange(val || '')}
+                  onMount={handleEditorMount}
+                  options={{
+                    wordWrap: wordWrap ? 'on' : 'off',
+                    minimap: { enabled: true },
+                    fontSize: 14,
+                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                    lineHeight: 24,
+                    padding: { top: 16 },
+                    scrollBeyondLastLine: false,
+                    smoothScrolling: true,
+                    cursorBlinking: 'smooth',
+                    cursorSmoothCaretAnimation: 'on',
+                    formatOnPaste: true,
+                    tabSize: 2,
+                    folding: true,
+                    links: true,
+                    autoIndent: 'full',
                   }}
                 />
               </div>
             </div>
 
             {/* Status Bar */}
-            <div className="h-8 bg-[#050508] border-t border-white/5 flex items-center px-4 justify-between text-[10px] font-mono uppercase tracking-widest select-none shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-20">
-              <div className="flex items-center gap-5 text-zinc-500">
-                <span className="text-blue-400 font-bold flex items-center gap-1.5">
+            <div className="h-6 bg-[#007ACC] flex items-center px-3 justify-between text-[11px] text-white select-none z-20">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5 hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer">
                   <Box size={12} /> {activeTab.name}
                 </span>
-                <span className="bg-black/50 px-2 py-0.5 rounded border border-white/5">
+                <span className="hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer">
                   Ln {cursorPos.line}, Col {cursorPos.col}
                 </span>
-                <span className="bg-white/5 px-2 py-0.5 rounded text-zinc-400">{ext}</span>
               </div>
-              <div className="flex items-center gap-5 text-zinc-600">
-                <span>UTF-8</span>
-                <span>{wordWrap ? 'Wrap ON' : 'Wrap OFF'}</span>
-                <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded border border-emerald-500/20">
-                  <ShieldAlert size={10} /> Secure
+              <div className="flex items-center gap-4">
+                <span className="hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer">UTF-8</span>
+                <span className="hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer">{getLanguage(ext)}</span>
+                <span className="flex items-center gap-1.5 hover:bg-white/10 px-1 py-0.5 rounded cursor-pointer">
+                  <ShieldAlert size={12} /> Prettier
                 </span>
               </div>
             </div>

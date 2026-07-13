@@ -27,7 +27,7 @@ class AIContextRouter {
   private maxActions = 20;
 
   logAction(action: string) {
-    this.recentActions.push(`[${new Date().toLocaleTimeString()}] ${action}`);
+    this.recentActions.push(`[${new Date().toLocaleTimeString('en-US')}] ${action}`);
     if (this.recentActions.length > this.maxActions) this.recentActions.shift();
   }
 

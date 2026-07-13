@@ -103,7 +103,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
         className={`flex flex-col w-full h-full overflow-hidden relative
           ${windowState.isMaximized ? 'rounded-none' : 'rounded-xl'}
           ${isActive
-            ? 'shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)] ring-1 ring-emerald-500/20'
+            ? 'shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)] ring-1 ring-accent/20'
             : 'shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
           }
           bg-[#08080a]/95 backdrop-blur-2xl border border-white/10
@@ -121,8 +121,8 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
           className="window-title-bar h-11 flex items-center justify-between px-4 cursor-default select-none border-b border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent relative z-10 shrink-0"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`p-1.5 rounded-lg border border-white/10 transition-colors shrink-0 ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-black/20 text-zinc-500'}`}>
-              <IconComponent size={14} className={isActive ? 'drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]' : ''} />
+            <div className={`p-1.5 rounded-lg border border-white/10 transition-colors shrink-0 ${isActive ? 'bg-accent/10 text-accent' : 'bg-black/20 text-zinc-500'}`}>
+              <IconComponent size={14} className={isActive ? 'drop-shadow-accent' : ''} />
             </div>
             <span className={`text-xs font-bold tracking-wide transition-colors truncate max-w-[260px] ${isActive ? 'text-zinc-100' : 'text-zinc-500'}`}>
               {windowState.title}
@@ -140,7 +140,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
             </button>
             <button
               onClick={() => setAlwaysOnTop(!alwaysOnTop)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${alwaysOnTop ? 'bg-emerald-500/15 text-emerald-400' : 'hover:bg-white/10 text-zinc-500 hover:text-white'}`}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${alwaysOnTop ? 'bg-accent/15 text-accent' : 'hover:bg-white/10 text-zinc-500 hover:text-white'}`}
               title="Always on top"
             >
               {alwaysOnTop ? <Pin size={13} /> : <PinOff size={13} />}
@@ -174,7 +174,7 @@ export const WindowFrame: React.FC<{ windowState: any }> = ({ windowState }) => 
 
         {/* Content Area */}
         <div
-          className="flex-1 overflow-hidden relative bg-transparent min-h-0"
+          className="flex-1 overflow-auto relative bg-transparent min-h-0"
           onContextMenu={(e) => {
             if (!(e.target as HTMLElement).closest('textarea, input, [contenteditable], .custom-context')) {
               e.preventDefault();

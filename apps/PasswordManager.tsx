@@ -219,7 +219,7 @@ export default function PasswordManager() {
                             {decryptedPasswords[e.id] ? <EyeOff size={14} /> : <Eye size={14} />}
                           </button>
                           <button onClick={() => copyToClipboard(decryptedPasswords[e.id] || e.pass, e.id + '_p')} className="p-1.5 text-zinc-600 hover:text-white transition-colors">
-                            {copiedId === e.id + '_p' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                            {copiedId === e.id + '_p' ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
                           </button>
                         </div>
                       </div>

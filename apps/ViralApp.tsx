@@ -27,7 +27,7 @@ export default function ViralApp() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+          <div className="p-2 bg-accent/20 rounded-lg text-accent">
             <Rocket size={20} />
           </div>
           <div>
@@ -36,8 +36,8 @@ export default function ViralApp() {
           </div>
         </div>
         <div className="flex items-center gap-4 bg-black/40 px-4 py-1.5 rounded-full border border-white/10 shadow-inner">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-          <span className="text-xs font-black font-mono tracking-tighter">{nodes.toLocaleString()} ACTIVE NODES</span>
+          <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-accent" />
+          <span className="text-xs font-black font-mono tracking-tighter">{nodes.toLocaleString('en-US')} ACTIVE NODES</span>
         </div>
       </div>
 
@@ -53,7 +53,7 @@ export default function ViralApp() {
               <button 
                 key={t.id}
                 onClick={() => setActiveTab(t.id as any)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${activeTab === t.id ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${activeTab === t.id ? 'bg-accent/10 text-accent' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
               >
                 <t.icon size={16} />
                 <span className="text-xs font-bold uppercase tracking-widest">{t.label}</span>
@@ -64,34 +64,34 @@ export default function ViralApp() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-10 relative bg-black/40">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 blur-[100px] rounded-full pointer-events-none" />
           
           <div className="max-w-2xl mx-auto">
             {activeTab === 'broadcast' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center mb-12">
-                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6 shadow-2xl">
-                    <Share2 size={40} className="text-emerald-400 animate-pulse" />
+                  <div className="w-20 h-20 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                    <Share2 size={40} className="text-accent animate-pulse" />
                   </div>
                   <h2 className="text-2xl font-black uppercase tracking-widest text-white mb-2">Initiate Propagation</h2>
                   <p className="text-zinc-500 text-sm leading-relaxed max-w-sm mx-auto">Share NexusOS across platforms. Help grow the community.</p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 mb-10">
-                  <button onClick={copyPayload} className="flex items-center justify-between p-6 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/[0.04] hover:border-emerald-500/30 transition-all group">
+                  <button onClick={copyPayload} className="flex items-center justify-between p-6 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/[0.04] hover:border-accent/30 transition-all group">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-zinc-900 rounded-2xl group-hover:text-emerald-400 transition-colors"><Copy size={24} /></div>
+                      <div className="p-3 bg-zinc-900 rounded-2xl group-hover:text-accent transition-colors"><Copy size={24} /></div>
                       <div className="text-left">
                         <div className="text-sm font-bold text-white uppercase tracking-widest">Repository Link</div>
                         <div className="text-xs text-zinc-500 font-mono">github.com/afkmoney/NEXUSos</div>
                       </div>
                     </div>
-                    {copied ? <Check size={24} className="text-emerald-400" /> : <Zap size={24} className="text-zinc-800 group-hover:text-emerald-500/20 transition-colors" />}
+                    {copied ? <Check size={24} className="text-accent" /> : <Zap size={24} className="text-zinc-800 group-hover:text-accent/20 transition-colors" />}
                   </button>
 
                   <div className="flex gap-4">
-                    <button onClick={() => window.open('https://twitter.com/intent/tweet?text=Check%20out%20NexusOS%20-%20AI-native%20OS&url=https://github.com/AFKmoney/nexusOS', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-blue-500/5 border border-blue-500/10 rounded-3xl hover:bg-blue-500/10 transition-all">
-                      <Twitter size={24} className="text-blue-400 mb-2" />
+                    <button onClick={() => window.open('https://twitter.com/intent/tweet?text=Check%20out%20NexusOS%20-%20AI-native%20OS&url=https://github.com/AFKmoney/nexusOS', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-accent/5 border border-accent/10 rounded-3xl hover:bg-accent/10 transition-all">
+                      <Twitter size={24} className="text-accent mb-2" />
                       <span className="text-[10px] font-black uppercase tracking-widest">X / Twitter</span>
                     </button>
                     <button onClick={() => window.open('https://discord.com/channels', '_blank', 'noopener')} className="flex-1 flex flex-col items-center justify-center p-6 bg-purple-500/5 border border-purple-500/10 rounded-3xl hover:bg-purple-500/10 transition-all">
@@ -105,10 +105,10 @@ export default function ViralApp() {
                   </div>
                 </div>
 
-                <div className="p-6 rounded-3xl bg-emerald-500/5 border border-emerald-500/20 relative overflow-hidden">
+                <div className="p-6 rounded-3xl bg-accent/5 border border-accent/20 relative overflow-hidden">
                   <div className="flex items-center gap-3 mb-3">
-                    <Sparkles size={16} className="text-emerald-400" />
-                    <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Mission Protocol</span>
+                    <Sparkles size={16} className="text-accent" />
+                    <span className="text-xs font-black uppercase tracking-widest text-accent">Mission Protocol</span>
                   </div>
                   <p className="text-xs text-zinc-500 leading-relaxed font-mono">
                     Every shared link is a neural bridge. Every node added strengthens the DAEMON collective. We are the architects of the new reality.
@@ -120,8 +120,8 @@ export default function ViralApp() {
             {activeTab === 'stats' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 grid grid-cols-2 gap-6">
                 <div className="col-span-2 p-8 bg-white/[0.02] border border-white/5 rounded-3xl text-center">
-                  <div className="text-6xl font-black text-white font-mono tracking-tighter mb-2">{nodes.toLocaleString()}</div>
-                  <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-500">Active Global Nodes</div>
+                  <div className="text-6xl font-black text-white font-mono tracking-tighter mb-2">{nodes.toLocaleString('en-US')}</div>
+                  <div className="text-xs font-black uppercase tracking-[0.3em] text-accent">Active Global Nodes</div>
                 </div>
                 <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
                   <div className="text-2xl font-bold text-white mb-1">98.4%</div>
@@ -140,7 +140,7 @@ export default function ViralApp() {
                 <p>"Build something that matters. Share it with the world."</p>
                 <p>"DAEMON is not a tool. It is an extension of the human will, augmented by recursive intelligence."</p>
                 <div className="pt-8 text-center">
-                  <div className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/50">— ARCHITECTED BY PHILIPPE-ANTOINE ROBERT —</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.4em] text-accent/50">— ARCHITECTED BY PHILIPPE-ANTOINE ROBERT —</div>
                 </div>
               </div>
             )}

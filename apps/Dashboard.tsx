@@ -65,8 +65,8 @@ const STATUS_LABEL: Record<ProviderStatus, string> = {
 };
 
 const STATUS_CLASS: Record<ProviderStatus, string> = {
-  active: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
-  healthy: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
+  active: 'bg-accent/15 text-emerald-300 border-accent/40',
+  healthy: 'bg-accent/10 text-cyan-300 border-accent/30',
   degraded: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
   inactive: 'bg-zinc-500/10 text-zinc-400 border-white/10',
   'no-key': 'bg-amber-500/10 text-amber-300 border-amber-500/30',
@@ -121,16 +121,16 @@ export default function DashboardApp() {
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/30 shrink-0">
         <div className="flex items-center gap-3">
-          <BarChart2 size={18} className="text-emerald-400" />
+          <BarChart2 size={18} className="text-accent" />
           <span className="font-bold tracking-widest text-sm uppercase text-white">DAEMON Dashboard</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5 text-xs">
-            {isOnline ? <Wifi size={12} className="text-emerald-400" /> : <WifiOff size={12} className="text-rose-400" />}
-            <span className={isOnline ? 'text-emerald-400' : 'text-rose-400'}>{isOnline ? 'Online' : 'Offline'}</span>
+            {isOnline ? <Wifi size={12} className="text-accent" /> : <WifiOff size={12} className="text-rose-400" />}
+            <span className={isOnline ? 'text-accent' : 'text-rose-400'}>{isOnline ? 'Online' : 'Offline'}</span>
           </span>
           <span className="text-zinc-500 text-sm font-mono">
-            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         </div>
       </div>
@@ -139,8 +139,8 @@ export default function DashboardApp() {
         {/* ── Top Stats Grid ────────────────────────────────────────────── */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Apps', value: registry.length, icon: Box, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { label: 'Windows', value: windows.length, icon: Monitor, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+            { label: 'Apps', value: registry.length, icon: Box, color: 'text-accent', bg: 'bg-accent/10' },
+            { label: 'Windows', value: windows.length, icon: Monitor, color: 'text-accent', bg: 'bg-accent/10' },
             { label: 'Memory', value: memories, icon: Brain, color: 'text-violet-400', bg: 'bg-violet-500/10' },
             { label: 'Tools', value: tools.length, icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/10' },
           ].map(s => (
@@ -159,14 +159,14 @@ export default function DashboardApp() {
           {/* DAEMON Core Status */}
           <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4">
             <div className="text-xs text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Shield size={12} className="text-emerald-500" />
+              <Shield size={12} className="text-accent" />
               DAEMON CORE
             </div>
             <div className="space-y-2 text-sm font-mono">
               {[
-                ['Model', modelStatus, localBrain.isReady() ? 'text-emerald-400' : 'text-amber-400'],
+                ['Model', modelStatus, localBrain.isReady() ? 'text-accent' : 'text-amber-400'],
                 ['Uptime', uptime, 'text-emerald-300'],
-                ['Autonomy', autonomyState, autonomyState === 'IDLE' ? 'text-zinc-400' : 'text-emerald-400 animate-pulse'],
+                ['Autonomy', autonomyState, autonomyState === 'IDLE' ? 'text-zinc-400' : 'text-accent animate-pulse'],
                 ['Boot Count', String(daemonBridge.getBootCount()), 'text-cyan-300'],
                 ['UI Scale', `${Math.round(uiScale * 100)}%`, 'text-violet-300'],
               ].map(([label, val, cls]) => (
@@ -188,13 +188,13 @@ export default function DashboardApp() {
               {/* Success Rate Bar */}
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-zinc-400">Success Rate</span>
-                <span className={`text-sm font-bold ${successRate >= 90 ? 'text-emerald-400' : successRate >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>
+                <span className={`text-sm font-bold ${successRate >= 90 ? 'text-accent' : successRate >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>
                   {successRate}%
                 </span>
               </div>
               <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-3">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${successRate >= 90 ? 'bg-emerald-500' : successRate >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                  className={`h-full rounded-full transition-all duration-500 ${successRate >= 90 ? 'bg-accent' : successRate >= 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
                   style={{ width: `${successRate}%` }}
                 />
               </div>
@@ -206,14 +206,14 @@ export default function DashboardApp() {
                   <span className="ml-auto text-white">{guardStats.total}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 size={12} className="text-emerald-500" />
+                  <CheckCircle2 size={12} className="text-accent" />
                   <span className="text-zinc-400">Corrected</span>
-                  <span className="ml-auto text-emerald-400">{guardStats.corrected}</span>
+                  <span className="ml-auto text-accent">{guardStats.corrected}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <RefreshCw size={12} className="text-cyan-500" />
+                  <RefreshCw size={12} className="text-accent" />
                   <span className="text-zinc-400">Auto-Fix</span>
-                  <span className="ml-auto text-cyan-400">{guardStats.autoFixed}</span>
+                  <span className="ml-auto text-accent">{guardStats.autoFixed}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <AlertTriangle size={12} className="text-rose-500" />
@@ -231,7 +231,7 @@ export default function DashboardApp() {
         {/* ── AI Providers Health ──────────────────────────────────────── */}
         <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4">
           <div className="text-xs text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Server size={12} className="text-emerald-400" />
+            <Server size={12} className="text-accent" />
             AI PROVIDERS HEALTH
             <span className="text-[9px] text-zinc-600 normal-case tracking-normal ml-auto">
               {providerRows.filter(r => statusOf(r) !== 'inactive').length} configured
@@ -260,15 +260,15 @@ export default function DashboardApp() {
                     <div
                       key={row.id}
                       className={`bg-black/40 rounded-xl p-3 border ${
-                        row.isActive ? 'border-emerald-500/40 ring-1 ring-emerald-500/20' : 'border-white/5'
+                        row.isActive ? 'border-accent/40 ring-1 ring-accent/20' : 'border-white/5'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0">
                           {row.isLocal ? (
-                            <HardDrive size={12} className="text-cyan-400 shrink-0" />
+                            <HardDrive size={12} className="text-accent shrink-0" />
                           ) : row.hasKey ? (
-                            <KeyRound size={12} className="text-emerald-400 shrink-0" />
+                            <KeyRound size={12} className="text-accent shrink-0" />
                           ) : (
                             <KeyRound size={12} className="text-zinc-600 shrink-0" />
                           )}
@@ -286,7 +286,7 @@ export default function DashboardApp() {
                             <span className="text-rose-400">{row.health.failureCount} fail{row.health.failureCount > 1 ? 's' : ''}</span>
                           )}
                           {row.health.failureCount === 0 && row.enabled && (row.hasKey || row.isLocal) && (
-                            <span className="text-emerald-500/60">stable</span>
+                            <span className="text-accent/60">stable</span>
                           )}
                         </span>
                       </div>
@@ -336,14 +336,14 @@ export default function DashboardApp() {
         {/* ── Autonomy Feed ────────────────────────────────────────────── */}
         <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4">
           <div className="text-xs text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Terminal size={12} className="text-cyan-400" />
+            <Terminal size={12} className="text-accent" />
             AUTONOMY FEED
           </div>
           <div className="space-y-1 font-mono text-xs">
             {recentLogs.length === 0 ? (
               <span className="text-zinc-600">No activity yet. DAEMON is booting...</span>
             ) : recentLogs.map((log, i) => (
-              <div key={i} className="text-emerald-400/80 truncate">{log}</div>
+              <div key={i} className="text-accent/80 truncate">{log}</div>
             ))}
           </div>
         </div>

@@ -1,12 +1,13 @@
 import React from 'react';
 import {
-  FilePlus, FolderOpen, File, AlignLeft, Copy, X,
+  FilePlus, FolderPlus, FolderOpen, File, AlignLeft, Copy, X,
 } from 'lucide-react';
 import type { ContextMenuState } from './types';
 
 interface FileContextMenuProps {
   state: ContextMenuState;
   onNewFileHere: (path: string) => void;
+  onNewFolderHere: (path: string) => void;
   onOpenFolder: (path: string) => void;
   onOpenFile: (path: string) => void;
   onRename: (path: string) => void;
@@ -21,6 +22,7 @@ interface FileContextMenuProps {
 export const FileContextMenu: React.FC<FileContextMenuProps> = ({
   state,
   onNewFileHere,
+  onNewFolderHere,
   onOpenFolder,
   onOpenFile,
   onRename,
@@ -41,13 +43,19 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
         <>
           <button
             onClick={() => { onNewFileHere(state.path); }}
-            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-emerald-500/20 hover:text-emerald-400 transition-colors flex items-center gap-3 font-medium"
+            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-accent/20 hover:text-accent transition-colors flex items-center gap-3 font-medium"
           >
             <FilePlus size={16} /> New File Here
           </button>
           <button
+            onClick={() => { onNewFolderHere(state.path); }}
+            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-accent/20 hover:text-accent transition-colors flex items-center gap-3 font-medium"
+          >
+            <FolderPlus size={16} /> New Folder Here
+          </button>
+          <button
             onClick={() => { onOpenFolder(state.path); }}
-            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-blue-500/20 hover:text-blue-400 transition-colors flex items-center gap-3 font-medium"
+            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-accent/20 hover:text-accent transition-colors flex items-center gap-3 font-medium"
           >
             <FolderOpen size={16} /> Open Folder
           </button>
@@ -56,7 +64,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
         <>
           <button
             onClick={() => { onOpenFile(state.path); }}
-            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-blue-500/20 hover:text-blue-400 transition-colors flex items-center gap-3 font-medium"
+            className="w-full text-left px-4 py-2.5 text-zinc-300 hover:bg-accent/20 hover:text-accent transition-colors flex items-center gap-3 font-medium"
           >
             <File size={16} /> Open File
           </button>

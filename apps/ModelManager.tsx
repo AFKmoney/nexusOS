@@ -232,8 +232,8 @@ export default function ModelManager({ windowId }: { windowId: string }) {
     <div className="h-full flex flex-col bg-[#050508] text-slate-200 font-sans">
       <div className="px-5 py-4 border-b border-white/5 bg-black/30 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-            <Cpu size={18} className="text-emerald-400" />
+          <div className="p-2 bg-accent/10 rounded-xl border border-accent/20">
+            <Cpu size={18} className="text-accent" />
           </div>
           <div>
             <div className="text-base font-bold text-white">Model Manager</div>
@@ -241,7 +241,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest">
+          <div className="px-3 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-bold uppercase tracking-widest">
             {installedModels.length} installed
           </div>
           <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-zinc-400 text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
@@ -250,8 +250,8 @@ export default function ModelManager({ windowId }: { windowId: string }) {
         </div>
       </div>
 
-      <div className="mx-4 mt-3 mb-1 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 flex items-center gap-3">
-        <Zap size={18} className="text-emerald-400 shrink-0" />
+      <div className="mx-4 mt-3 mb-1 p-3 rounded-xl bg-accent/5 border border-accent/15 flex items-center gap-3">
+        <Zap size={18} className="text-accent shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="text-xs text-zinc-500 uppercase tracking-widest">Active Model</div>
           <div className="text-sm font-bold text-emerald-300 truncate">
@@ -261,12 +261,12 @@ export default function ModelManager({ windowId }: { windowId: string }) {
             {activeModel ? `${formatCtx(activeModel)} ctx · ${formatGpuLayers(activeModel)} GPU layers` : 'Choose an installed model to begin.'}
           </div>
         </div>
-        <div className="text-xs text-emerald-400 font-mono">LOCAL</div>
+        <div className="text-xs text-accent font-mono">LOCAL</div>
       </div>
 
       {isSwitching && (
-        <div className="mx-4 my-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
-          <Loader2 size={18} className="text-blue-400 animate-spin shrink-0" />
+        <div className="mx-4 my-2 p-3 rounded-xl bg-accent/10 border border-accent/20 flex items-center gap-3">
+          <Loader2 size={18} className="text-accent animate-spin shrink-0" />
           <div className="text-sm text-blue-300">{switchProgress}</div>
         </div>
       )}
@@ -278,7 +278,7 @@ export default function ModelManager({ windowId }: { windowId: string }) {
             onClick={() => setTab(id)}
             className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
               tab === id
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+                ? 'bg-accent/15 border border-accent/30 text-accent'
                 : 'border border-white/5 text-zinc-600 hover:text-zinc-400 hover:border-white/10'
             }`}
           >

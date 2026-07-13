@@ -75,8 +75,8 @@ export default function PluginMarket({ windowId: _windowId }: { windowId: string
       {/* Header */}
       <div className="px-5 py-4 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-xl bg-emerald-500/10">
-            <Package size={20} className="text-emerald-400" />
+          <div className="p-2 rounded-xl bg-accent/10">
+            <Package size={20} className="text-accent" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">Plugin Marketplace</h1>
@@ -87,7 +87,7 @@ export default function PluginMarket({ windowId: _windowId }: { windowId: string
         {/* Generate bar */}
         <div className="flex gap-2">
           <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-zinc-900/50 rounded-xl border border-white/5">
-            <Sparkles size={16} className="text-emerald-400 shrink-0" />
+            <Sparkles size={16} className="text-accent shrink-0" />
             <input
               type="text"
               value={query}
@@ -101,7 +101,7 @@ export default function PluginMarket({ windowId: _windowId }: { windowId: string
           <button
             onClick={handleGenerate}
             disabled={generating || !query.trim()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-sm font-bold transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/15 hover:bg-accent/25 text-accent text-sm font-bold transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {generating ? 'Generating...' : 'Generate'}
@@ -126,12 +126,12 @@ export default function PluginMarket({ windowId: _windowId }: { windowId: string
             {filtered.map(plugin => (
               <div
                 key={plugin.id}
-                className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/20 transition-all group"
+                className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-accent/20 transition-all group"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="text-2xl">{plugin.icon ?? (plugin.isGenerated ? '🤖' : '📦')}</div>
                   {plugin.isGenerated && (
-                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full font-bold uppercase">AI</span>
+                    <span className="text-[9px] text-accent bg-accent/10 px-1.5 py-0.5 rounded-full font-bold uppercase">AI</span>
                   )}
                 </div>
                 <h3 className="text-sm font-bold text-white mb-1">{plugin.name}</h3>
@@ -139,7 +139,7 @@ export default function PluginMarket({ windowId: _windowId }: { windowId: string
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openWindow(plugin.id)}
-                    className="flex-1 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-all"
+                    className="flex-1 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold transition-all"
                   >
                     Open
                   </button>

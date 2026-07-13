@@ -25,8 +25,8 @@ export default function DaemonJournalApp() {
 
   const colorize = (log: string) => {
     if (log.includes('ERR') || log.includes('ERROR')) return 'text-red-400';
-    if (log.includes('COMPLETE') || log.includes('ready') || log.includes('ONLINE')) return 'text-emerald-400';
-    if (log.includes('ANALYZING') || log.includes('PROMPTING')) return 'text-cyan-400';
+    if (log.includes('COMPLETE') || log.includes('ready') || log.includes('ONLINE')) return 'text-accent';
+    if (log.includes('ANALYZING') || log.includes('PROMPTING')) return 'text-accent';
     if (log.includes('FORGE') || log.includes('BUILD')) return 'text-amber-400';
     if (log.includes('TOOL')) return 'text-violet-400';
     return 'text-zinc-400';
@@ -44,7 +44,7 @@ export default function DaemonJournalApp() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAutoScroll(!autoScroll)}
-            className={`px-3 py-1 text-xs rounded-lg border transition-all ${autoScroll ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : 'border-white/10 text-zinc-500'}`}
+            className={`px-3 py-1 text-xs rounded-lg border transition-all ${autoScroll ? 'border-accent/40 text-accent bg-accent/10' : 'border-white/10 text-zinc-500'}`}
           >
             Live
           </button>

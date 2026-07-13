@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { 
   Lock, Unlock, Plus, Copy, Eye, EyeOff, Trash2, 
   Shield, Key, Save, RefreshCw, Search, CheckCircle2, 
@@ -136,14 +137,14 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
         // Create New
         const initialData: VaultData = { version: 1, items: [] };
         const encrypted = await encryptData(initialData, password);
-        vfs.writeFile(VAULT_PATH, encrypted);
+        vfs.writeFile(VAULT_PATH, encrypted, SYSTEM_VFS_APP_ID);
         setVaultData(initialData);
         setHasVault(true);
         setLocked(false);
         addNotification({ title: 'Vault Created', message: 'Master password set successfully.', type: 'success' });
       } else {
         // Unlock Existing
-        const content = vfs.readFile(VAULT_PATH);
+        const content = vfs.readFile(VAULT_PATH, SYSTEM_VFS_APP_ID);
         if (!content) throw new Error("Vault file corrupted");
         const data = await decryptData(content, password);
         setVaultData(data);
@@ -162,7 +163,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
       setLoading(true);
       try {
           const encrypted = await encryptData(newData, password);
-          vfs.writeFile(VAULT_PATH, encrypted);
+          vfs.writeFile(VAULT_PATH, encrypted, SYSTEM_VFS_APP_ID);
           setVaultData(newData);
       } catch (e) {
           addNotification({ title: 'Save Failed', message: 'Could not encrypt data.', type: 'error' });
@@ -218,7 +219,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
       return (
           <div className="h-full flex flex-col items-center justify-center bg-zinc-950 text-white p-8">
               <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 border border-zinc-800 shadow-2xl">
-                  <Shield size={32} className="text-emerald-500" />
+                  <Shield size={32} className="text-accent" />
               </div>
               
               <h1 className="text-2xl font-bold mb-2">Cipher Vault</h1>
@@ -230,11 +231,11 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
 
               <form onSubmit={handleUnlock} className="w-full max-w-xs space-y-4">
                   <div className="relative group">
-                      <Lock size={16} className="absolute left-3 top-3 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
+                      <Lock size={16} className="absolute left-3 top-3 text-zinc-500 group-focus-within:text-accent transition-colors" />
                       <input 
                         type="password" 
                         autoFocus
-                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-base outline-none focus:border-emerald-500/50 focus:bg-zinc-900 transition-all text-center tracking-widest"
+                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-base outline-none focus:border-accent/50 focus:bg-zinc-900 transition-all text-center tracking-widest"
                         placeholder="Master Password"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
@@ -245,7 +246,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
 
                   <button 
                     disabled={loading || !password}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-accent hover:bg-accent text-white font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                       {loading ? <RefreshCw className="animate-spin" size={16} /> : (hasVault ? <Unlock size={16} /> : <Save size={16} />)}
                       {hasVault ? "Decrypt & Unlock" : "Initialize Vault"}
@@ -266,7 +267,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
         
         {/* Navbar */}
         <div className="h-12 border-b border-zinc-800 flex items-center px-4 justify-between bg-zinc-900/50 shrink-0">
-            <div className="flex items-center gap-2 font-bold text-emerald-500">
+            <div className="flex items-center gap-2 font-bold text-accent">
                 <Shield size={18} />
                 <span>Cipher Vault</span>
             </div>
@@ -291,7 +292,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                             key={cat.id}
                             onClick={() => { setFilter(cat.id); setView('list'); setSelectedItem(null); }}
                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                                ${filter === cat.id ? 'bg-emerald-900/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}
+                                ${filter === cat.id ? 'bg-emerald-900/20 text-accent' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}
                             `}
                         >
                             <cat.icon size={16} />
@@ -302,7 +303,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                 <div className="mt-auto p-3">
                     <button 
                         onClick={() => { setView('create'); setFormData({}); setShowSecret(false); }}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
+                        className="w-full bg-accent hover:bg-accent text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-900/20"
                     >
                         <Plus size={16} /> <span className="hidden md:inline font-bold text-sm">New Item</span>
                     </button>
@@ -318,7 +319,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                         <div className="relative">
                             <Search size={18} className="absolute left-3 top-2.5 text-zinc-600" />
                             <input 
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-base outline-none focus:border-emerald-500/50 transition-colors placeholder:text-zinc-600"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-base outline-none focus:border-accent/50 transition-colors placeholder:text-zinc-600"
                                 placeholder="Search vault..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
@@ -338,7 +339,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                             >
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center
-                                        ${item.category === 'login' ? 'bg-blue-900/20 text-blue-400' : 
+                                        ${item.category === 'login' ? 'bg-blue-900/20 text-accent' : 
                                           item.category === 'card' ? 'bg-purple-900/20 text-purple-400' : 
                                           'bg-zinc-800 text-zinc-400'}
                                     `}>
@@ -351,7 +352,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                                         <div className="text-sm text-zinc-500">{item.username || 'No Identity'}</div>
                                     </div>
                                 </div>
-                                <div className="text-zinc-600 group-hover:text-emerald-500 transition-colors">
+                                <div className="text-zinc-600 group-hover:text-accent transition-colors">
                                     <Eye size={16} />
                                 </div>
                             </div>
@@ -376,7 +377,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                                     <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
                                         <label className="text-sm text-zinc-500 uppercase tracking-widest block mb-1">Identity</label>
                                         <div className="flex items-center justify-between">
-                                            <span className="font-mono text-emerald-400">{selectedItem.username}</span>
+                                            <span className="font-mono text-accent">{selectedItem.username}</span>
                                             <button onClick={() => copyToClipboard(selectedItem.username!, 'Username')} className="text-zinc-500 hover:text-white">
                                                 <Copy size={16} />
                                             </button>
@@ -404,7 +405,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                                 {selectedItem.url && (
                                     <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
                                         <label className="text-sm text-zinc-500 uppercase tracking-widest block mb-1">Target</label>
-                                        <a href={selectedItem.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline text-base truncate block">
+                                        <a href={selectedItem.url} target="_blank" rel="noreferrer" className="text-accent hover:underline text-base truncate block">
                                             {selectedItem.url}
                                         </a>
                                     </div>
@@ -432,7 +433,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                             <div className="space-y-1">
                                 <label className="text-sm text-zinc-500">Title</label>
                                 <input 
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-emerald-500" 
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-accent" 
                                     placeholder="e.g. Google Account"
                                     value={formData.title || ''}
                                     onChange={e => setFormData({...formData, title: e.target.value})}
@@ -456,7 +457,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                                 <div className="space-y-1">
                                     <label className="text-sm text-zinc-500">Identity / Username</label>
                                     <input 
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-emerald-500" 
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-accent" 
                                         placeholder="e.g. user@email.com"
                                         value={formData.username || ''}
                                         onChange={e => setFormData({...formData, username: e.target.value})}
@@ -467,14 +468,14 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                             <div className="space-y-1">
                                 <label className="text-sm text-zinc-500 flex justify-between">
                                     <span>Secret / Password</span>
-                                    <button onClick={generatePassword} className="text-emerald-500 hover:text-emerald-400 flex items-center gap-1 font-bold">
+                                    <button onClick={generatePassword} className="text-accent hover:text-accent flex items-center gap-1 font-bold">
                                         <RefreshCw size={14} /> Generate
                                     </button>
                                 </label>
                                 <div className="relative">
                                     <input 
                                         type={showSecret ? "text" : "password"}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-emerald-500 font-mono text-emerald-400" 
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-accent font-mono text-accent" 
                                         placeholder="••••••••"
                                         value={formData.secret || ''}
                                         onChange={e => setFormData({...formData, secret: e.target.value})}
@@ -491,7 +492,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
                             <div className="space-y-1">
                                 <label className="text-sm text-zinc-500">Target URL (Optional)</label>
                                 <input 
-                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-emerald-500" 
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-accent" 
                                     placeholder="https://..."
                                     value={formData.url || ''}
                                     onChange={e => setFormData({...formData, url: e.target.value})}
@@ -500,7 +501,7 @@ export default function CipherVaultApp({ windowId }: { windowId: string }) {
 
                             <div className="pt-4 flex gap-3">
                                 <button onClick={() => setView('list')} className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-base font-medium">Cancel</button>
-                                <button onClick={handleCreate} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-base font-bold shadow-lg shadow-emerald-900/20">Save Entry</button>
+                                <button onClick={handleCreate} className="flex-1 py-2.5 bg-accent hover:bg-accent text-white rounded-lg text-base font-bold shadow-lg shadow-emerald-900/20">Save Entry</button>
                             </div>
                         </div>
                      </div>

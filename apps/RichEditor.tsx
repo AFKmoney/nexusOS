@@ -40,7 +40,7 @@ export default function RichEditorApp() {
           <FileText size={16} className="text-amber-400" />
           <input value={fileName} onChange={e => setFileName(e.target.value)} className="font-bold text-sm bg-transparent border-none outline-none text-white tracking-widest uppercase w-40" />
         </div>
-        <button onClick={exportHTML} className="flex items-center gap-1 text-xs px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition">
+        <button onClick={exportHTML} className="flex items-center gap-1 text-xs px-3 py-1 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition">
           <Download size={13} /> Export HTML
         </button>
       </div>

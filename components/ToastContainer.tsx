@@ -39,8 +39,8 @@ export default function ToastContainer() {
   };
 
   const typeConfig = {
-    info: { icon: Info, color: 'border-cyan-500/50 bg-cyan-500/5', iconColor: 'text-cyan-400' },
-    success: { icon: CheckCircle, color: 'border-emerald-500/50 bg-emerald-500/5', iconColor: 'text-emerald-400' },
+    info: { icon: Info, color: 'border-accent/50 bg-accent/5', iconColor: 'text-accent' },
+    success: { icon: CheckCircle, color: 'border-accent/50 bg-accent/5', iconColor: 'text-accent' },
     warning: { icon: AlertTriangle, color: 'border-amber-500/50 bg-amber-500/5', iconColor: 'text-amber-400' },
     error: { icon: XCircle, color: 'border-red-500/50 bg-red-500/5', iconColor: 'text-red-400' },
   };

@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useOS } from '../../store/osStore';
 import { commander } from '../../kernel/commander';
-import { vfs } from '../../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../../kernel/fileSystem';
 import { memory } from '../../kernel/memory';
 import { Sparkles, ChevronRight } from 'lucide-react';
 
@@ -237,7 +238,7 @@ export default function TerminalCore({ windowId }: { windowId: string }) {
     if (base === 'cat') {
       const file = parts.slice(1).join(' ').replace(/^"|"$/g, '');
       const path = file.startsWith('/') ? file : `${currentDir}/${file}`;
-      const content = vfs.readFile(path);
+      const content = vfs.readFile(path, SYSTEM_VFS_APP_ID);
       if (content !== null) addLine(content);
       else addLine(`cat: ${path}: No such file`);
       return;
@@ -247,7 +248,7 @@ export default function TerminalCore({ windowId }: { windowId: string }) {
       const dir = parts[1];
       if (!dir) { addLine('Usage: mkdir <path>'); return; }
       const path = dir.startsWith('/') ? dir : `${currentDir}/${dir}`;
-      vfs.createDir(path);
+      vfs.createDir(path, SYSTEM_VFS_APP_ID);
       addLine(`Directory created: ${path}`);
       return;
     }
@@ -371,18 +372,18 @@ export default function TerminalCore({ windowId }: { windowId: string }) {
           </div>
         ))}
         {isProcessing && history[history.length - 1]?.type !== 'ai' && (
-          <div className="text-emerald-500 animate-pulse">▋</div>
+          <div className="text-accent animate-pulse">▋</div>
         )}
         <div ref={bottomRef} />
       </div>
 
       <div className="flex gap-2 items-center border-t border-green-900/30 pt-3 shrink-0">
         {realMode ? (
-          <span className="text-emerald-500 font-bold text-[10px] shrink-0 uppercase tracking-widest px-2 py-0.5 bg-emerald-500/10 rounded">
+          <span className="text-accent font-bold text-[10px] shrink-0 uppercase tracking-widest px-2 py-0.5 bg-accent/10 rounded">
             shell
           </span>
         ) : (
-          <span className="text-blue-400 font-bold text-xs shrink-0">
+          <span className="text-accent font-bold text-xs shrink-0">
             <ChevronRight size={16} className="inline" />
             {currentDir.replace('/home/user', '~')} $
           </span>

@@ -34,7 +34,7 @@ function NeuralThoughtStream() {
   return (
     <div className="fixed top-20 right-6 w-64 bg-black/50 backdrop-blur-xl border border-white/8 rounded-2xl p-3.5 z-0 pointer-events-none select-none">
       <div className="flex items-center gap-2.5 mb-3">
-        <div className={`p-1.5 rounded-lg ${autonomyState !== 'IDLE' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800/80 text-zinc-500'}`}>
+        <div className={`p-1.5 rounded-lg ${autonomyState !== 'IDLE' ? 'bg-accent/15 text-accent' : 'bg-zinc-800/80 text-zinc-500'}`}>
           <Cpu size={13} />
         </div>
         <div className="flex-1 min-w-0">
@@ -42,13 +42,13 @@ function NeuralThoughtStream() {
           <div className="text-[11px] text-white font-medium truncate">{currentObjective || 'Idle'}</div>
         </div>
         {autonomyState !== 'IDLE' && (
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0" />
         )}
       </div>
       <div className="space-y-1.5 h-32 overflow-hidden relative">
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/50 to-transparent z-10" />
         {autonomyLog.slice(-4).map((log, i) => (
-          <div key={i} className="text-[10px] font-mono text-zinc-400 border-l border-emerald-500/20 pl-2 leading-relaxed">
+          <div key={i} className="text-[10px] font-mono text-zinc-400 border-l border-accent/20 pl-2 leading-relaxed">
             {log}
           </div>
         ))}
@@ -75,6 +75,12 @@ function DesktopIconGrid({
   openWindow
 }: DesktopIconGridProps) {
   const desktopPath = getDesktopPath(currentUserId);
+  const accentColor = useOS((state) => state.accentColor);
+
+  useEffect(() => {
+    themeEngine.setCustomAccent(accentColor);
+    themeEngine.apply();
+  }, [accentColor]);
   const desktopRef = useRef<HTMLDivElement>(null);
 
   // Persisted icon positions — survive reboot. Keyed by filename.
@@ -87,6 +93,23 @@ function DesktopIconGrid({
   useEffect(() => {
     localStorage.setItem('nexusos_desktop_positions', JSON.stringify(iconPositions));
   }, [iconPositions]);
+
+  // Rescue out-of-bounds icons
+  useEffect(() => {
+    let changed = false;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const newPos = { ...iconPositions };
+    Object.entries(newPos).forEach(([name, pos]) => {
+      if (pos.x < 0 || pos.y < 0 || pos.x > w - 80 || pos.y > h - 120) {
+        delete newPos[name];
+        changed = true;
+      }
+    });
+    if (changed) {
+      setIconPositions(newPos);
+    }
+  }, []);
 
   const handleFileOpen = useCallback((path: string) => {
     const node = vfs.stat(path);
@@ -125,8 +148,14 @@ function DesktopIconGrid({
     const iconName = e.dataTransfer.getData('text/nexusos-desktop-icon');
     if (iconName) {
       // Snap to 10px grid
-      const x = Math.round((e.clientX - rect.left) / 10) * 10;
-      const y = Math.round((e.clientY - rect.top) / 10) * 10;
+      let x = Math.round((e.clientX - rect.left) / 10) * 10;
+      let y = Math.round((e.clientY - rect.top) / 10) * 10;
+      
+      const maxX = rect.width - 96;
+      const maxY = rect.height - 96;
+      
+      x = Math.max(0, Math.min(x, maxX));
+      y = Math.max(0, Math.min(y, maxY));
       setIconPositions(prev => ({ ...prev, [iconName]: { x, y } }));
       return; // Don't move the file — just reposition the icon
     }
@@ -138,7 +167,7 @@ function DesktopIconGrid({
         const file = fileLike as File;
         const reader = new FileReader();
         reader.onload = (ev) => {
-          vfs.writeFile(`${desktopPath}/${file.name}`, ev.target?.result as string);
+          vfs.writeFile(`${desktopPath}/${file.name}`, ev.target?.result as string, SYSTEM_VFS_APP_ID);
         };
         reader.readAsDataURL(file);
       });
@@ -182,7 +211,7 @@ function DesktopIconGrid({
                 openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
               }}
             >
-              <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+              <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-accent/30 transition-all shadow-md group-hover:shadow-accent">
                 {getSmartIcon(itemPath, 24)}
               </div>
               <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
@@ -212,7 +241,7 @@ function DesktopIconGrid({
               openContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, targetType: 'icon', filePath: itemPath });
             }}
           >
-            <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-emerald-500/30 transition-all shadow-md group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+            <div className="w-12 h-12 bg-zinc-900/50 rounded-xl flex items-center justify-center border border-white/5 group-hover:border-accent/30 transition-all shadow-md group-hover:shadow-accent">
               {getSmartIcon(itemPath, 24)}
             </div>
             <span className="text-[11px] text-zinc-300 mt-1.5 text-center truncate w-full drop-shadow-md group-hover:text-white transition-colors">{name}</span>
@@ -231,8 +260,8 @@ function DesktopWidgets() {
   }, []);
   return (
     <div className="absolute top-6 right-6 flex flex-col gap-0.5 pointer-events-none select-none z-0 text-white/80 items-end">
-      <div className="text-5xl font-light tracking-tight drop-shadow-lg tabular-nums">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-      <div className="text-sm font-medium drop-shadow-md text-emerald-400/80">{time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+      <div className="text-5xl font-light tracking-tight drop-shadow-lg tabular-nums">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+      <div className="text-sm font-medium drop-shadow-md text-accent/80">{time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
     </div>
   );
 }
@@ -306,10 +335,12 @@ export default function App() {
     const homeDir = getDesktopPath(currentUser?.id ?? null);
     if (!vfs.resolveNode(homeDir)) vfs.createDir(homeDir, '__system__');
     
+    if (!vfs.resolveNode(`${homeDir}/Trash.lnk`) && !vfs.resolveNode(`${homeDir}/Recycle Bin.lnk`)) {
+        vfs.writeFile(`${homeDir}/Trash.lnk`, 'NEXUSOS_APP_SHORTCUT:recyclebin', '__system__');
+    }
+    
     // Dynamically sync store accent to CSS engine
-    const currentAccent = useOS.getState().accentColor;
-    themeEngine.setCustomAccent(currentAccent);
-    themeEngine.apply();
+    
 
     bindOsStore(() => ({ ...useOS.getState(), windows: useOS.getState().windows }));
 
@@ -411,7 +442,6 @@ export default function App() {
       <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       <DesktopWidgets />
-      <NeuralThoughtStream />
 
       <div
         className="absolute inset-0 z-10 overflow-hidden"

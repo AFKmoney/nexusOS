@@ -6,7 +6,7 @@ interface Note { id: string; content: string; color: string; x: number; y: numbe
 const LS_KEY = 'nexus_notes_v2';
 
 const COLORS = [
-  'bg-yellow-400/90', 'bg-emerald-400/90', 'bg-blue-400/90',
+  'bg-yellow-400/90', 'bg-accent/90', 'bg-accent/90',
   'bg-rose-400/90', 'bg-purple-400/90', 'bg-zinc-100/90'
 ] as const;
 

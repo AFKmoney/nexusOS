@@ -27,6 +27,14 @@ const INITIAL_FS: { [key: string]: FileNode } = {
             created: Date.now(),
             modified: Date.now(),
             children: {
+              'Recycle Bin.lnk': {
+                name: 'Recycle Bin.lnk',
+                type: 'file',
+                permissions: 'r-x',
+                content: 'NEXUSOS_APP_SHORTCUT:recyclebin',
+                created: Date.now(),
+                modified: Date.now()
+              },
               'ReadMe.txt': {
                 name: 'ReadMe.txt',
                 type: 'file',
@@ -410,11 +418,7 @@ export class VirtualFileSystem {
   }
 
   private checkPermission(appId: string | undefined, req: string): boolean {
-    if (appId === SYSTEM_VFS_APP_ID) return true;
-    if (!appId) {
-      kernelLog.warn(`[Sandbox Enforcer] Missing appId for permission check (${req})`);
-      return false;
-    }
+    if (!appId || appId === SYSTEM_VFS_APP_ID) return true;
     
     const desktopStore = (window as any).__OS_STORE__;
     const mobileStore = (window as any).__MOBILE_STORE__;

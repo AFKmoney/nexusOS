@@ -12,8 +12,8 @@ export default function NotificationCenterApp() {
     switch (type) {
       case 'warning': return <AlertTriangle size={14} className="text-amber-400" />;
       case 'error': return <AlertTriangle size={14} className="text-rose-400" />;
-      case 'success': return <CheckCircle2 size={14} className="text-emerald-400" />;
-      default: return <Info size={14} className="text-cyan-400" />;
+      case 'success': return <CheckCircle2 size={14} className="text-accent" />;
+      default: return <Info size={14} className="text-accent" />;
     }
   };
 
@@ -21,7 +21,7 @@ export default function NotificationCenterApp() {
     <div className="h-full flex flex-col bg-[#050508] text-zinc-100">
       <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-black/30">
         <div className="flex items-center gap-2">
-          <Bell size={16} className="text-cyan-400" />
+          <Bell size={16} className="text-accent" />
           <span className="font-bold text-sm tracking-widest uppercase">Notifications</span>
           <span className="text-xs text-zinc-500 ml-2">({notifications.length})</span>
         </div>
@@ -34,7 +34,7 @@ export default function NotificationCenterApp() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1 text-xs rounded-full capitalize transition-all ${
-              filter === f ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-zinc-500 hover:text-white'
+              filter === f ? 'bg-accent/20 text-accent border border-accent/30' : 'text-zinc-500 hover:text-white'
             }`}
           >{f}</button>
         ))}
@@ -54,7 +54,7 @@ export default function NotificationCenterApp() {
                 <div className="text-sm font-semibold text-white truncate">{n.title || 'DAEMON'}</div>
                 <div className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{n.message}</div>
                 {n.timestamp && (
-                  <div className="text-[10px] text-zinc-600 mt-1">{new Date(n.timestamp).toLocaleTimeString()}</div>
+                  <div className="text-[10px] text-zinc-600 mt-1">{new Date(n.timestamp).toLocaleTimeString('en-US')}</div>
                 )}
               </div>
             </div>

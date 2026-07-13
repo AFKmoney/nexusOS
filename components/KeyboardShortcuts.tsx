@@ -36,7 +36,7 @@ export default function KeyboardShortcuts({ onClose }: { onClose: () => void }) 
       <div className="relative bg-zinc-900/95 border border-white/10 rounded-2xl shadow-2xl w-[520px] max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between sticky top-0 bg-zinc-900/95 backdrop-blur-xl">
           <div className="flex items-center gap-2">
-            <Keyboard size={16} className="text-emerald-400" />
+            <Keyboard size={16} className="text-accent" />
             <span className="font-bold text-sm text-white tracking-widest uppercase">Keyboard Shortcuts</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition"><X size={14} className="text-zinc-400" /></button>

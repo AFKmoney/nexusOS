@@ -30,7 +30,7 @@ export function highlight(code: string, ext: string): string {
   if (ext === 'md') {
     h = h.replace(/^(#{1,6}\s.+)$/gm, '<span class="text-yellow-400 font-black tracking-wide">$1</span>');
     h = h.replace(/\*\*(.+?)\*\*/g, '<span class="text-white font-bold">$1</span>');
-    h = h.replace(/`([^`]+)`/g, '<span class="text-emerald-300 bg-emerald-500/10 px-1 rounded-md border border-emerald-500/20">$1</span>');
+    h = h.replace(/`([^`]+)`/g, '<span class="text-emerald-300 bg-accent/10 px-1 rounded-md border border-accent/20">$1</span>');
     return h;
   }
 
@@ -65,12 +65,12 @@ export function highlight(code: string, ext: string): string {
 // ─── Dynamic File Icons ─────────────────────────────────────────
 export function fileIcon(name: string, size = 14): React.ReactNode {
   const ext = name.split('.').pop()?.toLowerCase() || '';
-  if (ext === 'tsx' || ext === 'jsx') return <FileCode2 size={size} className="text-cyan-400" />;
-  if (ext === 'ts') return <FileType2 size={size} className="text-blue-400" />;
+  if (ext === 'tsx' || ext === 'jsx') return <FileCode2 size={size} className="text-accent" />;
+  if (ext === 'ts') return <FileType2 size={size} className="text-accent" />;
   if (ext === 'js') return <FileCode2 size={size} className="text-yellow-400" />;
   if (ext === 'json') return <FileJson size={size} className="text-yellow-200" />;
   if (ext === 'md') return <FileText size={size} className="text-zinc-300" />;
-  if (ext === 'sh' || ext === 'bat') return <TerminalSquare size={size} className="text-emerald-400" />;
+  if (ext === 'sh' || ext === 'bat') return <TerminalSquare size={size} className="text-accent" />;
   if (ext === 'css') return <FileCode2 size={size} className="text-sky-400" />;
   if (ext === 'py') return <FileCode2 size={size} className="text-green-500" />;
   if (ext === 'html') return <FileCode2 size={size} className="text-orange-500" />;

@@ -22,8 +22,12 @@ export default function FractalVisualizer() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        let width = canvas.width = canvas.clientWidth;
-        let height = canvas.height = canvas.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        let width = canvas.width = canvas.clientWidth * dpr;
+        let height = canvas.height = canvas.clientHeight * dpr;
+        ctx.scale(dpr, dpr);
+        width = canvas.clientWidth;
+        height = canvas.clientHeight;
         let t = 0;
         let animationFrameId: number;
 
@@ -153,8 +157,12 @@ export default function FractalVisualizer() {
         draw();
 
         const resize = () => {
-            width = canvas.width = canvas.clientWidth;
-            height = canvas.height = canvas.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvas.clientWidth * dpr;
+            canvas.height = canvas.clientHeight * dpr;
+            ctx.scale(dpr, dpr);
+            width = canvas.clientWidth;
+            height = canvas.clientHeight;
             coreNode.x = width / 2;
             coreNode.y = height / 2;
         };
@@ -169,8 +177,8 @@ export default function FractalVisualizer() {
     return (
         <div className="h-full w-full bg-[#050508] text-white flex flex-col font-mono relative">
             <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-black/50 backdrop-blur-md z-10 shrink-0">
-                <Network className="text-emerald-500" size={20} />
-                <h1 className="text-sm font-bold tracking-widest text-emerald-400">DAEMON FRACTAL CORTEX</h1>
+                <Network className="text-accent" size={20} />
+                <h1 className="text-sm font-bold tracking-widest text-accent">DAEMON FRACTAL CORTEX</h1>
                 <div className="flex gap-4 ml-auto text-xs text-zinc-500">
                     <div className="flex items-center gap-1"><Database size={12} /> {memories.length} Nodes</div>
                     <div className="flex items-center gap-1"><Activity size={12} /> Live Sync</div>
@@ -184,20 +192,20 @@ export default function FractalVisualizer() {
                 />
                 
                 {/* Overlay Panel */}
-                <div className="absolute top-4 left-4 w-64 bg-black/60 backdrop-blur-xl border border-emerald-500/20 rounded-xl p-4 flex flex-col gap-4 pointer-events-none">
+                <div className="absolute top-4 left-4 w-64 bg-black/60 backdrop-blur-xl border border-accent/20 rounded-xl p-4 flex flex-col gap-4 pointer-events-none">
                     <div>
                         <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">State Analysis</div>
-                        <div className="text-xs text-emerald-400">Stable Fractal Resonance</div>
+                        <div className="text-xs text-accent">Stable Fractal Resonance</div>
                     </div>
                     <div>
                         <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Active Model</div>
-                        <div className="text-xs text-emerald-400">{kernelRules.modelId}</div>
+                        <div className="text-xs text-accent">{kernelRules.modelId}</div>
                     </div>
                     <div>
                         <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Autonomy Core</div>
                         <div className="text-xs flex items-center gap-2">
                             {kernelRules.autonomyEnabled ? (
-                                <><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active</>
+                                <><span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> Active</>
                             ) : (
                                 <><span className="w-2 h-2 rounded-full bg-red-500" /> Standby</>
                             )}

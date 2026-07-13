@@ -66,7 +66,7 @@ export default function GovernanceDashboard() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-3 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3 mb-1">
-          <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+          <ShieldCheck size={16} className="text-accent shrink-0" />
           <h1 className="text-sm font-bold tracking-widest uppercase text-white">Governance Dashboard</h1>
           <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${OVERRIDE_META[mode]?.cls ?? ''}`}>
             {OVERRIDE_META[mode]?.label ?? mode.toUpperCase()}
@@ -88,7 +88,7 @@ export default function GovernanceDashboard() {
             onClick={() => setTab(id)}
             className={`px-3 py-2 text-[11px] font-mono relative border-b-2 transition-colors ${
               tab === id
-                ? 'border-cyan-500 text-cyan-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-zinc-500 hover:text-zinc-300'
             }`}
           >

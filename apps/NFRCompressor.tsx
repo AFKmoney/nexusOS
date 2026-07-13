@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { nfrEngine, TrainingMetrics } from '../utils/nfrEngine';
 import { Archive, ArrowRight, FileText, CheckCircle2, RefreshCw, Cpu, HardDrive, FileArchive, Activity, Terminal, Sliders, Play, Brain, MessageSquare } from 'lucide-react';
 import { aiService } from '../services/puterService';
@@ -60,7 +61,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
     addLog(`[NFR] Loading Context Model (Order-1 Markov)`);
 
     const fullPath = `${currentPath}/${selectedFile}`;
-    const content = vfs.readFile(fullPath);
+    const content = vfs.readFile(fullPath, SYSTEM_VFS_APP_ID);
 
     if (content === null) {
         addLog(`[ERR] File Read Error.`);
@@ -93,11 +94,11 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
 
         // Save Archive
         const archiveName = `${selectedFile}.dmn`;
-        vfs.writeFile(`${currentPath}/${archiveName}`, archive);
+        vfs.writeFile(`${currentPath}/${archiveName}`, archive, SYSTEM_VFS_APP_ID);
         
         // Save Model Meta
         const modelName = `${selectedFile}.model`;
-        vfs.writeFile(`${currentPath}/${modelName}`, model);
+        vfs.writeFile(`${currentPath}/${modelName}`, model, SYSTEM_VFS_APP_ID);
 
         addLog(`[WRITE] Daemon Container: ${archiveName}`);
         addLog(`[DONE] Compression Complete.`);
@@ -128,7 +129,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
       addLog(`[INIT] Reading Archive ${selectedFile}...`);
 
       const fullPath = `${currentPath}/${selectedFile}`;
-      const content = vfs.readFile(fullPath);
+      const content = vfs.readFile(fullPath, SYSTEM_VFS_APP_ID);
 
       if (!content) {
           addLog(`[ERR] File not found.`);
@@ -146,7 +147,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
           const newFilename = selectedFile.replace('.dmn', '');
           const finalFilename = `${newFilename.startsWith('restored_') ? '' : 'restored_'}${newFilename}`;
           
-          vfs.writeFile(`${currentPath}/${finalFilename}`, restored);
+          vfs.writeFile(`${currentPath}/${finalFilename}`, restored, SYSTEM_VFS_APP_ID);
           addLog(`[WRITE] Restored to ${finalFilename}`);
           addLog(`[VERIFY] Bit-Perfect Reconstruction: TRUE`);
           
@@ -168,7 +169,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
       setChatInput('');
       
       const fullPath = `${currentPath}/${selectedFile}`;
-      let context = vfs.readFile(fullPath);
+      let context = vfs.readFile(fullPath, SYSTEM_VFS_APP_ID);
       
       if (selectedFile.endsWith('.dmn')) {
           const { content } = await nfrEngine.decompress(context || "");
@@ -203,16 +204,16 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-zinc-950 text-emerald-500 font-mono select-none">
+    <div className="h-full flex flex-col bg-zinc-950 text-accent font-mono select-none">
       {/* Header */}
       <div className="p-4 bg-zinc-900 border-b border-emerald-900/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-900/20 rounded-lg flex items-center justify-center border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+            <div className="w-10 h-10 bg-emerald-900/20 rounded-lg flex items-center justify-center border border-accent/20 shadow-accent">
                 <Cpu size={20} className={processing ? "animate-pulse" : ""} />
             </div>
             <div>
                 <h1 className="text-lg font-bold text-white tracking-widest flex items-center gap-2">
-                    NFR <span className="text-xs bg-emerald-900/40 px-1.5 rounded text-emerald-400 border border-emerald-500/30">v2.0 REAL</span>
+                    NFR <span className="text-xs bg-emerald-900/40 px-1.5 rounded text-accent border border-accent/30">v2.0 REAL</span>
                 </h1>
                 <p className="text-xs text-zinc-500">ADAPTIVE ARITHMETIC CODING</p>
             </div>
@@ -225,7 +226,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
             >
                 <MessageSquare size={18} />
             </button>
-            {processing && <Activity className="text-emerald-500 animate-pulse" />}
+            {processing && <Activity className="text-accent animate-pulse" />}
         </div>
       </div>
 
@@ -246,7 +247,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                             onClick={() => setSelectedFile(f)}
                             disabled={isModel}
                             className={`w-full text-left px-3 py-2 rounded text-sm truncate flex items-center gap-2 transition-all
-                                ${selectedFile === f ? 'bg-emerald-900/30 text-white border border-emerald-500/30' : 'text-zinc-500 hover:bg-zinc-900'}
+                                ${selectedFile === f ? 'bg-emerald-900/30 text-white border border-accent/30' : 'text-zinc-500 hover:bg-zinc-900'}
                                 ${isModel ? 'opacity-50 cursor-default' : ''}
                             `}
                         >
@@ -277,7 +278,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                             </div>
                             <div className="bg-black/40 border border-zinc-800 p-3 rounded-lg">
                                 <div className="text-xs text-zinc-500 uppercase tracking-widest">Confidence</div>
-                                <div className="text-xl font-mono text-emerald-400">{metrics?.accuracy.toFixed(1) || "-"}%</div>
+                                <div className="text-xl font-mono text-accent">{metrics?.accuracy.toFixed(1) || "-"}%</div>
                             </div>
                         </div>
                     </div>
@@ -293,7 +294,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                             <button 
                                 onClick={handleCompress}
                                 disabled={processing || !selectedFile || selectedFile.endsWith('.dmn')}
-                                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-20 disabled:hover:bg-emerald-600 shadow-lg shadow-emerald-900/20"
+                                className="flex-1 py-3 bg-accent hover:bg-accent text-white rounded font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-20 disabled:hover:bg-accent shadow-lg shadow-emerald-900/20"
                             >
                                 <Cpu size={18} /> COMPRESS
                             </button>
@@ -320,7 +321,7 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                             {chatHistory.length === 0 && <div className="text-center text-zinc-600 italic mt-10">Talk to the compressed data...</div>}
                             {chatHistory.map((msg, i) => (
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] p-3 rounded-xl text-base ${msg.role === 'user' ? 'bg-zinc-800 text-white' : 'bg-emerald-900/20 text-emerald-300 border border-emerald-500/20'}`}>
+                                    <div className={`max-w-[80%] p-3 rounded-xl text-base ${msg.role === 'user' ? 'bg-zinc-800 text-white' : 'bg-emerald-900/20 text-emerald-300 border border-accent/20'}`}>
                                         {msg.content}
                                     </div>
                                 </div>
@@ -329,13 +330,13 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                         </div>
                         <div className="p-3 border-t border-zinc-800 flex gap-2">
                             <input 
-                                className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-emerald-500"
+                                className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-base outline-none focus:border-accent"
                                 placeholder="Query archive contents..."
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleChat()}
                             />
-                            <button onClick={handleChat} className="p-2 bg-emerald-600 text-white rounded hover:bg-emerald-500"><ArrowRight size={16}/></button>
+                            <button onClick={handleChat} className="p-2 bg-accent text-white rounded hover:bg-accent"><ArrowRight size={16}/></button>
                         </div>
                     </div>
                 ) : (
@@ -359,11 +360,11 @@ export default function NFRCompressorApp({ windowId }: { windowId: string }) {
                         {/* Result Panel */}
                         <div className="w-1/3 flex flex-col gap-4">
                             {resultStats ? (
-                                <div className="bg-emerald-900/10 border border-emerald-500/30 p-6 rounded-lg animate-in zoom-in h-full flex flex-col justify-center items-center text-center">
-                                    <div className="p-4 bg-emerald-500/10 rounded-full mb-4">
-                                        <CheckCircle2 size={32} className="text-emerald-400" />
+                                <div className="bg-emerald-900/10 border border-accent/30 p-6 rounded-lg animate-in zoom-in h-full flex flex-col justify-center items-center text-center">
+                                    <div className="p-4 bg-accent/10 rounded-full mb-4">
+                                        <CheckCircle2 size={32} className="text-accent" />
                                     </div>
-                                    <div className="text-xs text-emerald-500 uppercase tracking-widest mb-1">Compression Ratio</div>
+                                    <div className="text-xs text-accent uppercase tracking-widest mb-1">Compression Ratio</div>
                                     <div className="text-4xl font-bold text-white mb-2">
                                         {resultStats.ratio}%
                                     </div>

@@ -271,7 +271,7 @@ export class AutonomyEngine {
   }
 
   private queueEvent(event: string) {
-    this.eventQueue.push(`[${new Date().toLocaleTimeString()}] ${event}`);
+    this.eventQueue.push(`[${new Date().toLocaleTimeString('en-US')}] ${event}`);
     if (this.eventQueue.length > this.MAX_EVENT_QUEUE) {
       this.eventQueue = this.eventQueue.slice(-this.MAX_EVENT_QUEUE);
     }

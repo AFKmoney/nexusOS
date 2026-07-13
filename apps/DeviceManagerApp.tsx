@@ -48,8 +48,8 @@ export default function DeviceManagerApp() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-zinc-900 border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-               <Server size={20} className="text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+               <Server size={20} className="text-accent" />
             </div>
             <div>
               <div className="text-white font-bold text-sm">Physical Device Manager</div>
@@ -63,7 +63,7 @@ export default function DeviceManagerApp() {
          {/* CPU INFO */}
          <div className="mb-6">
             <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-               <Cpu size={14} className="text-emerald-500" /> Core Processing
+               <Cpu size={14} className="text-accent" /> Core Processing
             </h3>
             <div className="grid grid-cols-2 gap-3">
                <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
@@ -77,8 +77,8 @@ export default function DeviceManagerApp() {
             </div>
             {hwInfo.cpus?.[0] && (
                 <div className="p-4 bg-black/40 border border-white/5 rounded-xl mt-3 flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                     <Cpu size={16} className="text-emerald-400" />
+                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                     <Cpu size={16} className="text-accent" />
                    </div>
                    <div>
                      <div className="text-sm font-bold text-white leading-tight">{hwInfo.cpus[0].model}</div>
@@ -91,7 +91,7 @@ export default function DeviceManagerApp() {
          {/* MEMORY INFO */}
          <div className="mb-6">
             <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-               <HardDrive size={14} className="text-blue-500" /> Physical Memory
+               <HardDrive size={14} className="text-accent" /> Physical Memory
             </h3>
             <div className="p-4 bg-black/40 border border-white/5 rounded-xl relative overflow-hidden">
                 <div className="flex justify-between items-end mb-2 relative z-10">
@@ -109,7 +109,7 @@ export default function DeviceManagerApp() {
                 {/* Visual Bar */}
                 <div className="w-full h-1.5 bg-zinc-900 rounded-full mt-3 overflow-hidden border border-white/5 relative z-10">
                    <div 
-                      className="h-full bg-blue-500 transition-all duration-1000"
+                      className="h-full bg-accent transition-all duration-1000"
                       style={{ width: `${100 - (hwInfo.freeMem / hwInfo.totalMem) * 100}%` }}
                    />
                 </div>

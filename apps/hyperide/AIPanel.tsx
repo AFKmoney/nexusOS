@@ -1,35 +1,30 @@
-import React, { RefObject } from 'react';
-import DOMPurify from 'dompurify';
+import React from 'react';
 import {
-  ChevronRight, Loader2, Zap, Sparkles, Copy, Save,
-  FileText, ShieldAlert,
+  FileText, Zap, ShieldAlert, ChevronRight, Copy, Save, Loader2, Sparkles
 } from 'lucide-react';
-import type { AiMsg, EditorTab } from './types';
+import DOMPurify from 'dompurify';
+import type { EditorTab, AiMsg } from './types';
 
 interface AIPanelProps {
   aiMessages: AiMsg[];
   aiInput: string;
   isAiThinking: boolean;
   activeTab: EditorTab | null;
-  aiScrollRef: RefObject<HTMLDivElement | null>;
-  onSetAiInput: (v: string) => void;
-  onAsk: (question?: string) => void;
+  aiScrollRef: React.RefObject<HTMLDivElement | null>;
+  onSetAiInput: (val: string) => void;
+  onAsk: () => void;
   onAiAction: (action: string) => void;
-  onCopyCode: (content: string) => void;
-  onApplyAICode: (content?: string) => void;
+  onCopyCode: (code: string) => void;
+  onApplyAICode: (code: string) => void;
   onClose: () => void;
 }
 
-// Lightweight markdown renderer for the AI chat surface. Only handles
-// bold, inline code, fenced code blocks, headings, and newlines — same
-// behavior as the original inline implementation, extracted here so the
-// orchestrator doesn't have to know about HTML.
 function renderMarkdown(text: string): string {
   return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-emerald-300">$1</strong>')
-    .replace(/`([^`]+)`/g, '<code class="bg-black/50 text-emerald-300 px-1.5 py-0.5 rounded-md text-xs font-mono border border-emerald-500/20">$1</code>')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-black/80 border border-white/10 rounded-xl p-3 my-2 overflow-x-auto max-w-full text-emerald-200 text-[11px] font-mono shadow-inner whitespace-pre-wrap break-words">$2</pre>')
-    .replace(/^#{1,3}\s(.+)$/gm, '<div class="text-white font-black text-sm mt-4 mb-2 tracking-wide uppercase">$1</div>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#007ACC]">$1</strong>')
+    .replace(/`([^`]+)`/g, '<code class="bg-[#1E1E1E] text-[#D4D4D4] px-1.5 py-0.5 rounded text-xs font-mono border border-[#3C3C3C]">$1</code>')
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-[#1E1E1E] border border-[#3C3C3C] rounded p-3 my-2 overflow-x-auto max-w-full text-[#D4D4D4] text-[11px] font-mono whitespace-pre-wrap break-words">$2</pre>')
+    .replace(/^#{1,3}\s(.+)$/gm, '<div class="text-white font-bold text-sm mt-4 mb-2">$1</div>')
     .replace(/\n/g, '<br/>');
 }
 
@@ -46,61 +41,53 @@ export const AIPanel: React.FC<AIPanelProps> = (props) => {
   ];
 
   return (
-    <div className="w-80 bg-[#050508]/95 backdrop-blur-2xl border-l border-white/10 flex flex-col shrink-0 shadow-[-15px_0_40px_rgba(0,0,0,0.8)] z-30 relative overflow-hidden">
-      {/* AI Background Glow */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[80px] pointer-events-none rounded-full" />
-
-      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between shrink-0 relative z-10 bg-gradient-to-b from-emerald-500/5 to-transparent">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Sparkles size={20} className="text-emerald-400 relative z-10 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-            {isAiThinking && <div className="absolute inset-0 bg-emerald-400 blur-md animate-pulse" />}
-          </div>
-          <div>
-            <span className="text-xs font-black text-white uppercase tracking-[0.25em] block leading-none mb-1.5">DAEMON</span>
-            <span className="text-[9px] font-mono text-emerald-500/80 tracking-widest uppercase">Neural Copilot</span>
-          </div>
+    <div className="w-full h-full bg-[#252526] border-l border-[#333333] flex flex-col shrink-0 z-30 relative overflow-hidden shadow-2xl">
+      <div className="px-4 py-3 border-b border-[#333333] flex items-center justify-between shrink-0 bg-[#2D2D2D]">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-[#007ACC]" />
+          <span className="text-xs font-medium text-white tracking-wide">COMPOSER</span>
         </div>
-        <button onClick={onClose} className="p-1.5 text-zinc-500 hover:text-white rounded-lg hover:bg-white/10 transition-all">
+        <button onClick={onClose} className="p-1 text-zinc-400 hover:text-white rounded hover:bg-white/10 transition-all">
           <ChevronRight size={16} />
         </button>
       </div>
 
-      <div className="p-3 border-b border-white/5 bg-black/40 shrink-0 relative z-10">
-        <div className="grid grid-cols-3 gap-2">
+      <div className="p-2 border-b border-[#333333] bg-[#252526] shrink-0">
+        <div className="flex gap-2">
           {actions.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => onAiAction(id)}
               disabled={!activeTab || isAiThinking}
-              className="flex flex-col items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-300 transition-all text-xs font-bold text-zinc-400 disabled:opacity-30 disabled:hover:border-white/5 shadow-sm"
+              className="flex items-center gap-1.5 px-2 py-1.5 flex-1 justify-center rounded bg-[#333333] hover:bg-[#3C3C3C] transition-all text-[11px] font-medium text-[#CCCCCC] disabled:opacity-50"
             >
-              <Icon size={16} className={!isAiThinking && activeTab ? 'text-emerald-500/70' : ''} />
-              <span className="text-[9px] uppercase tracking-wider">{label}</span>
+              <Icon size={12} className={!isAiThinking && activeTab ? 'text-[#007ACC]' : ''} />
+              <span>{label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar relative z-10">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar">
         {aiMessages.map((msg, i) => (
           <div key={i} className={`flex flex-col w-full ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            {msg.role === 'user' && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1.5 mr-1">You</span>
-            )}
-            {msg.role === 'ai' && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1.5 ml-1 flex items-center gap-1">
-                <Zap size={8} /> DAEMON
-              </span>
-            )}
-
             <div
-              className={`w-[92%] min-w-0 overflow-hidden p-3.5 rounded-2xl text-[12px] leading-relaxed font-sans shadow-xl ${
+              className={`w-full min-w-0 overflow-hidden py-2 text-[13px] leading-relaxed font-sans ${
                 msg.role === 'user'
-                  ? 'bg-zinc-800 text-white rounded-tr-sm border border-white/10 self-end'
-                  : 'bg-emerald-950/40 border border-emerald-500/20 text-zinc-200 rounded-tl-sm backdrop-blur-md'
+                  ? 'text-white'
+                  : 'text-[#CCCCCC]'
               }`}
             >
+              <div className="flex items-center gap-2 mb-1">
+                {msg.role === 'user' ? (
+                  <span className="text-[11px] font-bold text-white">You</span>
+                ) : (
+                  <span className="text-[11px] font-bold text-[#007ACC] flex items-center gap-1.5">
+                    <Sparkles size={12} /> COMPOSER
+                  </span>
+                )}
+              </div>
+              
               {msg.role === 'ai' ? (
                 msg.content ? (
                   <div
@@ -108,29 +95,29 @@ export const AIPanel: React.FC<AIPanelProps> = (props) => {
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(msg.content)) }}
                   />
                 ) : isAiThinking && i === aiMessages.length - 1 ? (
-                  <div className="flex items-center gap-2 text-emerald-500 font-mono text-xs uppercase tracking-widest">
-                    <Loader2 size={12} className="animate-spin" /> Synthesizing...
+                  <div className="flex items-center gap-2 text-[#007ACC] text-xs">
+                    <Loader2 size={12} className="animate-spin" /> Thinking...
                   </div>
                 ) : null
               ) : (
-                <span className="break-words">{msg.content}</span>
+                <span className="break-words bg-[#333333] px-3 py-2 rounded-xl inline-block">{msg.content}</span>
               )}
             </div>
-
+            
             {msg.role === 'ai' && msg.content && (
-              <div className="flex items-center gap-2 mt-2 ml-1 flex-wrap">
+              <div className="flex items-center gap-2 mt-1">
                 <button
                   onClick={() => onCopyCode(msg.content)}
-                  className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all border border-transparent hover:border-white/10"
+                  className="px-2 py-1 bg-[#333333] hover:bg-[#3C3C3C] rounded text-[#CCCCCC] hover:text-white flex items-center gap-1.5 text-[10px] transition-all"
                 >
-                  <Copy size={11} /> Copy
+                  <Copy size={12} /> Copy
                 </button>
                 {msg.content.includes('```') && activeTab && (
                   <button
                     onClick={() => onApplyAICode(msg.content)}
-                    className="px-2.5 py-1.5 bg-emerald-500/15 border border-emerald-500/40 hover:bg-emerald-500/25 rounded-lg text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(16,185,129,0.15)] hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    className="px-2 py-1 bg-[#007ACC]/10 hover:bg-[#007ACC]/20 text-[#007ACC] rounded flex items-center gap-1.5 text-[10px] transition-all border border-[#007ACC]/30"
                   >
-                    <Save size={11} /> Apply to Editor
+                    <Save size={12} /> Apply to {activeTab.name}
                   </button>
                 )}
               </div>
@@ -140,12 +127,12 @@ export const AIPanel: React.FC<AIPanelProps> = (props) => {
         <div ref={aiScrollRef} />
       </div>
 
-      <div className="p-4 border-t border-white/5 bg-[#010409] shrink-0 relative z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+      <div className="p-3 border-t border-[#333333] bg-[#252526] shrink-0">
         <div className="relative group">
           <textarea
-            className="w-full bg-[#0A0A0C] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-xs outline-none text-white placeholder:text-zinc-600 resize-none font-sans leading-relaxed focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner custom-scrollbar"
-            style={{ minHeight: '52px', maxHeight: '140px' }}
-            placeholder={activeTab ? `Ask DAEMON about ${activeTab.name}...` : 'Initialize neural prompt...'}
+            className="w-full bg-[#3C3C3C] border border-[#3C3C3C] rounded pl-3 pr-10 py-2.5 text-[13px] outline-none text-white placeholder:text-[#858585] resize-none font-sans leading-relaxed focus:border-[#007ACC] transition-all custom-scrollbar"
+            style={{ minHeight: '60px', maxHeight: '140px' }}
+            placeholder={activeTab ? `Ask Composer about ${activeTab.name}...` : 'Ask Composer...'}
             value={aiInput}
             onChange={(e) => onSetAiInput(e.target.value)}
             onKeyDown={(e) => {
@@ -160,13 +147,10 @@ export const AIPanel: React.FC<AIPanelProps> = (props) => {
           <button
             onClick={() => onAsk()}
             disabled={!aiInput.trim() || isAiThinking}
-            className="absolute right-2 top-2 p-2.5 bg-emerald-500 text-black rounded-lg hover:bg-emerald-400 disabled:opacity-30 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all shadow-lg hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] hover:scale-105 active:scale-95"
+            className="absolute right-2 bottom-2 p-1.5 bg-[#007ACC] text-white rounded hover:bg-[#005A9E] disabled:opacity-50 transition-all"
           >
-            {isAiThinking ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} className="fill-current" />}
+            {isAiThinking ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="fill-current" />}
           </button>
-        </div>
-        <div className="text-center mt-3 text-[9px] text-zinc-600 font-mono uppercase tracking-widest">
-          Shift+Enter for newline
         </div>
       </div>
     </div>

@@ -12,7 +12,11 @@ export default {
     "./ide/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        accent: 'rgb(var(--nx-accent-rgb) / <alpha-value>)',
+      }
+    },
   },
   plugins: [],
 }

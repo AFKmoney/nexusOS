@@ -138,7 +138,7 @@ export default function ContextMenu() {
     } 
     else if (clipboard && (contextMenu.targetType === 'desktop' || contextMenu.targetType === 'background')) {
         const sourceName = clipboard.path.split('/').pop() || 'file';
-        const content = vfs.readFile(clipboard.path);
+        const content = vfs.readFile(clipboard.path, SYSTEM_VFS_APP_ID);
         const destDir = contextMenu.filePath || `/home/${currentUser?.id || 'admin'}/Desktop`;
         
         if (content !== null) {
@@ -147,10 +147,10 @@ export default function ContextMenu() {
                 newPath = `${destDir}/${sourceName.startsWith('Copy_') ? '' : 'Copy_of_'}${sourceName}`;
             }
             
-            vfs.writeFile(newPath, content);
+            vfs.writeFile(newPath, content, SYSTEM_VFS_APP_ID);
             
             if (clipboard.operation === 'cut') {
-                vfs.delete(clipboard.path);
+                vfs.delete(clipboard.path, SYSTEM_VFS_APP_ID);
                 setClipboard(null);
             }
             
@@ -162,7 +162,7 @@ export default function ContextMenu() {
 
   const handleOpen = () => {
       if (filePath) {
-          const content = vfs.readFile(filePath);
+          const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID);
           // If content is null, it's likely a directory
           if (content === null) openWindow('explorer', { path: filePath });
           else if (filePath.endsWith('.html')) openWindow('netrunner', { path: filePath });
@@ -175,13 +175,22 @@ export default function ContextMenu() {
 
   const handleSetWallpaper = () => {
       if (filePath) {
-          const content = vfs.readFile(filePath);
+          const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID);
           if (content) {
               setWallpaper(content);
               addNotification({ title: 'Wallpaper', message: 'Background updated.', type: 'success' });
           }
       }
       closeContextMenu();
+  };
+
+  const handleEmptyTrash = () => {
+    const items = vfs.listTrash();
+    for (const item of items) {
+      vfs.delete(item.path, SYSTEM_VFS_APP_ID);
+    }
+    addNotification({ title: 'Recycle Bin Emptied', message: `${items.length} item(s) removed`, type: 'info' });
+    closeContextMenu();
   };
 
   const handleDelete = () => {
@@ -221,9 +230,9 @@ export default function ContextMenu() {
           closeContextMenu();
           return;
       }
-      const content = vfs.readFile(filePath);
+      const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID);
       if (content !== null) {
-          vfs.writeFile(destPath, content);
+          vfs.writeFile(destPath, content, SYSTEM_VFS_APP_ID);
           addNotification({ title: 'Added to Desktop', message: `${fileName} copied to desktop.`, type: 'success' });
       } else {
           // It's a directory — create a symlink instead
@@ -250,11 +259,11 @@ export default function ContextMenu() {
       const oldName = filePath.split('/').pop();
       const newName = prompt("Rename:", oldName);
       if (newName && newName !== oldName) {
-          const content = vfs.readFile(filePath);
+          const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID);
           if (content !== null) {
               const newPath = filePath.replace(oldName!, newName);
-              vfs.writeFile(newPath, content);
-              vfs.delete(filePath);
+              vfs.writeFile(newPath, content, SYSTEM_VFS_APP_ID);
+              vfs.delete(filePath, SYSTEM_VFS_APP_ID);
           }
       }
       closeContextMenu();
@@ -273,8 +282,18 @@ export default function ContextMenu() {
 
   const handleCreateFile = (type: 'folder' | 'txt') => {
       const dir = contextMenu.filePath || `/home/${currentUser?.id || 'admin'}/Desktop`;
-      if (type === 'folder') vfs.createDir(`${dir}/New Folder`);
-      else vfs.writeFile(`${dir}/New Text Document.txt`, '');
+      let name = type === 'folder' ? 'New Folder' : 'New File';
+      let ext = type === 'folder' ? '' : '.txt';
+      let counter = 1;
+      let finalPath = `${dir}/${name}${ext}`;
+      
+      while (vfs.stat(finalPath)) {
+          finalPath = `${dir}/${name} ${counter}${ext}`;
+          counter++;
+      }
+
+      if (type === 'folder') vfs.createDir(finalPath, SYSTEM_VFS_APP_ID);
+      else vfs.writeFile(finalPath, '', SYSTEM_VFS_APP_ID);
       closeContextMenu();
   };
 
@@ -410,7 +429,7 @@ export default function ContextMenu() {
           context = selection;
           if (!prompt) prompt = "Explain or analyze this text.";
       } else if (filePath) {
-          const content = vfs.readFile(filePath);
+          const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID);
           context = content ? content.substring(0, 3000) : "File is empty.";
           if (!prompt) prompt = `Analyze this file (${filePath.split('/').pop()}):`;
       } else if (targetWindow) {
@@ -470,7 +489,7 @@ export default function ContextMenu() {
           vfs.batch(() => {
               const moves: { oldPath: string, newPath: string }[] = [];
               Object.keys(plan).forEach(folder => {
-                  vfs.createDir(`${targetDir}/${folder}`);
+                  vfs.createDir(`${targetDir}/${folder}`, SYSTEM_VFS_APP_ID);
                   plan[folder].forEach((f: string) => {
                       moves.push({
                           oldPath: `${targetDir}/${f}`,
@@ -610,6 +629,10 @@ export default function ContextMenu() {
                      <MenuItem icon={Wallpaper} label="Set as Wallpaper" onClick={handleSetWallpaper} />
                 )}
                 
+                {(fileName === 'Recycle Bin.lnk' || fileName === 'Trash.lnk') && (
+                     <MenuItem icon={Trash2} label="Empty Trash" onClick={handleEmptyTrash} danger />
+                )}
+                
                 {/* Neural Actions */}
                 <SubHeader label="Neural Operations" />
                 {isCode ? (
@@ -684,6 +707,8 @@ export default function ContextMenu() {
                     disabled={!clipboard} 
                 />
                 
+                <Separator />
+                <MenuItem icon={Trash2} label="Empty Trash" onClick={handleEmptyTrash} danger />
                 <Separator />
                 <SubHeader label="Add App to Desktop" />
                 <div className="max-h-32 overflow-y-auto custom-scrollbar">

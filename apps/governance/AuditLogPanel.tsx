@@ -39,7 +39,7 @@ export const AuditLogPanel: React.FC<AuditLogPanelProps> = ({ events }) => {
               onClick={() => setSubsystemFilter(s)}
               className={`px-2 py-0.5 text-[9px] rounded-full border font-mono transition-colors ${
                 subsystemFilter === s
-                  ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-400'
+                  ? 'bg-cyan-950/60 border-accent/40 text-accent'
                   : 'bg-black/30 border-white/5 text-zinc-600 hover:text-zinc-300'
               }`}
             >

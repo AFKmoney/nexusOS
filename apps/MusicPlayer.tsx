@@ -97,8 +97,10 @@ export default function MusicPlayerApp() {
       if (!canvas || !analyser) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      const w = canvas.width = canvas.offsetWidth;
-      const h = canvas.height = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width = canvas.offsetWidth * dpr;
+      const h = canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
       const data = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(data);
       ctx.clearRect(0, 0, w, h);
@@ -120,11 +122,11 @@ export default function MusicPlayerApp() {
 
       <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-black/30 shrink-0">
         <div className="flex items-center gap-2">
-          <Music size={16} className="text-emerald-400" />
+          <Music size={16} className="text-accent" />
           <span className="font-bold text-sm tracking-widest uppercase">Music</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowPlaylist(!showPlaylist)} className="p-1.5 hover:bg-white/10 rounded-lg"><List size={14} className={showPlaylist ? 'text-emerald-400' : 'text-zinc-500'} /></button>
+          <button onClick={() => setShowPlaylist(!showPlaylist)} className="p-1.5 hover:bg-white/10 rounded-lg"><List size={14} className={showPlaylist ? 'text-accent' : 'text-zinc-500'} /></button>
           <button onClick={() => fileRef.current?.click()} className="p-1.5 hover:bg-white/10 rounded-lg"><Upload size={14} className="text-zinc-400" /></button>
         </div>
       </div>
@@ -155,7 +157,7 @@ export default function MusicPlayerApp() {
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] text-zinc-500 font-mono w-8 text-right">{fmt(progress)}</span>
               <div className="flex-1 h-1.5 bg-zinc-800 rounded-full cursor-pointer group" onClick={seek}>
-                <div className="h-full bg-emerald-500 rounded-full relative transition-all" style={{ width: duration ? `${(progress / duration) * 100}%` : '0%' }}>
+                <div className="h-full bg-accent rounded-full relative transition-all" style={{ width: duration ? `${(progress / duration) * 100}%` : '0%' }}>
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition" />
                 </div>
               </div>
@@ -164,13 +166,13 @@ export default function MusicPlayerApp() {
 
             {/* Controls */}
             <div className="flex items-center justify-center gap-4">
-              <button onClick={() => setShuffle(!shuffle)} className={`p-1.5 rounded-lg transition ${shuffle ? 'text-emerald-400' : 'text-zinc-500 hover:text-white'}`}><Shuffle size={14} /></button>
+              <button onClick={() => setShuffle(!shuffle)} className={`p-1.5 rounded-lg transition ${shuffle ? 'text-accent' : 'text-zinc-500 hover:text-white'}`}><Shuffle size={14} /></button>
               <button onClick={() => playTrack(Math.max(0, currentIdx - 1))} className="p-1.5 text-zinc-400 hover:text-white transition"><SkipBack size={18} /></button>
-              <button onClick={() => setPlaying(!playing)} className="p-3 bg-emerald-500 rounded-full hover:bg-emerald-400 transition text-white">
+              <button onClick={() => setPlaying(!playing)} className="p-3 bg-accent rounded-full hover:bg-accent transition text-white">
                 {playing ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
               </button>
               <button onClick={() => playTrack(Math.min(tracks.length - 1, currentIdx + 1))} className="p-1.5 text-zinc-400 hover:text-white transition"><SkipForward size={18} /></button>
-              <button onClick={() => setRepeat(!repeat)} className={`p-1.5 rounded-lg transition ${repeat ? 'text-emerald-400' : 'text-zinc-500 hover:text-white'}`}><Repeat size={14} /></button>
+              <button onClick={() => setRepeat(!repeat)} className={`p-1.5 rounded-lg transition ${repeat ? 'text-accent' : 'text-zinc-500 hover:text-white'}`}><Repeat size={14} /></button>
             </div>
 
             {/* Volume */}
@@ -190,7 +192,7 @@ export default function MusicPlayerApp() {
             <div className="p-3 text-xs text-zinc-500 uppercase tracking-wider border-b border-white/5">Playlist ({tracks.length})</div>
             {tracks.map((t, i) => (
               <button key={t.id} onClick={() => playTrack(i)}
-                className={`w-full text-left px-3 py-2 text-xs truncate border-b border-white/5 transition ${i === currentIdx ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400 hover:bg-white/5'}`}>
+                className={`w-full text-left px-3 py-2 text-xs truncate border-b border-white/5 transition ${i === currentIdx ? 'bg-accent/10 text-accent' : 'text-zinc-400 hover:bg-white/5'}`}>
                 {t.name}
               </button>
             ))}

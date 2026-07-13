@@ -92,11 +92,11 @@ export default function BiosScreen({ onExit }: { onExit: () => void }) {
                         <>
                             <div className="flex justify-between">
                                 <span>System Time</span>
-                                <span className="text-white">[{new Date().toLocaleTimeString()}]</span>
+                                <span className="text-white">[{new Date().toLocaleTimeString('en-US')}]</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>System Date</span>
-                                <span className="text-white">[{new Date().toLocaleDateString()}]</span>
+                                <span className="text-white">[{new Date().toLocaleDateString('en-US')}]</span>
                             </div>
                             <div className="flex justify-between mt-8">
                                 <span>System Memory</span>

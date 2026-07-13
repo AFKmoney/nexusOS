@@ -144,13 +144,13 @@ export default function AppStore() {
 
   return (
     <div className="h-full flex flex-col bg-[#050508] text-white font-sans overflow-hidden relative">
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="h-20 px-8 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-3xl shrink-0 z-10">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
-            <Package size={24} className="text-blue-400" />
+          <div className="p-3 bg-accent/20 rounded-2xl border border-accent/30 shadow-accent">
+            <Package size={24} className="text-accent" />
           </div>
           <div>
             <h1 className="text-xl font-black uppercase tracking-[0.25em]">
@@ -167,7 +167,7 @@ export default function AppStore() {
             onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
             className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
               aiManagedStoreEnabled
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                ? 'bg-accent/10 border-accent/30 text-emerald-300'
                 : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10'
             }`}
           >
@@ -178,11 +178,11 @@ export default function AppStore() {
           <div className="relative group w-80">
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-emerald-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
             <Search
-              className="absolute left-4 top-2.5 text-zinc-500 group-focus-within:text-blue-400 transition-colors"
+              className="absolute left-4 top-2.5 text-zinc-500 group-focus-within:text-accent transition-colors"
               size={18}
             />
             <input
-              className="w-full relative bg-black/60 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-zinc-400"
+              className="w-full relative bg-black/60 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:border-accent/50 transition-all placeholder:text-zinc-400"
               placeholder="Query package index..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -211,7 +211,7 @@ export default function AppStore() {
               onClick={() => setActiveCategory(cat)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
                 category === cat
-                  ? 'bg-blue-500/15 border border-blue-500/30 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.1)]'
+                  ? 'bg-accent/15 border border-accent/30 text-accent shadow-accent'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
               }`}
             >
@@ -224,7 +224,7 @@ export default function AppStore() {
 
           <div className="mt-4 p-5 bg-gradient-to-br from-blue-500/10 to-emerald-500/10 rounded-[32px] border border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-full h-full bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-            <ShieldCheck size={24} className="text-blue-400 mb-3" />
+            <ShieldCheck size={24} className="text-accent mb-3" />
             <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300 mb-1">
               Security Audit
             </div>
@@ -246,7 +246,7 @@ export default function AppStore() {
             <button
               onClick={handleAIInstall}
               disabled={!featuredApps[0] || isInstalling === featuredApps[0]?.id}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-emerald-500/20 transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-accent/15 border border-accent/20 text-emerald-300 text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/20 transition-all"
             >
               <Sparkles size={14} />
               Suggest & Install
@@ -277,15 +277,15 @@ export default function AppStore() {
                     key={app.id}
                     className="group bg-[#0a0a0c]/80 backdrop-blur-2xl border border-white/10 rounded-[36px] p-6 flex flex-col transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.6)] hover:-translate-y-1 relative overflow-hidden"
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full pointer-events-none" />
 
                     <div className="flex items-start justify-between mb-6">
-                      <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center shadow-xl group-hover:border-blue-500/40 transition-colors duration-500 relative overflow-hidden">
+                      <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center shadow-xl group-hover:border-accent/40 transition-colors duration-500 relative overflow-hidden">
                         <Icon
                           size={32}
-                          className="text-zinc-200 group-hover:text-blue-400 transition-all duration-500 z-10"
+                          className="text-zinc-200 group-hover:text-accent transition-all duration-500 z-10"
                         />
-                        <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       </div>
 
                       <div className="flex gap-1.5">
@@ -293,14 +293,14 @@ export default function AppStore() {
                           v1.0
                         </div>
                         {app.isCustom && (
-                          <div className="px-2 py-1 bg-emerald-500/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-500/20">
+                          <div className="px-2 py-1 bg-accent/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-accent border border-accent/20">
                             FORGED
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <h3 className="text-base font-black uppercase tracking-wider text-white mb-2 group-hover:text-blue-400 transition-colors">
+                    <h3 className="text-base font-black uppercase tracking-wider text-white mb-2 group-hover:text-accent transition-colors">
                       {app.name}
                     </h3>
 
@@ -310,7 +310,7 @@ export default function AppStore() {
 
                     <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
                       <div className="flex items-center gap-2">
-                        <Star size={12} className="text-blue-500 fill-current" />
+                        <Star size={12} className="text-accent fill-current" />
                         <span className="text-[10px] font-black font-mono text-zinc-400">
                           4.9
                         </span>
@@ -321,10 +321,10 @@ export default function AppStore() {
                         disabled={isInstalled || isInstalling === app.id}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 active:scale-95 ${
                           isInstalled
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            ? 'bg-accent/10 text-accent border border-accent/20'
                             : isInstalling === app.id
                               ? 'bg-zinc-800 text-zinc-500'
-                              : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_5px_20px_rgba(59,130,246,0.3)] hover:shadow-[0_8px_30px_rgba(59,130,246,0.5)]'
+                              : 'bg-accent hover:bg-accent text-white shadow-accent hover:shadow-accent'
                         }`}
                       >
                         {isInstalling === app.id ? (
@@ -366,7 +366,7 @@ export default function AppStore() {
           </div>
         </div>
 
-        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-500/50">
+        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-accent/50">
           NEXUS REGISTRY // BROADCAST_STATION_01
         </div>
       </div>

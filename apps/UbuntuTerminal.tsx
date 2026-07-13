@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { useOS } from '../store/osStore';
 import { Info, Terminal as TerminalIcon } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -122,7 +123,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
             children.forEach(c => {
               const cstat = vfs.stat(`${targetDir === '/' ? '' : targetDir}/${c}`);
               const perms = cstat?.type === 'directory' ? 'drwxr-xr-x' : '-rw-r--r--';
-              const size = cstat?.type === 'directory' ? 4096 : (vfs.readFile(`${targetDir === '/' ? '' : targetDir}/${c}`)?.length || 0);
+              const size = cstat?.type === 'directory' ? 4096 : (vfs.readFile(`${targetDir === '/' ? '' : targetDir}/${c}`, SYSTEM_VFS_APP_ID)?.length || 0);
               const date = new Date(cstat?.modified || Date.now()).toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
               const escapedName = escapeHtml(c);
               const nameHtml = cstat?.type === 'directory' ? `<span class="text-[#729fcf] font-bold">${escapedName}</span>` : escapedName;
@@ -156,22 +157,22 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
 
       case 'mkdir':
         if (!args[1]) { print('mkdir: missing operand'); break; }
-        vfs.createDir(resolvePath(args[1]));
+        vfs.createDir(resolvePath(args[1], SYSTEM_VFS_APP_ID));
         break;
 
       case 'touch':
         if (!args[1]) { print('touch: missing file operand'); break; }
-        vfs.writeFile(resolvePath(args[1]), '');
+        vfs.writeFile(resolvePath(args[1]), '', SYSTEM_VFS_APP_ID);
         break;
 
       case 'rm':
         if (!args[1]) { print('rm: missing operand'); break; }
-        vfs.delete(resolvePath(args[1]));
+        vfs.delete(resolvePath(args[1], SYSTEM_VFS_APP_ID));
         break;
 
       case 'cat':
         if (!args[1]) { print('cat: missing operand'); break; }
-        const content = vfs.readFile(resolvePath(args[1]));
+        const content = vfs.readFile(resolvePath(args[1], SYSTEM_VFS_APP_ID));
         if (content === null) print(`cat: ${args[1]}: No such file or directory`);
         else content.split('\n').forEach(l => print(l));
         break;
@@ -183,7 +184,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
            const val = parts[0]?.trim() ?? '';
            const file = parts[parts.length - 1]?.trim() ?? '';
            if (file) {
-             vfs.writeFile(resolvePath(file), val);
+             vfs.writeFile(resolvePath(file), val, SYSTEM_VFS_APP_ID);
            }
         } else {
            print(text);
@@ -196,7 +197,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         const term = args[1] ?? '';
         const grepTarget = args[2];
         if (!grepTarget) { print('grep: missing operand'); break; }
-        const gcontent = vfs.readFile(resolvePath(grepTarget));
+        const gcontent = vfs.readFile(resolvePath(grepTarget, SYSTEM_VFS_APP_ID));
         if (gcontent === null) {
             print(`grep: ${grepTarget}: No such file or directory`);
         } else {

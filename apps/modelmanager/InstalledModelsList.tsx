@@ -35,14 +35,14 @@ export const InstalledModelsList: React.FC<InstalledModelsListProps> = ({
             key={model.id}
             className={`p-4 rounded-xl border transition-all ${
               isActive
-                ? 'bg-emerald-500/5 border-emerald-500/30'
+                ? 'bg-accent/5 border-accent/30'
                 : 'bg-white/[0.02] border-white/5 hover:border-white/10'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
                 {isActive ? (
-                  <CheckCircle size={16} className="text-emerald-400 mt-1 shrink-0" />
+                  <CheckCircle size={16} className="text-accent mt-1 shrink-0" />
                 ) : (
                   <div className="w-4 h-4 rounded-full border border-zinc-700 mt-1 shrink-0" />
                 )}
@@ -55,7 +55,7 @@ export const InstalledModelsList: React.FC<InstalledModelsListProps> = ({
                     <span className="px-2 py-1 rounded-full bg-white/5 border border-white/5 flex items-center gap-1">
                       <Layers3 size={12} /> Installed
                     </span>
-                    <span className={`px-2 py-1 rounded-full border flex items-center gap-1 ${isLoaded ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/5 text-zinc-500'}`}>
+                    <span className={`px-2 py-1 rounded-full border flex items-center gap-1 ${isLoaded ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-white/5 border-white/5 text-zinc-500'}`}>
                       <HardDrive size={12} /> {isLoaded ? 'Loaded' : 'Not loaded'}
                     </span>
                   </div>
@@ -66,13 +66,13 @@ export const InstalledModelsList: React.FC<InstalledModelsListProps> = ({
                   <button
                     onClick={() => onSwitch(model.id)}
                     disabled={isSwitching}
-                    className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition-all disabled:opacity-40"
+                    className="px-3 py-1.5 bg-accent/80 hover:bg-accent text-white rounded-lg text-sm font-bold transition-all disabled:opacity-40"
                   >
                     Activate
                   </button>
                 )}
                 {isActive && (
-                  <div className="px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase flex items-center gap-1">
+                  <div className="px-2 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold uppercase flex items-center gap-1">
                     <Play size={12} /> Active
                   </div>
                 )}

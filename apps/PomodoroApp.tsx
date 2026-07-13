@@ -58,7 +58,7 @@ export default function PomodoroApp() {
   return (
     <div className="h-full bg-[#050508] text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
       {/* Background Pulse */}
-      <div className={`absolute inset-0 opacity-10 transition-colors duration-1000 ${isActive ? (mode === 'work' ? 'bg-red-500' : 'bg-emerald-500') : 'bg-transparent'}`} />
+      <div className={`absolute inset-0 opacity-10 transition-colors duration-1000 ${isActive ? (mode === 'work' ? 'bg-red-500' : 'bg-accent') : 'bg-transparent'}`} />
       
       <div className="z-10 flex flex-col items-center gap-8 w-full max-w-sm">
         
@@ -71,7 +71,7 @@ export default function PomodoroApp() {
               strokeDasharray={2 * Math.PI * 120}
               strokeDashoffset={2 * Math.PI * 120 * (1 - progress / 100)}
               strokeLinecap="round"
-              className={`transition-all duration-1000 ${mode === 'work' ? 'text-emerald-500' : 'text-blue-400'}`} 
+              className={`transition-all duration-1000 ${mode === 'work' ? 'text-accent' : 'text-accent'}`} 
             />
           </svg>
           <div className="absolute flex flex-col items-center">
@@ -94,7 +94,7 @@ export default function PomodoroApp() {
             </button>
             <button 
               onClick={toggleTimer}
-              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-95 ${isActive ? 'bg-zinc-800 text-white border border-white/10' : 'bg-emerald-500 text-black shadow-[0_0_30px_rgba(16,185,129,0.4)]'}`}
+              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-95 ${isActive ? 'bg-zinc-800 text-white border border-white/10' : 'bg-accent text-black shadow-accent'}`}
             >
               {isActive ? <Pause size={32} fill="currentColor" /> : <Play size={32} className="ml-1" fill="currentColor" />}
             </button>
@@ -110,7 +110,7 @@ export default function PomodoroApp() {
             {Array.from({length: 4}).map((_, i) => (
               <div 
                 key={i} 
-                className={`w-3 h-3 rounded-full transition-all duration-500 ${i < sessionCount % 4 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-zinc-800'}`} 
+                className={`w-3 h-3 rounded-full transition-all duration-500 ${i < sessionCount % 4 ? 'bg-accent shadow-accent' : 'bg-zinc-800'}`} 
               />
             ))}
           </div>

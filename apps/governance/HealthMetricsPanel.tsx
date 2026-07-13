@@ -21,8 +21,8 @@ export const HealthMetricsPanel: React.FC<HealthMetricsPanelProps> = ({ metrics 
         {bars.map(({ label, value, goodIsHigh }) => {
           const good = goodIsHigh ? value >= 0.8 : value <= 0.2;
           const warn = goodIsHigh ? value >= 0.5 : value <= 0.5;
-          const barCls = good ? 'bg-emerald-500' : warn ? 'bg-amber-500' : 'bg-rose-500';
-          const valCls = good ? 'text-emerald-400' : warn ? 'text-amber-400' : 'text-rose-400';
+          const barCls = good ? 'bg-accent' : warn ? 'bg-amber-500' : 'bg-rose-500';
+          const valCls = good ? 'text-accent' : warn ? 'text-amber-400' : 'text-rose-400';
           return (
             <div key={label}>
               <div className="flex items-center justify-between text-xs font-mono mb-1">
@@ -38,7 +38,7 @@ export const HealthMetricsPanel: React.FC<HealthMetricsPanelProps> = ({ metrics 
 
         <div className="grid grid-cols-2 gap-2 pt-1 text-xs font-mono">
           {[
-            ['Succeeded',  metrics.proposalsSucceeded,  'text-emerald-400'],
+            ['Succeeded',  metrics.proposalsSucceeded,  'text-accent'],
             ['Failed',     metrics.proposalsFailed,     'text-rose-400'],
             ['Denied',     metrics.proposalsDenied,     'text-zinc-400'],
             ['Overrides',  metrics.overrideActivations, 'text-amber-400'],

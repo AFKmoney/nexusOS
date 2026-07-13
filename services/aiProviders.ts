@@ -48,6 +48,7 @@ export interface AIToolCallResult {
 
 // Default provider presets (user provides their own API keys)
 export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
+  
   {
     id: 'openai',
     name: 'OpenAI',
@@ -282,6 +283,28 @@ export const PROVIDER_PRESETS: Omit<AIProvider, 'apiKey' | 'enabled'>[] = [
     maxTokens: 32768,
   },
   {
+    id: 'z-ai',
+    name: 'Z.AI Coding Plan',
+    type: 'openai-compatible',
+    baseUrl: 'https://api.z-ai.org/v1',
+    defaultModel: 'zai-org/GLM-5.1',
+    models: [
+      'zai-org/GLM-5',
+      'zai-org/GLM-5-Coding',
+      'zai-org/GLM-5-Turbo',
+      'zai-org/GLM-5-Turbo-Coding',
+      'zai-org/GLM-5.1',
+      'zai-org/GLM-5.1-Coding',
+      'zai-org/GLM-5.1-Turbo',
+      'zai-org/GLM-5.1-Turbo-Coding',
+      'zai-org/GLM-5.2',
+      'zai-org/GLM-5.2-Coding',
+      'zai-org/GLM-5.2-Turbo',
+      'zai-org/GLM-5.2-Turbo-Coding',
+    ],
+    maxTokens: 32768,
+  },
+  {
     id: 'custom',
     name: 'Custom Endpoint',
     type: 'openai-compatible',
@@ -350,6 +373,15 @@ export class AIProviderGateway {
       const raw = localStorage.getItem(PROVIDERS_STORAGE_KEY);
       if (raw) {
         this.providers = JSON.parse(raw);
+        // Ensure google provider is always present
+        if (!this.providers.find(p => p.id === 'google')) {
+          const google = PROVIDER_PRESETS.find(p => p.id === 'google');
+          if (google) {
+            this.providers.unshift({ ...google, apiKey: '', enabled: true });
+            this.activeProviderId = 'google';
+            this.saveProviders();
+          }
+        }
       } else {
         // First boot: seed from PROVIDER_PRESETS so the user has a
         // working provider list to configure (otherwise getActiveProvider
@@ -357,20 +389,33 @@ export class AIProviderGateway {
         this.providers = PROVIDER_PRESETS.map(p => ({
           ...p,
           apiKey: '',
-          enabled: false,
+          enabled: p.id === 'google',
         }));
+        this.activeProviderId = 'google';
         this.saveProviders();
       }
       const active = localStorage.getItem(ACTIVE_PROVIDER_KEY);
       if (active) this.activeProviderId = active;
+      
+      // Fallback: If the active provider is not enabled, default to google
+      const currentActive = this.providers.find(p => p.id === this.activeProviderId);
+      if (!currentActive || !currentActive.enabled) {
+          const google = this.providers.find(p => p.id === 'google');
+          if (google) {
+              google.enabled = true;
+              this.activeProviderId = 'google';
+              this.saveProviders();
+          }
+      }
     } catch {
       // If localStorage is corrupt or unavailable, fall back to presets
       // so the gateway is still functional.
       this.providers = PROVIDER_PRESETS.map(p => ({
         ...p,
         apiKey: '',
-        enabled: false,
+        enabled: p.id === 'google',
       }));
+      this.activeProviderId = 'google';
     }
   }
 

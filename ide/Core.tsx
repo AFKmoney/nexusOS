@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { aiService } from '../services/puterService';
 import { NeuralEngine } from './NeuralEngine';
 import { Explorer } from './Sidebar/Explorer';
@@ -41,7 +42,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
 
   // --- PERSISTENCE LOGIC ---
   useEffect(() => {
-    const savedConfig = vfs.readFile(CONFIG_PATH);
+    const savedConfig = vfs.readFile(CONFIG_PATH, SYSTEM_VFS_APP_ID);
     if (savedConfig) {
       try {
         const config = JSON.parse(savedConfig);
@@ -56,7 +57,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
 
   const saveWorkspaceState = () => {
     const state = { tabs, activeTabId, chatHistory };
-    vfs.writeFile(CONFIG_PATH, JSON.stringify(state));
+    vfs.writeFile(CONFIG_PATH, JSON.stringify(state, SYSTEM_VFS_APP_ID));
   };
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
   const openFile = (path: string) => {
     const existing = tabs.find(t => t.path === path);
     if (existing) { setActiveTabId(existing.id); return; }
-    const content = vfs.readFile(path);
+    const content = vfs.readFile(path, SYSTEM_VFS_APP_ID);
     if (content !== null) {
         const newTab = { id: uuid(), path, content, originalContent: content, isDirty: false };
         setTabs(prev => [...prev, newTab]);
@@ -78,7 +79,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
 
   const saveFile = () => {
     if (activeTab) {
-        vfs.writeFile(activeTab.path, activeTab.content);
+        vfs.writeFile(activeTab.path, activeTab.content, SYSTEM_VFS_APP_ID);
         setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false, originalContent: t.content } : t));
         addNotification({ title: 'Buffer Flushed', message: activeTab.path, type: 'success' });
     }
@@ -147,7 +148,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
             <MessageSquare size={18} className={activeSide === 'chat' ? 'text-purple-400' : 'text-zinc-600 hover:text-zinc-400 cursor-pointer'} onClick={() => setActiveSide('chat')} />
             <Box size={18} className={activeSide === 'market' ? 'text-white' : 'text-zinc-600 hover:text-zinc-400 cursor-pointer'} onClick={() => setActiveSide('market')} />
             <div className="mt-auto flex flex-col gap-5 mb-2">
-                <Shield size={18} className={activeSide === 'kernel' ? 'text-emerald-500' : 'text-zinc-600 hover:text-emerald-400 cursor-pointer'} onClick={() => setActiveSide('kernel')} />
+                <Shield size={18} className={activeSide === 'kernel' ? 'text-accent' : 'text-zinc-600 hover:text-accent cursor-pointer'} onClick={() => setActiveSide('kernel')} />
                 <Settings size={18} className="text-zinc-600 hover:text-white cursor-pointer" />
             </div>
         </div>
@@ -185,10 +186,10 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                     <div className="bg-white/5 p-4 rounded-xl border border-white/10 mb-4">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[10px] text-zinc-400 uppercase">Current Branch</span>
-                            <span className="text-[10px] font-bold text-emerald-500">main</span>
+                            <span className="text-[10px] font-bold text-accent">main</span>
                         </div>
                         <div className="text-[11px] text-zinc-300 flex items-center gap-2">
-                            <Activity size={12} className="text-emerald-500" />
+                            <Activity size={12} className="text-accent" />
                             {gitStatus === 'Clean' ? 'Nothing to commit' : '3 Unstaged changes'}
                         </div>
                     </div>
@@ -212,7 +213,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
 
             {activeSide === 'kernel' && (
                 <div className="p-4 space-y-6">
-                    <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Kernel System Params</div>
+                    <div className="text-[10px] font-bold text-accent uppercase tracking-widest">Kernel System Params</div>
                     <div className="space-y-4">
                         <div>
                             <label className="text-[9px] text-zinc-500 uppercase block mb-2">Synthesis Model</label>
@@ -248,7 +249,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                     ].map(ext => (
                         <div key={ext.name} className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 cursor-pointer transition-all">
                             <div className="flex items-center gap-2 mb-1">
-                                <ext.icon size={14} className="text-blue-500" />
+                                <ext.icon size={14} className="text-accent" />
                                 <span className="text-[11px] font-bold">{ext.name}</span>
                             </div>
                             <p className="text-[9px] text-zinc-500 leading-tight">{ext.desc}</p>
@@ -266,7 +267,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                     <div key={tab.id} onClick={() => setActiveTabId(tab.id)}
                       className={`flex items-center gap-2 px-4 h-8 min-w-[130px] text-[11px] cursor-pointer border-r border-white/5 relative group transition-all
                       ${activeTabId === tab.id ? 'bg-[#050506] text-white shadow-[0_-2px_0_#3b82f6_inset]' : 'bg-transparent text-zinc-500 hover:text-zinc-300'}`}>
-                        <Code2 size={12} className={tab.isDirty ? 'text-orange-400 animate-pulse' : 'text-blue-400'} />
+                        <Code2 size={12} className={tab.isDirty ? 'text-orange-400 animate-pulse' : 'text-accent'} />
                         <span className="truncate flex-1 font-medium">{tab.path.split('/').pop()}</span>
                         <X size={10} className="opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded" 
                           onClick={e => { e.stopPropagation(); setTabs(prev => prev.filter(t => t.id !== tab.id)); }} />
@@ -325,12 +326,12 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
                 {showBottom && (
                     <div className="h-44 bg-[#0c0c0e] border-t border-white/5 flex flex-col">
                         <div className="flex items-center px-4 py-1.5 bg-black/40 text-[9px] font-bold uppercase text-zinc-500 gap-6 border-b border-white/5">
-                            <span className="text-white border-b border-blue-500 pb-0.5">Terminal</span>
+                            <span className="text-white border-b border-accent pb-0.5">Terminal</span>
                             <span className="hover:text-zinc-300 cursor-pointer">Problems</span>
                             <span className="hover:text-zinc-300 cursor-pointer">Debug Console</span>
                             <X size={12} className="ml-auto cursor-pointer hover:text-white" onClick={() => setShowBottom(false)} />
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] text-emerald-600/80 custom-scrollbar bg-[#050506]">
+                        <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] text-accent/80 custom-scrollbar bg-[#050506]">
                             {logs.map((l, i) => <div key={i} className="mb-0.5">{`> ${l}`}</div>)}
                         </div>
                     </div>

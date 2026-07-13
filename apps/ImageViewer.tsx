@@ -28,7 +28,7 @@ export default function ImageViewer({ windowId }: { windowId: string }) {
       {/* Header / Controls */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+          <div className="p-2 bg-accent/20 rounded-lg text-accent">
             <Image size={20} />
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function ImageViewer({ windowId }: { windowId: string }) {
             <button 
               key={i}
               onClick={() => setActiveIdx(i)}
-              className={`w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${i === activeIdx ? 'border-blue-500 scale-110 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-transparent opacity-40 hover:opacity-100'}`}
+              className={`w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${i === activeIdx ? 'border-accent scale-110 shadow-accent' : 'border-transparent opacity-40 hover:opacity-100'}`}
             >
               <img 
                 src={img.path} 

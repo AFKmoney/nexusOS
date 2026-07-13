@@ -138,11 +138,36 @@ export default function NetRunnerApp({ windowId }: { windowId: string }) {
     setAiSources([]);
     try {
       addNotification({ title: 'NetRunner', message: `Fetching ${target}...`, type: 'info' });
+
+      let realText = '';
+      try {
+        const proxyUrl = `/api/proxy?url=${encodeURIComponent(target)}`;
+        const resp = await fetch(proxyUrl);
+        if (resp.ok) {
+          const rawHtml = await resp.text();
+          const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+          
+          // Remove noise (scripts, styles, large inline media tags)
+          doc.querySelectorAll('script, style, svg, iframe, nav, footer, header').forEach(el => el.remove());
+          
+          realText = (doc.body.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 10000);
+        } else {
+          console.warn(`Proxy fetch returned status: ${resp.status}`);
+        }
+      } catch (err) {
+        console.warn("Direct fetch for AI snapshot failed, using fallback:", err);
+      }
+
       const prompt = `You are DAEMON NetRunner, the AI layer of a Chromium-backed browser. The user wants to visit: ${target}
 
+${realText ? `We successfully fetched the webpage content. Here is the actual plain text extract from the site:
+---
+${realText}
+---` : `(We could not fetch the live page directly, please provide a conservative semantic snapshot or mock version based on your knowledge of the site.)`}
+
 TASK:
-- If the URL is a real webpage, summarize its likely content from the page itself when possible.
-- If the page cannot be fetched directly, produce a conservative semantic snapshot.
+- If we have the fetched content above, summarize and present it cleanly as a polished, highly readable snapshot. Preserve key details, navigation links (resolved to target site), articles, or data.
+- If we do not have fetched content, produce a conservative semantic snapshot based on your knowledge of the site.
 - Keep output valid HTML inside a single <div>.
 - Include:
   - a bold title
@@ -207,6 +232,22 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
     },
     [url, mode, normalizeUrl, windowId]
   );
+
+  const aiNavigateRef = useRef(aiNavigate);
+  useEffect(() => {
+    aiNavigateRef.current = aiNavigate;
+  });
+
+  const externalUrl = win?.data?.url || win?.data?.path || '';
+  useEffect(() => {
+    if (externalUrl && externalUrl !== url) {
+      setUrl(externalUrl);
+      setUrlInput(externalUrl);
+      if (mode === 'ai') {
+        void aiNavigateRef.current(externalUrl);
+      }
+    }
+  }, [externalUrl, url, mode]);
 
   const goBack = () => {
     const prev = backStack[backStack.length - 1];
@@ -289,15 +330,15 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
           <ArrowRight size={15} />
         </button>
         <button onClick={() => url && void navigate(url)} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-500 hover:text-white">
-          {isLoading ? <Loader2 size={15} className="animate-spin text-emerald-400" /> : <RefreshCw size={15} />}
+          {isLoading ? <Loader2 size={15} className="animate-spin text-accent" /> : <RefreshCw size={15} />}
         </button>
         <button onClick={() => setUrl('')} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-500 hover:text-white">
           <Home size={15} />
         </button>
 
-        <div className="flex-1 flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 focus-within:border-blue-500/40 rounded-xl px-3 py-1 transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 focus-within:border-accent/40 rounded-xl px-3 py-1 transition-all">
           {url ? (
-            mode === 'ai' ? <Sparkles size={13} className="text-emerald-500 shrink-0" /> : <Globe size={13} className="text-green-500 shrink-0" />
+            mode === 'ai' ? <Sparkles size={13} className="text-accent shrink-0" /> : <Globe size={13} className="text-green-500 shrink-0" />
           ) : (
             <Search size={13} className="text-zinc-600 shrink-0" />
           )}
@@ -317,15 +358,15 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
         </div>
 
         <div className="flex bg-zinc-900 border border-white/5 rounded-xl p-0.5">
-          <button onClick={() => setMode('ai')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${mode === 'ai' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-600 hover:text-zinc-300'}`}>
+          <button onClick={() => setMode('ai')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${mode === 'ai' ? 'bg-accent/20 text-accent' : 'text-zinc-600 hover:text-zinc-300'}`}>
             <Sparkles size={11} /> AI
           </button>
-          <button onClick={() => setMode('chromium')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${mode === 'chromium' ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-600 hover:text-zinc-300'}`}>
+          <button onClick={() => setMode('chromium')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${mode === 'chromium' ? 'bg-accent/20 text-accent' : 'text-zinc-600 hover:text-zinc-300'}`}>
             <Globe size={11} /> Chromium
           </button>
         </div>
 
-        <button onClick={() => setChatOpen(!chatOpen)} className={`p-1.5 rounded-xl hover:bg-white/5 transition-all ${chatOpen ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600 hover:text-zinc-300'}`} title="AI Chat">
+        <button onClick={() => setChatOpen(!chatOpen)} className={`p-1.5 rounded-xl hover:bg-white/5 transition-all ${chatOpen ? 'text-accent bg-accent/10' : 'text-zinc-600 hover:text-zinc-300'}`} title="AI Chat">
           <Bot size={16} />
         </button>
       </div>
@@ -337,13 +378,13 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
               <div className="w-full max-w-lg px-4">
                 <div className="text-center mb-8">
                   <div className="inline-flex items-center gap-2 mb-2">
-                    <Sparkles size={24} className="text-emerald-400" />
+                    <Sparkles size={24} className="text-accent" />
                     <span className="text-xl font-black tracking-wider text-white">NetRunner</span>
                   </div>
                   <p className="text-zinc-600 text-sm">AI-Powered Browser · Search or navigate anywhere</p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 focus-within:border-emerald-500/40 rounded-2xl px-4 py-3 mb-6">
+                <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 focus-within:border-accent/40 rounded-2xl px-4 py-3 mb-6">
                   <Search size={18} className="text-zinc-600 shrink-0" />
                   <input
                     autoFocus
@@ -353,7 +394,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                     onChange={(e) => setUrlInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
-                  <button onClick={() => void navigate(urlInput)} className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-bold transition-all">
+                  <button onClick={() => void navigate(urlInput)} className="px-3 py-1 bg-accent/20 hover:bg-accent/30 border border-accent/20 rounded-xl text-accent text-xs font-bold transition-all">
                     Go
                   </button>
                 </div>
@@ -367,8 +408,8 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                   ))}
                 </div>
 
-                <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-                  <div className="flex items-center gap-2 mb-3 text-emerald-400 text-xs font-bold">
+                <div className="p-4 bg-accent/5 border border-accent/10 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-3 text-accent text-xs font-bold">
                     <Sparkles size={13} />
                     AI MODE ACTIVE — Intelligent Rendering
                   </div>
@@ -384,7 +425,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {isLoading && (
                 <div className="flex flex-col items-center justify-center h-48 gap-4">
-                  <Loader2 size={32} className="text-emerald-500 animate-spin" />
+                  <Loader2 size={32} className="text-accent animate-spin" />
                   <div className="text-sm text-zinc-500">NetRunner is analyzing {url}...</div>
                   <div className="text-xs text-zinc-500">AI is constructing semantic snapshot</div>
                 </div>
@@ -393,14 +434,14 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                 <div className="max-w-3xl mx-auto px-6 py-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2 text-sm text-zinc-600">
-                      <Sparkles size={13} className="text-emerald-500" />
+                      <Sparkles size={13} className="text-accent" />
                       AI Snapshot — {new URL(url.startsWith('http') ? url : `https://${url}`).hostname}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => quickAction('summarize')} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/5 hover:border-emerald-500/20 text-zinc-500 hover:text-emerald-400 transition-all flex items-center gap-1">
+                      <button onClick={() => quickAction('summarize')} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/5 hover:border-accent/20 text-zinc-500 hover:text-accent transition-all flex items-center gap-1">
                         <Zap size={11} /> Summarize
                       </button>
-                      <button onClick={() => quickAction('keypoints')} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/5 hover:border-emerald-500/20 text-zinc-500 hover:text-emerald-400 transition-all flex items-center gap-1">
+                      <button onClick={() => quickAction('keypoints')} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/5 hover:border-accent/20 text-zinc-500 hover:text-accent transition-all flex items-center gap-1">
                         <BookOpen size={11} /> Key Points
                       </button>
                       <button onClick={() => navigator.clipboard.writeText(aiContent)} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/5 text-zinc-600 hover:text-zinc-300 transition-all">
@@ -410,7 +451,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                   </div>
 
                   <div
-                    className="prose prose-invert max-w-none text-sm leading-relaxed prose-headings:text-white prose-p:text-zinc-300 prose-a:text-emerald-400 prose-strong:text-white prose-code:text-emerald-300 prose-li:text-zinc-300"
+                    className="prose prose-invert max-w-none text-sm leading-relaxed prose-headings:text-white prose-p:text-zinc-300 prose-a:text-accent prose-strong:text-white prose-code:text-emerald-300 prose-li:text-zinc-300"
                     style={{ lineHeight: '1.8' }}
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(aiContent) }}
                   />
@@ -420,7 +461,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                       <div className="text-xs text-zinc-600 mb-2 uppercase tracking-widest">Sources</div>
                       <div className="flex flex-wrap gap-2">
                         {aiSources.map((s, i) => (
-                          <button key={i} onClick={() => void navigate(s.url)} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-500/5 border border-blue-500/15 hover:border-blue-500/30 text-blue-400 text-xs transition-all">
+                          <button key={i} onClick={() => void navigate(s.url)} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent/5 border border-accent/15 hover:border-accent/30 text-accent text-xs transition-all">
                             <ExternalLink size={11} /> {s.title}
                           </button>
                         ))}
@@ -450,9 +491,9 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
           <div className="w-80 border-l border-white/5 bg-[#050810] flex flex-col shrink-0">
             <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <Bot size={15} className="text-emerald-400" />
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">NetRunner AI</span>
-                {isChatThinking && <Loader2 size={12} className="animate-spin text-emerald-500" />}
+                <Bot size={15} className="text-accent" />
+                <span className="text-xs font-bold text-accent uppercase tracking-widest">NetRunner AI</span>
+                {isChatThinking && <Loader2 size={12} className="animate-spin text-accent" />}
               </div>
               <button onClick={() => setChatOpen(false)} className="text-zinc-500 hover:text-zinc-300">
                 <X size={14} />
@@ -467,7 +508,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                   ['facts', 'Find Facts'],
                   ['translate', 'Translate']
                 ].map(([a, l]) => (
-                  <button key={a} onClick={() => quickAction(a ?? '')} className="p-1.5 rounded-lg bg-white/3 border border-white/5 hover:border-emerald-500/20 text-zinc-600 hover:text-emerald-400 text-xs transition-all">
+                  <button key={a} onClick={() => quickAction(a ?? '')} className="p-1.5 rounded-lg bg-white/3 border border-white/5 hover:border-accent/20 text-zinc-600 hover:text-accent text-xs transition-all">
                     {l}
                   </button>
                 ))}
@@ -477,8 +518,8 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
             <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
               {chatMsgs.map((msg, i) => (
                 <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-full px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-wrap font-sans ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-br-none' : 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-100 rounded-bl-none'}`}>
-                    {msg.content || (isChatThinking && i === chatMsgs.length - 1 ? <span className="text-emerald-500 animate-pulse">Thinking...</span> : '')}
+                  <div className={`max-w-full px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-wrap font-sans ${msg.role === 'user' ? 'bg-zinc-800 text-white rounded-br-none' : 'bg-accent/5 border border-accent/10 text-emerald-100 rounded-bl-none'}`}>
+                    {msg.content || (isChatThinking && i === chatMsgs.length - 1 ? <span className="text-accent animate-pulse">Thinking...</span> : '')}
                   </div>
                 </div>
               ))}
@@ -486,7 +527,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
             </div>
 
             <div className="p-2 border-t border-white/5">
-              <div className="flex items-end gap-2 bg-black/60 border border-white/5 rounded-xl px-3 py-2 focus-within:border-emerald-500/30 transition-all">
+              <div className="flex items-end gap-2 bg-black/60 border border-white/5 rounded-xl px-3 py-2 focus-within:border-accent/30 transition-all">
                 <textarea
                   className="flex-1 bg-transparent text-xs outline-none text-white placeholder:text-zinc-500 resize-none max-h-20 min-h-[18px] font-sans leading-relaxed"
                   placeholder="Ask about this page..."
@@ -501,7 +542,7 @@ Do not invent page contents that cannot be supported. Prefer accuracy over narra
                   disabled={isChatThinking}
                   rows={1}
                 />
-                <button onClick={() => void sendChat()} disabled={!chatInput.trim() || isChatThinking} className="text-emerald-500 disabled:opacity-30 hover:text-emerald-400 transition-all shrink-0">
+                <button onClick={() => void sendChat()} disabled={!chatInput.trim() || isChatThinking} className="text-accent disabled:opacity-30 hover:text-accent transition-all shrink-0">
                   {isChatThinking ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
               </div>

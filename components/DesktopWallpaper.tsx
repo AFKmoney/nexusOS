@@ -102,7 +102,7 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
       if (strength === 0) return;
       const offsetX = ((e.clientX / window.innerWidth) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
       const offsetY = ((e.clientY / window.innerHeight) - 0.5) * 2 * MAX_PARALLAX_PX * strength;
-      el.style.transform = `scale(1.06) translate(${-offsetX}px, ${-offsetY}px)`;
+      el.style.transform = `translate(${-offsetX}px, ${-offsetY}px)`;
     };
 
     const onMove = (e: MouseEvent) => {
@@ -135,8 +135,8 @@ export default function DesktopWallpaper({ wallpaper }: DesktopWallpaperProps) {
       <iframe
         ref={iframeRef}
         srcDoc={resolved.doc}
-        className="absolute inset-0 w-full h-full border-none pointer-events-none"
-        style={{ transform: 'scale(1.06)', transition: 'transform 0.18s ease-out', willChange: 'transform' }}
+        className="absolute border-none pointer-events-none"
+        style={{ width: '106%', height: '106%', left: '-3%', top: '-3%', transform: 'translate(0px, 0px)', transition: 'transform 0.18s ease-out', willChange: 'transform' }}
         sandbox="allow-scripts"
         title="wallpaper"
       />

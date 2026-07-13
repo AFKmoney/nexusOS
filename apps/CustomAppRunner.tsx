@@ -96,7 +96,7 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
   if (loading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-black">
-        <Loader2 size={32} className="text-emerald-500 animate-spin mb-4" />
+        <Loader2 size={32} className="text-accent animate-spin mb-4" />
         <span className="text-xs font-black uppercase tracking-widest text-zinc-500">Linking Neural Neural Circuits...</span>
       </div>
     );
@@ -135,7 +135,7 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
             </button>
             <h1 className="text-white font-semibold text-[16px]">{app?.name || 'Forged App'}</h1>
             {isGeneratedApp && (
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-bold uppercase">Generated</span>
+              <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold uppercase">Generated</span>
             )}
           </div>
           <div className="flex gap-2">
@@ -148,10 +148,10 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
                 <FolderOpen size={14} /> Edit
               </button>
             )}
-             <button onClick={() => setView('preview')} className={`p-1.5 rounded-xl ${view === 'preview' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600'}`}>
+             <button onClick={() => setView('preview')} className={`p-1.5 rounded-xl ${view === 'preview' ? 'text-accent bg-accent/10' : 'text-zinc-600'}`}>
                <Eye size={18} />
              </button>
-             <button onClick={() => setView('code')} className={`p-1.5 rounded-xl ${view === 'code' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600'}`}>
+             <button onClick={() => setView('code')} className={`p-1.5 rounded-xl ${view === 'code' ? 'text-accent bg-accent/10' : 'text-zinc-600'}`}>
                <Code size={18} />
              </button>
           </div>
@@ -168,7 +168,7 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
           />
         ) : (
           <textarea
-            className="w-full h-full p-4 bg-zinc-950 text-emerald-500 font-mono text-xs outline-none resize-none"
+            className="w-full h-full p-4 bg-zinc-950 text-accent font-mono text-xs outline-none resize-none"
             value={html}
             readOnly
           />
@@ -182,7 +182,7 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
              {isGeneratedApp && (
                <button
                  onClick={editInHyperIDE}
-                 className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-bold transition-colors"
+                 className="flex items-center gap-1 text-[10px] text-accent hover:text-emerald-300 font-bold transition-colors"
                  title="Edit in HyperIDE"
                >
                  <FolderOpen size={11} /> Edit
@@ -190,10 +190,10 @@ export default function CustomAppRunner({ windowId, onBack, appId }: { windowId:
              )}
           </div>
           <div className="flex gap-2">
-             <button onClick={() => setView('preview')} className={`p-1 rounded ${view === 'preview' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600 hover:text-zinc-400'}`}>
+             <button onClick={() => setView('preview')} className={`p-1 rounded ${view === 'preview' ? 'text-accent bg-accent/10' : 'text-zinc-600 hover:text-zinc-400'}`}>
                <Eye size={12} />
              </button>
-             <button onClick={() => setView('code')} className={`p-1 rounded ${view === 'code' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-600 hover:text-zinc-400'}`}>
+             <button onClick={() => setView('code')} className={`p-1 rounded ${view === 'code' ? 'text-accent bg-accent/10' : 'text-zinc-600 hover:text-zinc-400'}`}>
                <Code size={12} />
              </button>
           </div>

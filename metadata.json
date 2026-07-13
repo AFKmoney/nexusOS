@@ -1,5 +1,6 @@
 {
   "name": "NexusOS",
   "description": "A sentient web-based Operating System featuring NeuralCore, NeuralForge, and a persistent virtual filesystem.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

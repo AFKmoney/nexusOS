@@ -25,6 +25,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   selectedPath,
 }) => {
   const [expanded, setExpanded] = useState(depth === 0);
+
   const stat = vfs.stat(path);
   const isDir = stat?.type === 'directory';
   const isSelected = path === selectedPath;
@@ -37,33 +38,34 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       if (!aIsDir && bIsDir) return 1;
       return a.localeCompare(b);
     });
+
     return (
       <div className="relative">
         <button
           onClick={() => setExpanded(!expanded)}
           onContextMenu={(e) => onContextMenu(e, path, true)}
-          className={`w-full flex items-center gap-1.5 py-1 pr-2 text-[11px] font-medium hover:bg-white/10 transition-all rounded-md group ${
-            isSelected ? 'bg-white/5 text-white' : 'text-zinc-400 hover:text-zinc-200'
+          className={`w-full flex items-center gap-1.5 py-0.5 pr-2 text-[13px] font-sans hover:bg-[#2A2D2E] transition-all group ${
+            isSelected ? 'bg-[#37373D] text-white' : 'text-[#CCCCCC]'
           }`}
-          style={{ paddingLeft: `${4 + depth * 14}px` }}
+          style={{ paddingLeft: `${4 + depth * 12}px` }}
         >
           {expanded ? (
-            <ChevronDown size={12} className="shrink-0 text-zinc-500 group-hover:text-zinc-300" />
+            <ChevronDown size={14} className="shrink-0 text-[#858585] group-hover:text-[#CCCCCC]" />
           ) : (
-            <ChevronRight size={12} className="shrink-0 text-zinc-500 group-hover:text-zinc-300" />
+            <ChevronRight size={14} className="shrink-0 text-[#858585] group-hover:text-[#CCCCCC]" />
           )}
           {expanded ? (
-            <FolderOpen size={14} className="text-blue-400 shrink-0 drop-shadow-md" />
+            <FolderOpen size={14} className="text-[#D4D4D4] shrink-0" />
           ) : (
-            <Folder size={14} className="text-blue-500 shrink-0 drop-shadow-md" />
+            <Folder size={14} className="text-[#D4D4D4] shrink-0" />
           )}
           <span className="truncate">{name}</span>
         </button>
         {expanded && (
           <div className="relative">
             <div
-              className="absolute left-0 top-0 bottom-0 border-l border-white/5"
-              style={{ marginLeft: `${10 + depth * 14}px` }}
+              className="absolute left-0 top-0 bottom-0 border-l border-[#404040]"
+              style={{ marginLeft: `${10 + depth * 12}px` }}
             />
             {children.map((child) => (
               <FileTreeNode
@@ -86,12 +88,12 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     <button
       onClick={() => onSelect(path)}
       onContextMenu={(e) => onContextMenu(e, path, false)}
-      className={`w-full flex items-center gap-2 py-1 pr-2 text-[11px] font-medium hover:bg-white/10 transition-all rounded-md group ${
-        isSelected ? 'bg-blue-500/20 text-white shadow-inner' : 'text-zinc-400 hover:text-zinc-200'
+      className={`w-full flex items-center gap-1.5 py-0.5 pr-2 text-[13px] font-sans hover:bg-[#2A2D2E] transition-all group ${
+        isSelected ? 'bg-[#37373D] text-white' : 'text-[#CCCCCC]'
       }`}
-      style={{ paddingLeft: `${20 + depth * 14}px` }}
+      style={{ paddingLeft: `${22 + depth * 12}px` }}
     >
-      <div className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-md">
+      <div className="opacity-90">
         {fileIcon(name, 14)}
       </div>
       <span className="truncate">{name}</span>

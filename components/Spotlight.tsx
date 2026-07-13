@@ -38,7 +38,7 @@ export default function Spotlight({ onClose }: { onClose: () => void }) {
           type: 'app',
           title: app.name,
           subtitle: `App · ${app.id}`,
-          icon: <AppWindow size={18} className="text-emerald-400" />,
+          icon: <AppWindow size={18} className="text-accent" />,
           action: () => { openWindow(app.id); onClose(); },
         });
       }
@@ -91,8 +91,8 @@ export default function Spotlight({ onClose }: { onClose: () => void }) {
           found.push({
             type: 'conversation',
             title: preview,
-            subtitle: `Conversation · ${new Date(ep.timestamp).toLocaleString()}`,
-            icon: <MessageSquare size={18} className="text-blue-400" />,
+            subtitle: `Conversation · ${new Date(ep.timestamp).toLocaleString('en-US')}`,
+            icon: <MessageSquare size={18} className="text-accent" />,
             action: () => { openWindow('daemon_chat'); onClose(); },
           });
         }
@@ -149,7 +149,7 @@ export default function Spotlight({ onClose }: { onClose: () => void }) {
                 onClick={r.action}
                 onMouseEnter={() => setSelectedIdx(i)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  i === selectedIdx ? 'bg-emerald-500/10' : 'hover:bg-white/5'
+                  i === selectedIdx ? 'bg-accent/10' : 'hover:bg-white/5'
                 }`}
               >
                 <div className="shrink-0">{r.icon}</div>

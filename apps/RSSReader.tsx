@@ -144,7 +144,7 @@ export default function RSSReader() {
                 <div key={i} className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 hover:bg-white/[0.04] transition-all group">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-[8px] font-black uppercase tracking-widest border border-orange-500/20">{art.source}</span>
-                    <span className="text-[9px] text-zinc-600 font-mono">{new Date(art.date).toLocaleDateString()}</span>
+                    <span className="text-[9px] text-zinc-600 font-mono">{new Date(art.date).toLocaleDateString('en-US')}</span>
                   </div>
                   <h2 className="text-lg font-bold text-zinc-100 group-hover:text-orange-400 transition-colors mb-2">{art.title}</h2>
                   <p className="text-sm text-zinc-500 leading-relaxed mb-4">{art.snippet}</p>

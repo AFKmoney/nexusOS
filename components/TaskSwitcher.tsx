@@ -54,7 +54,7 @@ export default function TaskSwitcher() {
                 isSelected ? 'bg-white/10 border border-white/20 scale-110 shadow-xl' : 'opacity-60 scale-95 border border-transparent'
               }`}
             >
-              <Icon size={48} className={isSelected ? 'text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]' : 'text-zinc-500'} />
+              <Icon size={48} className={isSelected ? 'text-accent drop-shadow-accent' : 'text-zinc-500'} />
               <div className={`mt-4 text-xs font-bold text-center truncate w-full px-2 ${isSelected ? 'text-white' : 'text-zinc-500'}`}>
                 {app?.name}
               </div>

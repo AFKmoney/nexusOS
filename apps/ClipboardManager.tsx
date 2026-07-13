@@ -88,8 +88,8 @@ export default function ClipboardManagerApp() {
                 {e.text}
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
-                <button onClick={() => copyToClipboard(e.text)} className="p-1 hover:bg-emerald-500/20 rounded" title="Copy">
-                  <Copy size={12} className="text-emerald-400" />
+                <button onClick={() => copyToClipboard(e.text)} className="p-1 hover:bg-accent/20 rounded" title="Copy">
+                  <Copy size={12} className="text-accent" />
                 </button>
                 <button onClick={() => togglePin(e.id)} className="p-1 hover:bg-amber-500/20 rounded" title={e.pinned ? 'Unpin' : 'Pin'}>
                   {e.pinned ? <Star size={12} className="text-amber-400" /> : <StarOff size={12} className="text-zinc-500" />}
@@ -100,7 +100,7 @@ export default function ClipboardManagerApp() {
               </div>
             </div>
             <div className="text-[10px] text-zinc-600 mt-1 flex items-center justify-between">
-              <span>{new Date(e.timestamp).toLocaleTimeString()}</span>
+              <span>{new Date(e.timestamp).toLocaleTimeString('en-US')}</span>
               <span>{e.text.length} chars</span>
             </div>
           </div>

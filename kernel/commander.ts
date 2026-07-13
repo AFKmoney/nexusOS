@@ -1,3 +1,5 @@
+import { SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
+
 import { vfs } from './fileSystem';
 import { memory } from './memory';
 import { aiService } from '../services/puterService';
@@ -169,10 +171,10 @@ export class Commander {
           const output = await this.executeCommand(command, kernelRules);
           if (output !== null && filePath) {
             if (mode === '>>') {
-              const existing = vfs.readFile(filePath) || '';
-              vfs.writeFile(filePath, existing + output);
+              const existing = vfs.readFile(filePath, SYSTEM_VFS_APP_ID) || '';
+              vfs.writeFile(filePath, existing + output, SYSTEM_VFS_APP_ID);
             } else {
-              vfs.writeFile(filePath, output);
+              vfs.writeFile(filePath, output, SYSTEM_VFS_APP_ID);
             }
             log(`Output redirected to ${filePath}`, 'out');
           }
@@ -235,8 +237,8 @@ export class Commander {
               const fullPath = `${path}/${name}`;
               const stat = vfs.stat(fullPath);
               const isDir = stat?.type === 'directory';
-              const size = stat?.type === 'file' ? (vfs.readFile(fullPath)?.length || 0) : '-';
-              const date = stat?.modified ? new Date(stat.modified).toLocaleDateString() : '-';
+              const size = stat?.type === 'file' ? (vfs.readFile(fullPath, SYSTEM_VFS_APP_ID)?.length || 0) : '-';
+              const date = stat?.modified ? new Date(stat.modified).toLocaleDateString('en-US') : '-';
               const perm = isDir ? 'drwxr-xr-x' : '-rw-r--r--';
               return `${perm}  daemon daemon  ${String(size).padStart(6)}  ${date}  ${name}${isDir ? '/' : ''}`;
             }).join('\n');
@@ -269,7 +271,7 @@ export class Commander {
           if (paths.length === 0) return 'mkdir: missing operand';
           for (const p of paths) {
             const resolved = this.safeResolvePath(p);
-            if (resolved) vfs.createDir(resolved);
+            if (resolved) vfs.createDir(resolved, SYSTEM_VFS_APP_ID);
           }
           return null;
         }
@@ -280,8 +282,8 @@ export class Commander {
           for (const p of paths) {
             const resolved = this.safeResolvePath(p);
             if (!resolved) continue;
-            const existing = vfs.readFile(resolved);
-            if (existing === null) vfs.writeFile(resolved, '');
+            const existing = vfs.readFile(resolved, SYSTEM_VFS_APP_ID);
+            if (existing === null) vfs.writeFile(resolved, '', SYSTEM_VFS_APP_ID);
           }
           return null;
         }
@@ -297,7 +299,7 @@ export class Commander {
               results.push(`cat: ${p}: invalid path`);
               continue;
             }
-            const content = vfs.readFile(resolved);
+            const content = vfs.readFile(resolved, SYSTEM_VFS_APP_ID);
             if (content === null) results.push(`cat: ${p}: No such file`);
             else results.push(content);
           }
@@ -320,9 +322,9 @@ export class Commander {
           const src = this.safeResolvePath(srcArg);
           const dest = this.safeResolvePath(destArg);
           if (!src || !dest) return 'cp: invalid path';
-          const content = vfs.readFile(src);
+          const content = vfs.readFile(src, SYSTEM_VFS_APP_ID);
           if (content === null) return `cp: ${args[1]}: No such file`;
-          vfs.writeFile(dest, content);
+          vfs.writeFile(dest, content, SYSTEM_VFS_APP_ID);
           return null;
         }
 
@@ -334,10 +336,10 @@ export class Commander {
           const src = this.safeResolvePath(srcArg);
           const dest = this.safeResolvePath(destArg);
           if (!src || !dest) return 'mv: invalid path';
-          const content = vfs.readFile(src);
+          const content = vfs.readFile(src, SYSTEM_VFS_APP_ID);
           if (content === null) return `mv: ${args[1]}: No such file`;
-          vfs.writeFile(dest, content);
-          vfs.delete(src);
+          vfs.writeFile(dest, content, SYSTEM_VFS_APP_ID);
+          vfs.delete(src, SYSTEM_VFS_APP_ID);
           return null;
         }
 
@@ -347,7 +349,7 @@ export class Commander {
           for (const p of paths) {
             const resolved = this.safeResolvePath(p);
             if (!resolved) continue;
-            const success = vfs.delete(resolved);
+            const success = vfs.delete(resolved, SYSTEM_VFS_APP_ID);
             if (!success) return `rm: ${p}: No such file or directory`;
           }
           return null;
@@ -358,7 +360,7 @@ export class Commander {
           const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
           const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'head' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
           if (!content) return 'head: no input';
           return content.split('\n').slice(0, lines).join('\n');
         }
@@ -368,14 +370,14 @@ export class Commander {
           const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
           const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'tail' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
           if (!content) return 'tail: no input';
           return content.split('\n').slice(-lines).join('\n');
         }
 
         if (command === 'wc') {
           const filePath = args.find(a => a !== 'wc' && !a.startsWith('-'));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
           if (!content) return 'wc: no input';
           const lineCount = content.split('\n').length;
           const wordCount = content.split(/\s+/).filter(Boolean).length;
@@ -392,7 +394,7 @@ export class Commander {
           const filePath = filteredArgs[1];
           if (!pattern) return 'grep: missing pattern';
           
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
           if (!content) return 'grep: no input';
           
           const lines = content.split('\n');
@@ -460,8 +462,8 @@ export class Commander {
           const leftArg = args[1];
           const rightArg = args[2];
           if (!leftArg || !rightArg) return 'diff: missing operands';
-          const contentA = vfs.readFile(this.safeResolvePath(leftArg)) || '';
-          const contentB = vfs.readFile(this.safeResolvePath(rightArg)) || '';
+          const contentA = vfs.readFile(this.safeResolvePath(leftArg, SYSTEM_VFS_APP_ID)) || '';
+          const contentB = vfs.readFile(this.safeResolvePath(rightArg, SYSTEM_VFS_APP_ID)) || '';
           if (contentA === contentB) return 'Files are identical.';
           const linesA = contentA.split('\n');
           const linesB = contentB.split('\n');
@@ -569,7 +571,7 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
               if (stat?.type === 'directory') {
                 size += measure(fp);
               } else {
-                const content = vfs.readFile(fp);
+                const content = vfs.readFile(fp, SYSTEM_VFS_APP_ID);
                 size += content?.length || 0;
               }
             }
@@ -622,7 +624,7 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
             const file = args[1];
             if (!file) return 'Usage: inspect <filename>';
             const path = this.safeResolvePath(file);
-            const content = path ? vfs.readFile(path) : null;
+            const content = path ? vfs.readFile(path, SYSTEM_VFS_APP_ID) : null;
             if (content !== null && path) {
                 if (log) log(`[ROUTING] Opening ${path} in Notepad for analysis.`, 'out');
                 os.openWindow('notepad', { path, content });
@@ -637,7 +639,7 @@ VFS-localStorage  ${totalKB}K  ${usedKB}K   ${totalKB - usedKB}K   ${Math.round(
             const path = inspectTarget ? this.safeResolvePath(inspectTarget) : '';
             const content = args.slice(2).join(' ').replace(/^"|"$/g, '').replace(/\\n/g, '\n');
             if (!path) return 'VFS: invalid path';
-            const success = vfs.writeFile(path, content);
+            const success = vfs.writeFile(path, content, SYSTEM_VFS_APP_ID);
             return success ? `VFS: Sync successful at ${path}` : `VFS: Sync failure`;
         }
 

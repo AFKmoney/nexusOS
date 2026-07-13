@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { X, HardDrive, Folder, File, Image as ImageIcon, Trash2, Settings } from 'lucide-react';
 
 const formatDate = (ts: number) => {
-    return new Date(ts).toLocaleString(undefined, {
+    return new Date(ts).toLocaleString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -21,7 +21,7 @@ const formatSize = (bytes: number) => {
     const k = 1024;
     const sizes = ['bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i] + ` (${bytes.toLocaleString()} bytes)`;
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i] + ` (${bytes.toLocaleString('en-US')} bytes)`;
 };
 
 export default function FilePropertiesApp({ windowId }: { windowId: string }) {
@@ -126,7 +126,7 @@ export default function FilePropertiesApp({ windowId }: { windowId: string }) {
                 </div>
                 <button 
                     onClick={handleIconChange}
-                    className="absolute -bottom-1 -right-1 p-1.5 bg-blue-600 rounded-full text-white shadow-lg hover:bg-blue-500 transition-colors"
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-accent rounded-full text-white shadow-lg hover:bg-accent transition-colors"
                     title="Change Icon"
                 >
                     <ImageIcon size={16} />

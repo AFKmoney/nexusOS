@@ -32,14 +32,14 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = (props) => {
       <div className="relative">
         <Search size={16} className="absolute left-3 top-2.5 text-zinc-600" />
         <input
-          className="w-full bg-black/60 border border-white/10 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40 transition-all"
+          className="w-full bg-black/60 border border-white/10 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-accent/40 transition-all"
           placeholder="Search models on Hugging Face..."
           value={searchQuery}
           onChange={(e) => onSetSearchQuery(e.target.value)}
         />
         {isSearchingRemote && (
           <div className="absolute right-3 top-2.5">
-            <Loader2 size={16} className="text-emerald-500 animate-spin" />
+            <Loader2 size={16} className="text-accent animate-spin" />
           </div>
         )}
       </div>
@@ -51,7 +51,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = (props) => {
         const isInstalled = isInstalledModel(model);
         const isSelected = selectedModelKey === key;
         return (
-          <div key={key} className={`p-4 rounded-xl border transition-all ${isSelected ? 'bg-emerald-500/5 border-emerald-500/25' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
+          <div key={key} className={`p-4 rounded-xl border transition-all ${isSelected ? 'bg-accent/5 border-accent/25' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -69,7 +69,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = (props) => {
                   <span className="text-xs text-zinc-500">·</span>
                   <button
                     onClick={() => onPickFilename(model)}
-                    className="text-xs text-zinc-600 flex items-center gap-1 hover:text-emerald-400 transition-colors"
+                    className="text-xs text-zinc-600 flex items-center gap-1 hover:text-accent transition-colors"
                   >
                     <FileText size={12} /> {model.filename}
                   </button>
@@ -81,24 +81,24 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = (props) => {
               <div className="shrink-0 flex flex-col items-end gap-2">
                 <button
                   onClick={() => onSelectModel(key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${isSelected ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/5 text-zinc-500 hover:text-zinc-300'}`}
+                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${isSelected ? 'bg-accent/15 border-accent/30 text-accent' : 'bg-white/5 border-white/5 text-zinc-500 hover:text-zinc-300'}`}
                 >
                   Select
                 </button>
 
                 {isInstalled ? (
-                  <div className="flex items-center gap-1.5 text-emerald-400 text-xs">
+                  <div className="flex items-center gap-1.5 text-accent text-xs">
                     <CheckCircle size={16} /> Installed
                   </div>
                 ) : dl?.state === 'downloading' ? (
                   <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5 text-blue-400 text-xs">
+                    <div className="flex items-center gap-1.5 text-accent text-xs">
                       <Loader2 size={14} className="animate-spin" /> {dl.pct}%
                     </div>
                     <div className="text-xs text-zinc-600 max-w-[120px] text-right truncate">{dl.msg}</div>
                   </div>
                 ) : dl?.state === 'done' ? (
-                  <div className="flex items-center gap-1.5 text-emerald-400 text-xs">
+                  <div className="flex items-center gap-1.5 text-accent text-xs">
                     <CheckCircle size={16} /> Ready
                   </div>
                 ) : dl?.state === 'error' ? (
@@ -116,7 +116,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = (props) => {
                 ) : (
                   <button
                     onClick={() => onDownload(model)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/80 hover:bg-accent text-white rounded-lg text-xs font-bold transition-all hover:scale-105"
                   >
                     <Download size={14} /> Download
                   </button>

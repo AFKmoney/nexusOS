@@ -39,8 +39,10 @@ export default function PaintApp() {
     if (!canvas || !container) return;
     
     // Set exact physical pixels
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = container.clientWidth * dpr;
+    canvas.height = container.clientHeight * dpr;
+    ctx?.scale(dpr, dpr);
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
@@ -161,7 +163,7 @@ export default function PaintApp() {
             <button
               key={t.id}
               onClick={() => setTool(t.id as Tool)}
-              className={`p-2 rounded-lg transition-all ${tool === t.id ? 'bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
+              className={`p-2 rounded-lg transition-all ${tool === t.id ? 'bg-accent text-black shadow-accent' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
               title={t.id}
             >
               <t.icon size={16} />
@@ -197,7 +199,7 @@ export default function PaintApp() {
           <button onClick={handleUndo} disabled={historyIdx <= 0} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg disabled:opacity-30 transition-all"><Undo size={16} /></button>
           <button onClick={handleRedo} disabled={historyIdx >= history.length - 1} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg disabled:opacity-30 transition-all"><Redo size={16} /></button>
           <div className="w-px h-6 bg-white/10 mx-1" />
-          <button onClick={downloadCanvas} className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black rounded-lg text-xs font-bold uppercase tracking-wider transition-all"><Download size={14} /> Export</button>
+          <button onClick={downloadCanvas} className="flex items-center gap-2 px-4 py-1.5 bg-accent/20 text-accent border border-accent/30 hover:bg-accent hover:text-black rounded-lg text-xs font-bold uppercase tracking-wider transition-all"><Download size={14} /> Export</button>
         </div>
 
       </div>

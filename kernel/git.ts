@@ -54,7 +54,7 @@ function createVfsFsAdapter(repoRoot: string): GitFsAdapter {
   return {
     promises: {
       readFile: async (path, opts) => {
-        const content = vfs.readFile(toVfsPath(path), SYSTEM_VFS_APP_ID);
+        const content = vfs.readFile(toVfsPath(path, SYSTEM_VFS_APP_ID), SYSTEM_VFS_APP_ID);
         if (content === null) throw new Error(`ENOENT: ${path}`);
         if (opts?.encoding === 'utf8') return content;
         return new TextEncoder().encode(content) as unknown as Uint8Array;
@@ -68,7 +68,7 @@ function createVfsFsAdapter(repoRoot: string): GitFsAdapter {
         vfs.createDirRecursive(toVfsPath(_path), SYSTEM_VFS_APP_ID);
       },
       rmdir: async (_path) => {
-        vfs.delete(toVfsPath(_path), SYSTEM_VFS_APP_ID);
+        vfs.delete(toVfsPath(_path, SYSTEM_VFS_APP_ID), SYSTEM_VFS_APP_ID);
       },
       readdir: async (path) => {
         return vfs.listDir(toVfsPath(path), SYSTEM_VFS_APP_ID) || [];
@@ -83,7 +83,7 @@ function createVfsFsAdapter(repoRoot: string): GitFsAdapter {
         };
       },
       unlink: async (path) => {
-        vfs.delete(toVfsPath(path), SYSTEM_VFS_APP_ID);
+        vfs.delete(toVfsPath(path, SYSTEM_VFS_APP_ID), SYSTEM_VFS_APP_ID);
       },
       exists: async (path) => {
         return vfs.stat(toVfsPath(path)) !== null;
@@ -247,7 +247,7 @@ class GitKernel {
       if (entries.length === 0) return 'No commits yet.';
       const lines = entries.map((e) => {
         const c = e.commit;
-        const date = new Date(c.author.timestamp * 1000).toLocaleDateString();
+        const date = new Date(c.author.timestamp * 1000).toLocaleDateString('en-US');
         return `${e.oid.slice(0, 8)} ${date} ${c.author.name}\n    ${c.message.split('\n')[0]}`;
       });
       return lines.join('\n\n');

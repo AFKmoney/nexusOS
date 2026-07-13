@@ -1,3 +1,5 @@
+import { SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
+
 // ═══════════════════════════════════════════════════════════════════
 // SYNC CLIENT — Self-hosted cloud synchronization
 //
@@ -202,7 +204,7 @@ class SyncClient {
         if (stat.type === 'directory') {
           walk(path);
         } else {
-          const content = vfs.readFile(path);
+          const content = vfs.readFile(path, SYSTEM_VFS_APP_ID);
           if (content !== null) files[path] = content;
         }
       }
@@ -215,12 +217,12 @@ class SyncClient {
     try {
       const { files } = JSON.parse(remoteState);
       for (const [path, content] of Object.entries(files) as [string, string][]) {
-        const existing = vfs.readFile(path);
+        const existing = vfs.readFile(path, SYSTEM_VFS_APP_ID);
         if (existing !== content) {
           // Create parent dirs if needed
           const dir = path.split('/').slice(0, -1).join('/');
           if (dir) vfs.createDirRecursive(dir);
-          vfs.writeFile(path, content as string);
+          vfs.writeFile(path, content as string, SYSTEM_VFS_APP_ID);
         }
       }
       kernelLog.info('[Sync] Applied remote changes');

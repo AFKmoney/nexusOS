@@ -67,7 +67,7 @@ export default function SystemInfoApp() {
 
   return (
     <div className="h-full bg-[#050508] text-zinc-100 p-8 overflow-y-auto custom-scrollbar relative">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 blur-[100px] rounded-full pointer-events-none" />
       
       <div className="flex items-center gap-4 mb-10">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-2xl border border-white/10">
@@ -116,8 +116,8 @@ export default function SystemInfoApp() {
         </section>
       </div>
 
-      <div className="mt-10 p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-center">
-        <div className="text-[10px] text-emerald-500 font-black uppercase tracking-[0.2em] mb-2">Security Audit</div>
+      <div className="mt-10 p-6 rounded-2xl bg-accent/5 border border-accent/20 text-center">
+        <div className="text-[10px] text-accent font-black uppercase tracking-[0.2em] mb-2">Security Audit</div>
         <p className="text-xs text-zinc-500 leading-relaxed max-w-md mx-auto">
           All system calls are monitored by the DAEMON engine. No external telemetry. Privacy verified.
         </p>

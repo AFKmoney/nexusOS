@@ -77,8 +77,8 @@ export default function GlobalSearch() {
            style={{ boxShadow: '0 0 50px rgba(16, 185, 129, 0.1)' }}>
         
         {/* Search Bar */}
-        <div className={`flex items-center gap-3 p-4 border-b ${isCommandMode ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10'}`}>
-          {isCommandMode ? <Terminal size={24} className="text-emerald-500" /> : <Search size={24} className="text-emerald-500" />}
+        <div className={`flex items-center gap-3 p-4 border-b ${isCommandMode ? 'border-accent/50 bg-accent/5' : 'border-white/10'}`}>
+          {isCommandMode ? <Terminal size={24} className="text-accent" /> : <Search size={24} className="text-accent" />}
           <input 
             ref={inputRef}
             type="text"
@@ -91,7 +91,7 @@ export default function GlobalSearch() {
               }
             }}
             placeholder="Search VFS, Host, or type / to command DAEMON..."
-            className={`flex-1 bg-transparent border-none outline-none text-xl font-light placeholder-white/30 ${isCommandMode ? 'text-emerald-400 font-mono tracking-widest' : 'text-white'}`}
+            className={`flex-1 bg-transparent border-none outline-none text-xl font-light placeholder-white/30 ${isCommandMode ? 'text-accent font-mono tracking-widest' : 'text-white'}`}
           />
           {query && <button onClick={() => setQuery('')} className="p-1 rounded hover:bg-white/10 text-white/50"><X size={20}/></button>}
         </div>
@@ -103,7 +103,7 @@ export default function GlobalSearch() {
                  {/* VFS Results */}
                  {vfsResults.length > 0 && (
                      <div>
-                        <div className="px-3 py-1 text-xs font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <div className="px-3 py-1 text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-2">
                            <HardDrive size={14} /> Virtual File System (NexusOS)
                         </div>
                         {vfsResults.map(res => (
@@ -112,7 +112,7 @@ export default function GlobalSearch() {
                               onClick={() => { toggleSearch(); openWindow('notepad', { title: res.name, path: res.path }); }}
                               className="w-full text-left p-3 hover:bg-white/10 rounded-xl flex items-center gap-3 transition-colors group"
                             >
-                               <FileIcon size={18} className="text-white/50 group-hover:text-emerald-400 shrink-0" />
+                               <FileIcon size={18} className="text-white/50 group-hover:text-accent shrink-0" />
                                <div className="truncate">
                                   <div className="text-white font-medium truncate">{res.name}</div>
                                   <div className="text-xs text-white/40 font-mono truncate">{res.path}</div>
@@ -125,7 +125,7 @@ export default function GlobalSearch() {
                  {/* Native Host Results */}
                  {(isSearchingHost || hostResults.length > 0) && (
                      <div>
-                        <div className="px-3 py-1 text-xs font-bold text-blue-500 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <div className="px-3 py-1 text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-2">
                            <Filter size={14} /> Physical Host (Windows Desktop)
                         </div>
                         {isSearchingHost && <div className="px-3 py-2 text-sm text-white/50 animate-pulse">Scanning native host...</div>}
@@ -133,7 +133,7 @@ export default function GlobalSearch() {
                             const name = p.split('\\').pop() || p;
                             return (
                                <div key={p} className="w-full text-left p-3 hover:bg-white/10 rounded-xl flex items-center gap-3 transition-colors group">
-                                  <FileIcon size={18} className="text-blue-500/50 group-hover:text-blue-400 shrink-0" />
+                                  <FileIcon size={18} className="text-accent/50 group-hover:text-accent shrink-0" />
                                   <div className="truncate">
                                      <div className="text-white font-medium truncate">{name}</div>
                                      <div className="text-xs text-white/40 font-mono truncate">{p}</div>
@@ -145,7 +145,7 @@ export default function GlobalSearch() {
                  )}
 
                  {isCommandMode && (
-                     <div className="p-8 text-center text-emerald-500/80 font-mono flex flex-col items-center">
+                     <div className="p-8 text-center text-accent/80 font-mono flex flex-col items-center">
                         <Terminal size={48} className="mb-4 opacity-50 animate-pulse" />
                         <div>Neural link established.</div>
                         <div className="text-xs opacity-60 mt-2">Press ENTER to send directive to DAEMON.</div>
@@ -160,7 +160,7 @@ export default function GlobalSearch() {
               <div className="p-12 text-center flex flex-col items-center justify-center text-white/30">
                  {isCommandMode ? <Terminal size={48} className="mb-4 opacity-50" /> : <Search size={48} className="mb-4 opacity-50" />}
                  <div className="text-lg">Start typing to search NexusOS and Host</div>
-                 <div className="text-sm mt-2 opacity-70">Type <span className="text-emerald-400 font-mono">/</span> to command the autonomous DAEMON.</div>
+                 <div className="text-sm mt-2 opacity-70">Type <span className="text-accent font-mono">/</span> to command the autonomous DAEMON.</div>
               </div>
            )}
         </div>

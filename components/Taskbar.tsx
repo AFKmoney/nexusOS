@@ -177,9 +177,9 @@ export default function Taskbar() {
             <button
               onClick={() => openWindow('governance')}
               title="Autonomy Engine is running — click to inspect"
-              className="p-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 transition-all group"
+              className="p-2.5 rounded-2xl bg-accent/10 hover:bg-accent/20 transition-all group"
             >
-              <Zap size={18} className="text-emerald-400 group-hover:text-emerald-300" />
+              <Zap size={18} className="text-accent group-hover:text-emerald-300" />
             </button>
           )}
 
@@ -211,10 +211,10 @@ export default function Taskbar() {
           {/* Clock */}
           <button onClick={() => openWindow('calendar')} className="flex flex-col items-end min-w-[80px] group cursor-pointer">
             <span className="text-zinc-100 font-black text-sm tracking-widest leading-none group-hover:text-accent transition-colors">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </span>
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1 group-hover:text-zinc-200 transition-colors">
-              {time.toLocaleDateString([], { day: '2-digit', month: 'short' })}
+              {time.toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
             </span>
           </button>
 
@@ -241,7 +241,7 @@ export default function Taskbar() {
                   <button onClick={toggleMute} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                     {isMuted || volume === 0
                       ? <VolumeX size={16} className="text-red-400" />
-                      : <Volume2 size={16} className="text-emerald-400" />
+                      : <Volume2 size={16} className="text-accent" />
                     }
                   </button>
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Volume</span>
@@ -262,7 +262,7 @@ export default function Taskbar() {
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Sun size={16} className="text-blue-400" />
+                  <Sun size={16} className="text-accent" />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Brightness</span>
                 </div>
                 <span className="text-[10px] font-mono font-bold text-zinc-300">{brightness}%</span>
@@ -280,7 +280,7 @@ export default function Taskbar() {
             {/* Connection Info */}
             <div className="flex items-center justify-between px-3 py-2.5 rounded-2xl bg-white/5 border border-white/5 mb-4">
               <div className="flex items-center gap-2">
-                {isOnline ? <Wifi size={14} className="text-emerald-400" /> : <WifiOff size={14} className="text-red-400" />}
+                {isOnline ? <Wifi size={14} className="text-accent" /> : <WifiOff size={14} className="text-red-400" />}
                 <span className="text-[10px] font-black uppercase tracking-wider text-zinc-300">
                   {isOnline ? 'Connected' : 'Offline'}
                 </span>
@@ -294,7 +294,7 @@ export default function Taskbar() {
             <div className="flex items-center justify-between px-3 py-2.5 rounded-2xl bg-white/5 border border-white/5 mb-4">
               <div className="flex items-center gap-2">
                 {isCharging
-                  ? <BatteryCharging size={14} className="text-emerald-400" />
+                  ? <BatteryCharging size={14} className="text-accent" />
                   : <BatteryFull size={14} className={batteryLevel <= 20 ? 'text-red-400' : 'text-zinc-300'} />
                 }
                 <span className="text-[10px] font-black uppercase tracking-wider text-zinc-300">

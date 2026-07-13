@@ -89,16 +89,16 @@ export default function WeatherApp() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between z-10 relative bg-black/20">
         <form onSubmit={handleSearch} className="relative flex-1 max-w-xs group">
-          <Search size={14} className="absolute left-3 top-2.5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
+          <Search size={14} className="absolute left-3 top-2.5 text-zinc-500 group-focus-within:text-accent transition-colors" />
           <input
-            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500"
+            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500"
             placeholder="Search city..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </form>
         <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-black uppercase tracking-widest">
-          <MapPin size={14} className="text-emerald-400" /> {cityName}
+          <MapPin size={14} className="text-accent" /> {cityName}
         </div>
         <button onClick={() => fetchWeather(cityName)} className="ml-3 p-2 text-zinc-500 hover:text-white transition-colors">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -108,8 +108,8 @@ export default function WeatherApp() {
       <div className="flex-1 overflow-y-auto custom-scrollbar p-10 z-10 relative flex flex-col items-center justify-center">
         {loading ? (
           <div className="animate-pulse flex flex-col items-center gap-4">
-            <RefreshCw size={48} className="animate-spin text-emerald-500" />
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/50">Synchronizing Atmosphere...</div>
+            <RefreshCw size={48} className="animate-spin text-accent" />
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent/50">Synchronizing Atmosphere...</div>
           </div>
         ) : error ? (
           <div className="text-center text-red-400 text-sm font-mono">{error}</div>
@@ -119,7 +119,7 @@ export default function WeatherApp() {
             <div className="flex flex-col items-center mb-12">
               <data.CondIcon size={80} className="text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.4)] mb-6 animate-pulse" />
               <div className="text-8xl font-black font-mono tracking-tighter flex items-start">
-                {data.temp}<span className="text-4xl text-emerald-500 mt-2">°C</span>
+                {data.temp}<span className="text-4xl text-accent mt-2">°C</span>
               </div>
               <div className="text-xl font-bold text-zinc-300 uppercase tracking-[0.2em] mt-2">{data.condition}</div>
             </div>
@@ -127,7 +127,7 @@ export default function WeatherApp() {
             {/* Metrics Grid */}
             <div className="grid grid-cols-3 gap-4 mb-12">
               <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center">
-                <Droplets size={18} className="text-blue-400 mb-2" />
+                <Droplets size={18} className="text-accent mb-2" />
                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Humidity</span>
                 <span className="text-sm font-bold font-mono">{data.humidity}%</span>
               </div>

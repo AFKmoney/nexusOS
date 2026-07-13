@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOS } from '../store/osStore';
 import {
@@ -5,7 +6,7 @@ import {
   Home, Globe, X, Search, Lock, Loader2, Shield, Brain
 } from 'lucide-react';
 import { aiPipelineBridge } from '../kernel/aiPipelineBridge';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { browserBridge, type BrowserCommand, type BrowserExtractResult, type BrowserState } from '../kernel/browserBridge';
 
 /**
@@ -25,6 +26,7 @@ import { browserBridge, type BrowserCommand, type BrowserExtractResult, type Bro
  */
 
 const CORS_PROXIES = [
+  '/api/proxy?url=',
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?',
 ];
@@ -205,9 +207,12 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     }
   }, [resolvedInitial]);
 
+
+
   const normalizeUrl = (input: string): string => {
     const trimmed = input.trim();
     if (!trimmed) return '';
+    if (/^(about|javascript|data):/i.test(trimmed)) return trimmed;
     if (/^https?:\/\//i.test(trimmed)) return trimmed;
     if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(trimmed)) return `https://${trimmed}`;
     return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
@@ -264,8 +269,18 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     // Proxy a URL for cross-origin resource loading
     const proxyUrl = (href: string): string => {
       const absolute = resolveUrl(href);
-      if (absolute.startsWith('data:') || absolute.startsWith('blob:') || absolute.startsWith('#')) return absolute;
-      return `${proxy}${encodeURIComponent(absolute)}`;
+      if (absolute.startsWith('data:') || absolute.startsWith('blob:') || absolute.startsWith('#') || absolute.startsWith('javascript:')) {
+        return absolute;
+      }
+      try {
+        const u = new URL(absolute);
+        const protocol = u.protocol.replace(':', '');
+        const host = u.host;
+        const pathAndQuery = u.pathname + u.search + u.hash;
+        return `${window.location.origin}/api/proxy/${protocol}/${host}${pathAndQuery}`;
+      } catch {
+        return `${window.location.origin}/api/proxy?url=${encodeURIComponent(absolute)}`;
+      }
     };
 
     // Rewrite link[href], img[src], script[src] to go through proxy
@@ -304,14 +319,57 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     // Minimal iframe-safe overrides (just ensure images are responsive, don't nuke site styles)
     const styleOverride = `<style>img { max-width: 100%; height: auto; }</style>`;
 
+    // Intercept clicks and form submissions inside the iframe to load them via proxy
+    const iframeInterceptors = `<script>
+      (function() {
+        document.addEventListener('click', function(e) {
+          var target = e.target;
+          while (target && target.tagName !== 'A') {
+            target = target.parentNode;
+          }
+          if (target && target.href) {
+            var hrefAttr = target.getAttribute('href');
+            if (hrefAttr && (hrefAttr.startsWith('#') || hrefAttr.startsWith('javascript:') || hrefAttr.startsWith('data:') || hrefAttr.startsWith('about:'))) return;
+            if (target.href.startsWith('about:') || target.href.startsWith('javascript:') || target.href.startsWith('data:') || target.href.indexOf('about:srcdoc') !== -1) return;
+            e.preventDefault();
+            window.parent.postMessage({ type: 'webrunner-navigate', url: target.href }, '*');
+          }
+        }, true);
+
+        document.addEventListener('submit', function(e) {
+          var target = e.target;
+          if (target && target.action) {
+            var actionAttr = target.getAttribute('action');
+            if (actionAttr && (actionAttr.startsWith('javascript:') || actionAttr.startsWith('data:') || actionAttr.startsWith('about:'))) return;
+            if (target.action.startsWith('about:') || target.action.startsWith('javascript:') || target.action.startsWith('data:') || target.action.indexOf('about:srcdoc') !== -1) return;
+            e.preventDefault();
+            var method = (target.method || 'get').toLowerCase();
+            var actionUrl = target.action;
+            if (method === 'get') {
+              var formData = new FormData(target);
+              var params = new URLSearchParams();
+              for (var pair of formData.entries()) {
+                params.append(pair[0], pair[1]);
+              }
+              var separator = actionUrl.indexOf('?') !== -1 ? '&' : '?';
+              actionUrl = actionUrl + separator + params.toString();
+            }
+            window.parent.postMessage({ type: 'webrunner-navigate', url: actionUrl }, '*');
+          }
+        }, true);
+      })();
+    </script>`;
+
+    const headInjection = baseTag + styleOverride + iframeInterceptors;
+
     if (processed.includes('<head>')) {
-      return processed.replace('<head>', `<head>${baseTag}${styleOverride}`);
+      return processed.replace('<head>', `<head>${headInjection}`);
     } else if (processed.includes('<head ')) {
-      return processed.replace(/<head\s/, `<head>${baseTag}${styleOverride}</head><head `);
+      return processed.replace(/<head\s/, `<head>${headInjection}</head><head `);
     } else if (processed.includes('<html')) {
-      return processed.replace(/<html[^>]*>/, `$&<head>${baseTag}${styleOverride}</head>`);
+      return processed.replace(/<html[^>]*>/, `$&<head>${headInjection}</head>`);
     }
-    return `<html><head>${baseTag}${styleOverride}</head><body>${processed}</body></html>`;
+    return `<html><head>${headInjection}</head><body>${processed}</body></html>`;
   };
 
   const loadPage = async (url: string) => {
@@ -320,9 +378,20 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
     setPageHtml('');
 
     try {
+      // Check if it is a special scheme
+      if (/^(about|javascript|data):/i.test(url)) {
+        if (url.toLowerCase().startsWith('about:blank')) {
+          setPageHtml('<html><body></body></html>');
+        } else {
+          setPageHtml(`<html><body style="font-family: sans-serif; padding: 20px; background: #0f172a; color: #cbd5e1;"><h3>Internal Frame Navigation</h3><p>Blocked browser navigation to: <code>${url}</code></p></body></html>`);
+        }
+        setIsLoading(false);
+        return;
+      }
+
       // Check if it's a local VFS path
       if (url.startsWith('/') || url.startsWith('/home/') || url.startsWith('/system/')) {
-        const content = vfs.readFile(url);
+        const content = vfs.readFile(url, SYSTEM_VFS_APP_ID);
         if (content) {
           setPageHtml(content);
           setIsLoading(false);
@@ -362,6 +431,21 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
 
     loadPage(finalUrl);
   };
+
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    navigateRef.current = navigate;
+  });
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'webrunner-navigate' && e.data.url) {
+        navigateRef.current(e.data.url);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const goBack = () => {
     const prev = backStack[backStack.length - 1];
@@ -439,14 +523,14 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
           <ArrowRight size={15} />
         </button>
         <button onClick={refresh} disabled={!currentUrl} className="p-1.5 hover:bg-white/5 rounded-lg transition-all disabled:opacity-20 text-zinc-500 hover:text-white" title="Refresh">
-          <RefreshCw size={15} className={isLoading ? 'animate-spin text-blue-400' : ''} />
+          <RefreshCw size={15} className={isLoading ? 'animate-spin text-accent' : ''} />
         </button>
         <button onClick={goHome} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-500 hover:text-white" title="Home">
           <Home size={15} />
         </button>
 
         {/* URL Bar */}
-        <div className="flex-1 flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 focus-within:border-blue-500/40 rounded-xl px-3 py-1 transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 focus-within:border-accent/40 rounded-xl px-3 py-1 transition-all">
           {currentUrl ? (
             isSecure ? <Lock size={12} className="text-green-500 shrink-0" /> : <Globe size={12} className="text-zinc-500 shrink-0" />
           ) : (
@@ -469,7 +553,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
 
         {currentUrl && (
           <>
-            <button onClick={analyzeWithAI} disabled={!pageHtml || isLoading} className="p-1.5 hover:bg-blue-500/10 rounded-lg transition-all text-blue-500/70 hover:text-blue-400 disabled:opacity-30 disabled:hover:bg-transparent" title="Analyze with AI">
+            <button onClick={analyzeWithAI} disabled={!pageHtml || isLoading} className="p-1.5 hover:bg-accent/10 rounded-lg transition-all text-accent/70 hover:text-accent disabled:opacity-30 disabled:hover:bg-transparent" title="Analyze with AI">
               <Brain size={15} />
             </button>
             <button onClick={openExternal} className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-zinc-600 hover:text-zinc-300" title="Open in system browser">
@@ -486,13 +570,13 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
             <div className="w-full max-w-lg px-4">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 mb-2">
-                  <Globe size={28} className="text-blue-400" />
+                  <Globe size={28} className="text-accent" />
                   <span className="text-xl font-black tracking-wider text-white">WebRunner</span>
                 </div>
                 <p className="text-zinc-600 text-sm">Browse the web inside NexusOS</p>
               </div>
 
-              <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 focus-within:border-blue-500/40 rounded-2xl px-4 py-3 mb-6 transition-all">
+              <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 focus-within:border-accent/40 rounded-2xl px-4 py-3 mb-6 transition-all">
                 <Search size={18} className="text-zinc-600 shrink-0" />
                 <input
                   autoFocus
@@ -505,7 +589,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
                 <button
                   onClick={() => navigate(urlInput)}
                   disabled={!urlInput.trim()}
-                  className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/20 rounded-xl text-blue-400 text-xs font-bold transition-all disabled:opacity-30"
+                  className="px-3 py-1 bg-accent/20 hover:bg-accent/30 border border-accent/20 rounded-xl text-accent text-xs font-bold transition-all disabled:opacity-30"
                 >
                   Go
                 </button>
@@ -524,8 +608,8 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
                 ))}
               </div>
 
-              <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
-                <div className="flex items-center gap-2 mb-2 text-blue-400 text-xs font-bold">
+              <div className="p-4 bg-accent/5 border border-accent/10 rounded-2xl">
+                <div className="flex items-center gap-2 mb-2 text-accent text-xs font-bold">
                   <Shield size={13} />
                   PROXY BROWSER
                 </div>
@@ -538,7 +622,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
           </div>
         ) : isLoading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 gap-4">
-            <Loader2 size={36} className="text-blue-500 animate-spin" />
+            <Loader2 size={36} className="text-accent animate-spin" />
             <div className="text-sm text-zinc-400">Loading {hostname}...</div>
             <div className="text-xs text-zinc-500 font-mono">{currentUrl}</div>
           </div>
@@ -551,7 +635,7 @@ export default function WebRunnerApp({ windowId, initialUrl: propUrl }: { window
             <div className="flex gap-3">
               <button
                 onClick={openExternal}
-                className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-400 text-sm font-bold transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-accent/20 hover:bg-accent/30 border border-accent/30 rounded-xl text-accent text-sm font-bold transition-all flex items-center gap-2"
               >
                 <ExternalLink size={14} /> Open in System Browser
               </button>

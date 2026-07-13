@@ -33,7 +33,7 @@ function ProposalRow({ proposal }: { proposal: Proposal }) {
         <span className={`text-[10px] font-bold tracking-widest mr-2 ${statusCls}`}>{proposal.status.toUpperCase()}</span>
         {proposal.status === 'pending-approval' && (
           <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <button onClick={onApprove} className="px-2 py-0.5 rounded-md bg-emerald-950/50 border border-emerald-500/30 text-emerald-400 text-[10px] hover:bg-emerald-950/80 transition-colors">
+            <button onClick={onApprove} className="px-2 py-0.5 rounded-md bg-emerald-950/50 border border-accent/30 text-accent text-[10px] hover:bg-emerald-950/80 transition-colors">
               Approve
             </button>
             <button onClick={onDeny} className="px-2 py-0.5 rounded-md bg-rose-950/50 border border-rose-500/30 text-rose-400 text-[10px] hover:bg-rose-950/80 transition-colors">
@@ -89,7 +89,7 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({ proposals }) => 
             onClick={() => setFilter(f)}
             className={`px-2.5 py-1 text-[10px] rounded-full border font-mono transition-colors ${
               filter === f
-                ? 'bg-cyan-950/60 border-cyan-500/40 text-cyan-400'
+                ? 'bg-cyan-950/60 border-accent/40 text-accent'
                 : 'bg-black/30 border-white/5 text-zinc-500 hover:text-zinc-300'
             }`}
           >

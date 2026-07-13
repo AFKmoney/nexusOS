@@ -41,7 +41,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ mode, metrics }) => {
       <div className="grid grid-cols-2 gap-1.5 mt-3 text-xs font-mono">
         <MetricRow label="Health"    value={metrics.healthStatus.toUpperCase()} cls={HEALTH_CLS[metrics.healthStatus] ?? 'text-zinc-300'} />
         <MetricRow label="Proposals" value={metrics.proposalsTotal} />
-        <MetricRow label="Success"   value={pct(metrics.successRate)} cls={metrics.successRate >= 0.8 ? 'text-emerald-400' : 'text-amber-400'} />
+        <MetricRow label="Success"   value={pct(metrics.successRate)} cls={metrics.successRate >= 0.8 ? 'text-accent' : 'text-amber-400'} />
         <MetricRow label="Rollbacks" value={metrics.proposalsRolledBack} cls={metrics.proposalsRolledBack > 0 ? 'text-purple-400' : 'text-zinc-400'} />
       </div>
 
@@ -65,7 +65,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ mode, metrics }) => {
         {(mode === 'paused' || mode === 'safe-mode') && (
           <button
             onClick={onResume}
-            className="flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-950/70 transition-colors"
+            className="flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-emerald-950/40 border border-accent/30 text-accent hover:bg-emerald-950/70 transition-colors"
           >
             <Play size={11} /> Resume
           </button>
@@ -81,7 +81,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ mode, metrics }) => {
         {mode === 'disabled' && (
           <button
             onClick={onResume}
-            className="flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-950/70 transition-colors"
+            className="flex items-center gap-1 px-3 py-1 text-xs rounded-lg bg-emerald-950/40 border border-accent/30 text-accent hover:bg-emerald-950/70 transition-colors"
           >
             <Power size={11} /> Re-enable
           </button>

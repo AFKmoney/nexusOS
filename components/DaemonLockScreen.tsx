@@ -23,7 +23,7 @@ export const DaemonLockScreen: React.FC = () => {
     <div className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center font-mono font-bold select-none cursor-wait overflow-hidden">
       {/* Visual Glitch Effects */}
       <div className={`absolute inset-0 bg-red-500/5 mix-blend-overlay pointer-events-none transition-opacity ${glitch ? 'opacity-100' : 'opacity-0'}`} style={{ transform: glitch ? 'translate(4px, -2px)' : 'none' }} />
-      <div className={`absolute inset-0 bg-blue-500/5 mix-blend-overlay pointer-events-none transition-opacity ${glitch ? 'opacity-100' : 'opacity-0'}`} style={{ transform: glitch ? 'translate(-4px, 2px)' : 'none' }} />
+      <div className={`absolute inset-0 bg-accent/5 mix-blend-overlay pointer-events-none transition-opacity ${glitch ? 'opacity-100' : 'opacity-0'}`} style={{ transform: glitch ? 'translate(-4px, 2px)' : 'none' }} />
 
       <div className="flex flex-col items-center max-w-2xl w-full p-8 relative">
         <Lock size={64} className="text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse" />
@@ -40,7 +40,7 @@ export const DaemonLockScreen: React.FC = () => {
             ))}
             <div className="flex gap-2 animate-pulse mt-2">
               <span className="text-zinc-600">[{timestamp}]</span>
-              <span className="text-emerald-500 flex items-center gap-2"><Terminal size={12}/> REBUILDING NEURAL PATHWAYS <span className="animate-bounce">...</span></span>
+              <span className="text-accent flex items-center gap-2"><Terminal size={12}/> REBUILDING NEURAL PATHWAYS <span className="animate-bounce">...</span></span>
             </div>
           </div>
         </div>

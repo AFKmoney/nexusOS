@@ -24,7 +24,7 @@ export default function AccessibilityPanel() {
   const Toggle = ({ label, value, onToggle, icon: Icon, desc }: { label: string; value: boolean; onToggle: () => void; icon: React.ComponentType<{ size?: number }>; desc: string; }) => (
     <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] transition-all">
       <div className="flex items-center gap-4">
-        <div className={`p-2 rounded-lg ${value ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+        <div className={`p-2 rounded-lg ${value ? 'bg-accent/20 text-accent' : 'bg-zinc-800 text-zinc-500'}`}>
           <Icon size={18} />
         </div>
         <div>
@@ -34,7 +34,7 @@ export default function AccessibilityPanel() {
       </div>
       <button
         onClick={onToggle}
-        className={`w-12 h-6 rounded-full transition-all relative ${value ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-zinc-800'}`}
+        className={`w-12 h-6 rounded-full transition-all relative ${value ? 'bg-accent shadow-accent' : 'bg-zinc-800'}`}
       >
         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${value ? 'left-7' : 'left-1'}`} />
       </button>
@@ -45,7 +45,7 @@ export default function AccessibilityPanel() {
     <div className="h-full bg-[#050508] text-white flex flex-col font-sans overflow-hidden">
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center gap-4 bg-black/40 backdrop-blur-xl shrink-0">
-        <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+        <div className="p-2 bg-accent/20 rounded-lg text-accent">
           <Accessibility size={20} />
         </div>
         <div>
@@ -114,8 +114,8 @@ export default function AccessibilityPanel() {
             </div>
           </section>
 
-          <div className="p-6 rounded-2xl bg-blue-500/5 border border-blue-500/20 flex items-start gap-4">
-            <ShieldCheck className="text-blue-400 shrink-0" size={20} />
+          <div className="p-6 rounded-2xl bg-accent/5 border border-accent/20 flex items-start gap-4">
+            <ShieldCheck className="text-accent shrink-0" size={20} />
               <p className="text-xs text-zinc-500 leading-relaxed italic">
                 "Accessibility is not a feature, it's a protocol. DAEMON ensures that every node in the nexus is usable by any entity, regardless of sensory input constraints."
               </p>

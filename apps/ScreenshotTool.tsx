@@ -23,9 +23,11 @@ export default function ScreenshotTool() {
       } else {
         // Fallback for non-electron web environment
         const canvas = document.createElement('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
         const ctx = canvas.getContext('2d');
+        if (ctx) ctx.scale(dpr, dpr);
         if (ctx) {
           ctx.fillStyle = '#050508';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -51,7 +53,7 @@ export default function ScreenshotTool() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+          <div className="p-2 bg-accent/20 rounded-lg text-accent">
             <Camera size={20} />
           </div>
           <div>
@@ -62,7 +64,7 @@ export default function ScreenshotTool() {
         <button 
           onClick={takeCapture}
           disabled={isCapturing}
-          className="flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-black rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent text-black rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-accent active:scale-95 disabled:opacity-50"
         >
           {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Frame size={14} />}
           {isCapturing ? 'CAPTURING' : 'NEW CAPTURE'}
@@ -80,16 +82,16 @@ export default function ScreenshotTool() {
                   
                   {/* Actions Overlay */}
                   <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
-                    <a href={s.data} download={`nexus_shot_${s.id}.png`} className="p-3 bg-emerald-500 text-black rounded-full shadow-xl hover:scale-110 transition-transform"><Download size={20}/></a>
+                    <a href={s.data} download={`nexus_shot_${s.id}.png`} className="p-3 bg-accent text-black rounded-full shadow-xl hover:scale-110 transition-transform"><Download size={20}/></a>
                     <button onClick={() => deleteShot(s.id)} className="p-3 bg-red-500 text-white rounded-full shadow-xl hover:scale-110 transition-transform"><Trash2 size={20}/></button>
                   </div>
                 </div>
                 <div className="p-4 flex items-center justify-between bg-zinc-900/80 backdrop-blur-md">
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-widest text-zinc-200">SHOT_{s.id.slice(-6)}</div>
-                    <div className="text-[9px] font-mono text-zinc-500 mt-0.5">{new Date(s.date).toLocaleString()}</div>
+                    <div className="text-[9px] font-mono text-zinc-500 mt-0.5">{new Date(s.date).toLocaleString('en-US')}</div>
                   </div>
-                  <Zap size={14} className="text-emerald-500 opacity-20" />
+                  <Zap size={14} className="text-accent opacity-20" />
                 </div>
               </div>
             ))}

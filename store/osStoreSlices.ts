@@ -195,14 +195,24 @@ export const createWindowActions = (
     const id = uuid();
     const nextZ = get().globalZIndex + 1;
 
+    const width = app.defaultSize?.width || 800;
+    const height = app.defaultSize?.height || 600;
+    
+    // Calculate centered position with slight cascade for multiple windows
+    const cascadeOffset = (get().windows.length % 5) * 30;
+    const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const screenH = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const x = Math.max(0, (screenW - width) / 2) + cascadeOffset;
+    const y = Math.max(0, (screenH - height) / 2) + cascadeOffset;
+
     const newWin: WindowState = {
       id,
       appId,
       title: data?.title || app.name,
-      x: 50 + (get().windows.length * 20),
-      y: 50 + (get().windows.length * 20),
-      width: app.defaultSize?.width || 800,
-      height: app.defaultSize?.height || 600,
+      x,
+      y,
+      width,
+      height,
       zIndex: nextZ,
       isMinimized: false,
       isMaximized: false,

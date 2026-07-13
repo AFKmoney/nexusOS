@@ -26,8 +26,8 @@ export default function LoginScreen({
       }} />
 
       <div className="z-10 flex flex-col items-center">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
-          <Zap className="text-emerald-500" size={32} />
+        <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-6 shadow-accent">
+          <Zap className="text-accent" size={32} />
         </div>
         <h1 className="text-3xl font-extralight text-white tracking-[0.25em] uppercase mb-2 drop-shadow-lg" style={{ color: 'white' }}>NexusOS</h1>
         <div className="text-xs text-zinc-600 tracking-[0.2em] uppercase mb-12">Select Profile</div>
@@ -40,7 +40,7 @@ export default function LoginScreen({
               className="flex flex-col items-center gap-4 cursor-pointer group"
             >
               <div
-                className="w-20 h-20 rounded-2xl flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all shadow-xl backdrop-blur-md border border-white/10 group-hover:border-emerald-500/40 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all shadow-xl backdrop-blur-md border border-white/10 group-hover:border-accent/40 group-hover:shadow-accent"
                 style={{ backgroundColor: `${p.themeColor}20`, color: p.themeColor }}
               >
                 <Users size={28} />
@@ -48,14 +48,14 @@ export default function LoginScreen({
               <div className="text-center">
                 <div className="text-white font-medium text-base tracking-wide group-hover:text-emerald-300 transition-colors drop-shadow-md">{p.name}</div>
                 {p.isAdmin && <div className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase mt-1">Administrator</div>}
-                {p.id === 'daemon' && <div className="text-[10px] text-emerald-500 font-bold tracking-widest uppercase mt-1 animate-pulse">DAEMON AI</div>}
+                {p.id === 'daemon' && <div className="text-[10px] text-accent font-bold tracking-widest uppercase mt-1 animate-pulse">DAEMON AI</div>}
               </div>
             </div>
           ))}
         </div>
 
         <div className="mt-16 text-[10px] font-mono text-zinc-500 tracking-widest flex items-center gap-2">
-          <Lock size={10} /> ENCRYPTED BOOT · <span className="text-emerald-600">VERIFIED</span>
+          <Lock size={10} /> ENCRYPTED BOOT · <span className="text-accent">VERIFIED</span>
         </div>
       </div>
     </div>

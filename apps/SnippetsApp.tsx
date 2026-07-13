@@ -64,7 +64,7 @@ export default function SnippetsApp() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+          <div className="p-2 bg-accent/20 rounded-lg text-accent">
             <FileCode2 size={20} />
           </div>
           <div>
@@ -72,7 +72,7 @@ export default function SnippetsApp() {
             <p className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">Neural Logic Storage</p>
           </div>
         </div>
-        <button onClick={addSnippet} className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95">
+        <button onClick={addSnippet} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-accent hover:scale-105 active:scale-95">
           <Plus size={14} /> New Pattern
         </button>
       </div>
@@ -84,7 +84,7 @@ export default function SnippetsApp() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-zinc-600" size={14} />
               <input 
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500"
+                className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500"
                 placeholder="Search repository..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -96,7 +96,7 @@ export default function SnippetsApp() {
               <button 
                 key={s.id}
                 onClick={() => setActiveSnippet(s)}
-                className={`w-full flex flex-col gap-1 p-3 rounded-xl transition-all text-left group ${activeSnippet?.id === s.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'}`}
+                className={`w-full flex flex-col gap-1 p-3 rounded-xl transition-all text-left group ${activeSnippet?.id === s.id ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/5 border border-transparent'}`}
               >
                 <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{s.title}</div>
                 <div className="flex items-center justify-between">
@@ -114,13 +114,13 @@ export default function SnippetsApp() {
             <div className="h-full flex flex-col animate-in fade-in duration-300">
               <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                 <input 
-                  className="bg-transparent text-lg font-black text-white outline-none w-1/2 focus:text-emerald-400 transition-colors"
+                  className="bg-transparent text-lg font-black text-white outline-none w-1/2 focus:text-accent transition-colors"
                   value={activeSnippet.title}
                   onChange={e => updateSnippet(activeSnippet.id, { title: e.target.value })}
                 />
                 <div className="flex items-center gap-3">
                   <button onClick={() => copyCode(activeSnippet)} className="flex items-center gap-2 px-4 py-1.5 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-lg text-xs font-bold uppercase tracking-widest transition-all">
-                    {copiedId === activeSnippet.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />} 
+                    {copiedId === activeSnippet.id ? <Check size={14} className="text-accent" /> : <Copy size={14} />} 
                     {copiedId === activeSnippet.id ? 'Extracted' : 'Copy'}
                   </button>
                   <button onClick={() => deleteSnippet(activeSnippet.id)} className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
@@ -130,14 +130,14 @@ export default function SnippetsApp() {
               </div>
               <div className="flex-1 relative group">
                 <textarea 
-                  className="w-full h-full bg-transparent p-8 text-sm font-mono text-emerald-100/80 outline-none resize-none selection:bg-emerald-500/20 leading-relaxed custom-scrollbar"
+                  className="w-full h-full bg-transparent p-8 text-sm font-mono text-emerald-100/80 outline-none resize-none selection:bg-accent/20 leading-relaxed custom-scrollbar"
                   spellCheck={false}
                   value={activeSnippet.code}
                   onChange={e => updateSnippet(activeSnippet.id, { code: e.target.value })}
                 />
                 <div className="absolute bottom-6 right-8 flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-opacity">
                   <select 
-                    className="bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-lg px-3 py-1 outline-none focus:border-emerald-500/50"
+                    className="bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-lg px-3 py-1 outline-none focus:border-accent/50"
                     value={activeSnippet.language}
                     onChange={e => updateSnippet(activeSnippet.id, { language: e.target.value })}
                   >

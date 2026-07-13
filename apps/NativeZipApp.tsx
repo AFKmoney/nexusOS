@@ -97,7 +97,7 @@ export default function NativeZipApp() {
       <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
          
          {/* Instruction Banner */}
-         <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-300 mb-6 flex gap-3">
+         <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl text-xs text-blue-300 mb-6 flex gap-3">
              <InfoIcon />
              <div>
                 <strong>Non-Simulated Execution:</strong> This tool bridges out of the NexusOS sandbox and directly calls host utility commands (<code className="bg-black/50 px-1 rounded">Expand-Archive</code> on Windows) to perform physical file extractions on your hard drive. 
@@ -149,7 +149,7 @@ export default function NativeZipApp() {
             )}
 
             {status === 'success' && (
-                <div className="w-full py-3 border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 rounded-xl font-bold flex items-center justify-center gap-2">
+                <div className="w-full py-3 border border-accent/30 bg-accent/10 text-accent rounded-xl font-bold flex items-center justify-center gap-2">
                    <CheckCircle size={18} /> Extraction Completed Successfully
                 </div>
             )}

@@ -12,13 +12,13 @@ export default function MarkdownPreview() {
     // Simple MD-to-HTML transform logic
     let html = text
       .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-black mb-6 mt-2 text-white border-b border-white/10 pb-4">$1</h1>')
-      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-4 mt-8 text-emerald-400 uppercase tracking-widest">$1</h2>')
+      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-4 mt-8 text-accent uppercase tracking-widest">$1</h2>')
       .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-3 mt-6 text-zinc-200">$1</h3>')
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="italic text-zinc-400">$1</em>')
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="rounded-xl shadow-2xl my-6 border border-white/5" />')
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-emerald-400 hover:underline">$1</a>')
-      .replace(/^> (.*$)/gm, '<blockquote class="border-l-4 border-emerald-500 bg-white/5 p-4 my-6 italic text-zinc-300 rounded-r-xl">$1</blockquote>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-accent hover:underline">$1</a>')
+      .replace(/^> (.*$)/gm, '<blockquote class="border-l-4 border-accent bg-white/5 p-4 my-6 italic text-zinc-300 rounded-r-xl">$1</blockquote>')
       .replace(/```([\s\S]*?)```/g, '<pre class="bg-black/60 border border-white/10 p-6 rounded-2xl my-6 font-mono text-sm text-emerald-200 overflow-x-auto shadow-inner"><code>$1</code></pre>')
       .replace(/`([^`]+)`/g, '<code class="bg-white/10 px-1.5 py-0.5 rounded text-emerald-300 font-mono text-xs">$1</code>')
       .replace(/^\d+\. (.*$)/gm, '<li class="ml-6 list-decimal text-zinc-400 mb-2 pl-2">$1</li>')
@@ -42,7 +42,7 @@ export default function MarkdownPreview() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+          <div className="p-2 bg-accent/20 rounded-lg text-accent">
             <FileText size={20} />
           </div>
           <div>
@@ -53,8 +53,8 @@ export default function MarkdownPreview() {
 
         <div className="flex items-center gap-2">
           <div className="flex bg-black/50 p-1 rounded-xl border border-white/5">
-            <button onClick={() => setView('split')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'split' ? 'bg-emerald-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Split</button>
-            <button onClick={() => setView('preview')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'preview' ? 'bg-emerald-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Preview</button>
+            <button onClick={() => setView('split')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'split' ? 'bg-accent text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Split</button>
+            <button onClick={() => setView('preview')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'preview' ? 'bg-accent text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Preview</button>
           </div>
           <div className="w-px h-6 bg-white/10 mx-2" />
           <button onClick={downloadHtml} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Download size={18}/></button>
@@ -67,7 +67,7 @@ export default function MarkdownPreview() {
         {view === 'split' && (
           <div className="flex-1 border-r border-white/5 bg-[#0a0a0c] relative">
             <textarea 
-              className="w-full h-full p-8 bg-transparent text-sm font-mono text-emerald-100/70 outline-none resize-none selection:bg-emerald-500/20 leading-relaxed custom-scrollbar"
+              className="w-full h-full p-8 bg-transparent text-sm font-mono text-emerald-100/70 outline-none resize-none selection:bg-accent/20 leading-relaxed custom-scrollbar"
               spellCheck={false}
               value={content}
               onChange={e => setContent(e.target.value)}
@@ -82,7 +82,7 @@ export default function MarkdownPreview() {
         <div className={`flex-1 overflow-y-auto custom-scrollbar p-10 bg-black/40 ${view === 'preview' ? 'max-w-4xl mx-auto' : ''}`}>
           <div className="relative">
             <div className="absolute top-0 right-0 opacity-20 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest pointer-events-none mb-8">
-              <Sparkles size={12} className="text-emerald-400" /> Visual Manifest
+              <Sparkles size={12} className="text-accent" /> Visual Manifest
             </div>
             <div 
               className="prose prose-invert max-w-none prose-emerald"

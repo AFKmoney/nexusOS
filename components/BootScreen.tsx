@@ -81,35 +81,35 @@ export default function BootScreen() {
       }} />
 
       <div className="relative mb-8">
-        <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
-          <Zap className="text-emerald-500 animate-pulse" size={36} />
+        <div className="w-20 h-20 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4 shadow-accent">
+          <Zap className="text-accent animate-pulse" size={36} />
         </div>
         <div className="text-white font-black tracking-[0.4em] text-2xl text-center" style={{ color: 'white' }}>
-          NEXUS<span className="text-emerald-500">OS</span>
+          NEXUS<span className="text-accent">OS</span>
         </div>
         <div className="text-zinc-600 text-xs text-center tracking-[0.3em] mt-1 uppercase">AI-Native Operating System</div>
       </div>
 
       <div className="w-72 mb-6">
         <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-300 shadow-accent" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       <div className="w-80 h-44 overflow-hidden">
         {bootLines.map((line, i) => (
-          <div key={i} className="text-[10px] font-mono text-emerald-400/60 mb-0.5" style={{
+          <div key={i} className="text-[10px] font-mono text-accent/60 mb-0.5" style={{
             animation: 'fadeIn 0.2s ease-out',
             opacity: i === bootLines.length - 1 ? 1 : 0.5,
           }}>
-            <span className="text-emerald-600 mr-1.5">▸</span>{line}
+            <span className="text-accent mr-1.5">▸</span>{line}
           </div>
         ))}
         {bootPhase < BOOT_MESSAGES.length && (
-          <div className="text-[10px] text-emerald-600 animate-pulse mt-1">▋</div>
+          <div className="text-[10px] text-accent animate-pulse mt-1">▋</div>
         )}
         {bootPhase >= BOOT_MESSAGES.length && (
-          <div className="text-[11px] text-emerald-400 font-bold mt-2 animate-pulse tracking-widest">
+          <div className="text-[11px] text-accent font-bold mt-2 animate-pulse tracking-widest">
             ⚡ BOOTING...
           </div>
         )}

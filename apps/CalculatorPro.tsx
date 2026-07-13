@@ -62,26 +62,26 @@ export default function CalculatorPro() {
             <Btn label="AC" onClick={clear} color="bg-red-500/20" textColor="text-red-400" />
             <Btn label="+/-" onClick={() => setDisplay(d => (parseFloat(d) * -1).toString())} />
             <Btn label="%" onClick={() => setDisplay(d => (parseFloat(d) / 100).toString())} />
-            <Btn label="÷" onClick={() => handleOp('÷')} color="bg-emerald-500/20" textColor="text-emerald-400" />
+            <Btn label="÷" onClick={() => handleOp('÷')} color="bg-accent/20" textColor="text-accent" />
             
             <Btn label="7" onClick={() => handleDigit('7')} />
             <Btn label="8" onClick={() => handleDigit('8')} />
             <Btn label="9" onClick={() => handleDigit('9')} />
-            <Btn label="×" onClick={() => handleOp('×')} color="bg-emerald-500/20" textColor="text-emerald-400" />
+            <Btn label="×" onClick={() => handleOp('×')} color="bg-accent/20" textColor="text-accent" />
             
             <Btn label="4" onClick={() => handleDigit('4')} />
             <Btn label="5" onClick={() => handleDigit('5')} />
             <Btn label="6" onClick={() => handleDigit('6')} />
-            <Btn label="-" onClick={() => handleOp('-')} color="bg-emerald-500/20" textColor="text-emerald-400" />
+            <Btn label="-" onClick={() => handleOp('-')} color="bg-accent/20" textColor="text-accent" />
             
             <Btn label="1" onClick={() => handleDigit('1')} />
             <Btn label="2" onClick={() => handleDigit('2')} />
             <Btn label="3" onClick={() => handleDigit('3')} />
-            <Btn label="+" onClick={() => handleOp('+')} color="bg-emerald-500/20" textColor="text-emerald-400" />
+            <Btn label="+" onClick={() => handleOp('+')} color="bg-accent/20" textColor="text-accent" />
             
             <Btn label="0" onClick={() => handleDigit('0')} className="col-span-2" />
             <Btn label="." onClick={() => handleDigit('.')} />
-            <Btn label="=" onClick={calculate} color="bg-emerald-500" textColor="text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]" />
+            <Btn label="=" onClick={calculate} color="bg-accent" textColor="text-black shadow-accent" />
           </div>
         </div>
 

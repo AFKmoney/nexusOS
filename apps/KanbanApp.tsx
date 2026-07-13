@@ -8,8 +8,8 @@ interface Column { id: string; title: string; tasks: Task[]; color: string; }
 const LS_KEY = 'nexus_kanban_v2';
 
 const COLUMN_COLORS = [
-  'border-emerald-500',
-  'border-blue-500',
+  'border-accent',
+  'border-accent',
   'border-violet-500',
   'border-amber-500',
   'border-rose-500'
@@ -159,7 +159,7 @@ export default function KanbanApp() {
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 bg-black/40 px-2 py-1 rounded-md">
-                      <Clock size={10} /> {new Date(task.created).toLocaleDateString()}
+                      <Clock size={10} /> {new Date(task.created).toLocaleDateString('en-US')}
                     </div>
                     
                     {/* Controls (visible on hover) */}

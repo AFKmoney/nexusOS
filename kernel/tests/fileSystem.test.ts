@@ -1,3 +1,5 @@
+import { SYSTEM_VFS_APP_ID } from '../../kernel/fileSystem';
+
 import test from 'node:test';
 import assert from 'node:assert';
 
@@ -52,7 +54,7 @@ test('VirtualFileSystem - readFile without appId is denied', () => {
 
   lastConsoleError = '';
   lastConsoleWarn = '';
-  const content = vfs.readFile('/home/user/Desktop/test-denied.txt');
+  const content = vfs.readFile('/home/user/Desktop/test-denied.txt', SYSTEM_VFS_APP_ID);
   assert.strictEqual(content, null, 'Should deny read without appId');
   assert.ok(lastConsoleWarn.includes('Missing appId for permission check (vfs.read)'), 'Should log missing appId warning');
   assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked undefined from reading'), 'Should log permission error');

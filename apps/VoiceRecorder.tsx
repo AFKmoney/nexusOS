@@ -68,7 +68,7 @@ export default function VoiceRecorder() {
         const url = URL.createObjectURL(blob);
         const newRec: Recording = {
           id: uuid(),
-          name: `Neural_Log_${new Date().toLocaleTimeString()}.ogg`,
+          name: `Neural_Log_${new Date().toLocaleTimeString('en-US')}.ogg`,
           duration,
           date: Date.now(),
           blob,
@@ -183,11 +183,11 @@ export default function VoiceRecorder() {
                 </button>
                 <div>
                   <div className="text-xs font-bold text-zinc-200">{r.name}</div>
-                  <div className="text-[9px] text-zinc-600 font-mono uppercase">{formatTime(r.duration)} · {new Date(r.date).toLocaleDateString()}</div>
+                  <div className="text-[9px] text-zinc-600 font-mono uppercase">{formatTime(r.duration)} · {new Date(r.date).toLocaleDateString('en-US')}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a href={r.url} download={r.name} className="p-2 text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Download size={16}/></a>
+                <a href={r.url} download={r.name} className="p-2 text-zinc-500 hover:text-accent hover:bg-accent/10 rounded-lg transition-all"><Download size={16}/></a>
                 <button onClick={() => deleteRecording(r.id)} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
               </div>
             </div>

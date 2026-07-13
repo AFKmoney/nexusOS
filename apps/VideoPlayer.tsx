@@ -58,7 +58,7 @@ export default function VideoPlayer() {
         {/* Big Play Overlay (visible when paused) */}
         {!isPlaying && (
           <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] transition-opacity">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/80 flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:scale-110 transition-transform">
+            <div className="w-20 h-20 rounded-full bg-accent/80 flex items-center justify-center shadow-accent hover:scale-110 transition-transform">
               <Play size={40} className="text-black ml-1" fill="currentColor" />
             </div>
           </button>
@@ -105,7 +105,7 @@ export default function VideoPlayer() {
       {/* Floating Info Overlay */}
       <div className="absolute top-6 left-6 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="p-2 bg-black/60 backdrop-blur-md rounded-lg border border-white/10">
-          <MonitorPlay size={16} className="text-emerald-400" />
+          <MonitorPlay size={16} className="text-accent" />
         </div>
         <div className="text-xs font-black uppercase tracking-widest text-white drop-shadow-md">
           sample_video_01.mp4

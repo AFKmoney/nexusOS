@@ -127,7 +127,7 @@ class EpisodicMemory {
     const recent = this.getRecent(maxEpisodes);
     if (recent.length === 0) return '';
     return recent.map(e =>
-      `  [${new Date(e.timestamp).toLocaleTimeString()}] User: ${e.userMessage.slice(0, 200)} → AI: ${e.aiResponse.slice(0, 200)}`
+      `  [${new Date(e.timestamp).toLocaleTimeString('en-US')}] User: ${e.userMessage.slice(0, 200)} → AI: ${e.aiResponse.slice(0, 200)}`
     ).join('\n');
   }
 }

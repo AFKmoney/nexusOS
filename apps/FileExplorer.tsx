@@ -34,7 +34,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
         const fullPath = `${currentPath === '/' ? '' : currentPath}/${name}`;
         const node = vfs.stat(fullPath);
         if (node) {
-            let info = { type: node.type, size: 0, date: new Date(node.modified).toLocaleString() };
+            let info = { type: node.type, size: 0, date: new Date(node.modified).toLocaleString('en-US') };
             if (node.type === 'file') info.size = node.content?.length || 0;
             else { const stat = vfs.getStats(fullPath); info.size = stat?.size || 0; }
             metas[name] = { 
@@ -158,9 +158,9 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
 
         <form onSubmit={handleSearch} className="w-64 relative group">
           <div className="absolute left-2.5 top-1.5 flex items-center pointer-events-none">
-              {isAiSearching ? <Loader2 size={14} className="text-cyan-400 animate-spin" /> : <Sparkles size={14} className={`transition-colors ${searchQuery ? 'text-cyan-400' : 'text-zinc-600'}`} />}
+              {isAiSearching ? <Loader2 size={14} className="text-accent animate-spin" /> : <Sparkles size={14} className={`transition-colors ${searchQuery ? 'text-accent' : 'text-zinc-600'}`} />}
           </div>
-          <input className="w-full bg-zinc-900 border border-white/5 rounded-lg pl-8 pr-7 py-1 text-sm outline-none focus:border-cyan-400/50 transition-all text-white placeholder:text-zinc-600" placeholder="Neural Query..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+          <input className="w-full bg-zinc-900 border border-white/5 rounded-lg pl-8 pr-7 py-1 text-sm outline-none focus:border-accent/50 transition-all text-white placeholder:text-zinc-600" placeholder="Neural Query..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           {searchQuery && <button type="button" onClick={clearSearch} className="absolute right-2 top-1.5 text-zinc-500 hover:text-white"><X size={14} /></button>}
         </form>
 
@@ -180,7 +180,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
             { icon: Box, label: 'System', path: '/system' },
             { icon: Files, label: 'Root', path: '/' },
           ].map(f => (
-            <button key={f.path} onClick={() => navigate(f.path)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition ${currentPath === f.path ? 'bg-cyan-500/10 text-cyan-400' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}>
+            <button key={f.path} onClick={() => navigate(f.path)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition ${currentPath === f.path ? 'bg-accent/10 text-accent' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}>
               <f.icon size={14} /> {f.label}
             </button>
           ))}
@@ -193,7 +193,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
           onClick={() => setSelectedItem(null)}>
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {searchQuery && !isAiSearching && (
-                <div className="mb-4 text-xs font-bold text-cyan-400/80 uppercase tracking-widest flex items-center gap-2">
+                <div className="mb-4 text-xs font-bold text-accent/80 uppercase tracking-widest flex items-center gap-2">
                     <Search size={14} /> Found {items.length} results
                 </div>
             )}
@@ -214,9 +214,9 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
                       onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
                       onDoubleClick={() => handleOpen(item)}
                       onContextMenu={(e) => handleItemContextMenu(e, item)}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition cursor-pointer select-none border ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_15px_rgba(34,211,238,0.1)]' : 'border-transparent hover:bg-white/5'}`}>
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl transition cursor-pointer select-none border ${isSelected ? 'bg-accent/10 border-accent/30 shadow-accent/10' : 'border-transparent hover:bg-white/5'}`}>
                       <div className="relative">
-                        {isDir ? <Folder size={48} className="text-blue-500" /> : getSmartIcon(fullPath, 48)}
+                        {isDir ? <Folder size={48} className="text-accent" /> : getSmartIcon(fullPath, 48)}
                       </div>
                       <span className={`text-xs text-center break-words line-clamp-2 w-full ${isSelected ? 'text-white font-medium' : 'text-zinc-400'}`}>{item}</span>
                     </div>
@@ -245,9 +245,9 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
                       onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
                       onDoubleClick={() => handleOpen(item)}
                       onContextMenu={(e) => handleItemContextMenu(e, item)}
-                      className={`flex items-center px-4 py-2 rounded-lg transition cursor-pointer select-none ${isSelected ? 'bg-cyan-500/10 text-white' : 'hover:bg-white/5 text-zinc-300'}`}>
+                      className={`flex items-center px-4 py-2 rounded-lg transition cursor-pointer select-none ${isSelected ? 'bg-accent/10 text-white' : 'hover:bg-white/5 text-zinc-300'}`}>
                       <div className="flex-1 flex items-center gap-3">
-                        {isDir ? <Folder size={18} className="text-blue-500" /> : getSmartIcon(fullPath, 18)}
+                        {isDir ? <Folder size={18} className="text-accent" /> : getSmartIcon(fullPath, 18)}
                         <span className="text-xs truncate">{item}</span>
                       </div>
                       <div className="w-24 text-right text-[10px] text-zinc-500 truncate">{meta?.date}</div>
@@ -271,7 +271,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
         {selectedItem && selectedNode && (
           <div className="w-64 bg-zinc-900 border-l border-white/5 p-4 flex flex-col shrink-0 overflow-y-auto">
             <div className="flex justify-center mb-4 p-4 bg-black/40 rounded-xl border border-white/5">
-              {selectedNode.type === 'directory' ? <Folder size={64} className="text-blue-500" /> : getSmartIcon(selectedNode.name, 64)}
+              {selectedNode.type === 'directory' ? <Folder size={64} className="text-accent" /> : getSmartIcon(selectedNode.name, 64)}
             </div>
             <div className="text-sm font-bold text-white mb-4 break-all">{selectedNode.name}</div>
             
@@ -286,7 +286,7 @@ export default function FileExplorerApp({ windowId }: { windowId: string }) {
               </div>
               <div>
                 <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-0.5">Modified</div>
-                <div className="text-xs text-zinc-300">{new Date(selectedNode.modified).toLocaleString()}</div>
+                <div className="text-xs text-zinc-300">{new Date(selectedNode.modified).toLocaleString('en-US')}</div>
               </div>
             </div>
 

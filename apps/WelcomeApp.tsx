@@ -27,7 +27,7 @@ export default function WelcomeApp({ id }: { id: string }) {
       <div className={`max-w-2xl w-full transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-[0.3em] mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-black uppercase tracking-[0.3em] mb-4">
             <Zap size={12} className="animate-pulse" /> System Online
           </div>
           <h1 className="text-4xl font-black uppercase tracking-tight text-white mb-2">
@@ -43,10 +43,10 @@ export default function WelcomeApp({ id }: { id: string }) {
           {FEATURES.map((f, i) => (
             <div
               key={f.title}
-              className="group p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-emerald-500/20 transition-all duration-300 cursor-default"
+              className="group p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-accent/20 transition-all duration-300 cursor-default"
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              <f.icon size={18} className="text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+              <f.icon size={18} className="text-accent mb-2 group-hover:scale-110 transition-transform" />
               <div className="text-xs font-bold text-white mb-1">{f.title}</div>
               <div className="text-[10px] text-zinc-500 leading-relaxed">{f.desc}</div>
             </div>
@@ -60,7 +60,7 @@ export default function WelcomeApp({ id }: { id: string }) {
               openWindow('daemon_chat');
               closeWindow(id);
             }}
-            className="flex items-center gap-2 px-5 py-3 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-black transition-all"
+            className="flex items-center gap-2 px-5 py-3 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-black uppercase tracking-widest hover:bg-accent hover:text-black transition-all"
           >
             <Brain size={14} /> Talk to DAEMON
           </button>

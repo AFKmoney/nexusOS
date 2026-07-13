@@ -168,7 +168,7 @@ export default function SettingsApp() {
                 onClick={() => setTab(id)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                   tab === id
-                    ? 'bg-emerald-500/15 border border-emerald-500/20 text-emerald-400'
+                    ? 'bg-accent/15 border border-accent/20 text-accent'
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                 }`}
               >
@@ -185,7 +185,7 @@ export default function SettingsApp() {
                 <h2 className="text-2xl font-black text-white tracking-tighter uppercase">User Identity</h2>
                 <button
                   onClick={saveProfile}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black uppercase tracking-widest text-[10px]"
+                  className="px-4 py-2 rounded-xl bg-accent text-black font-black uppercase tracking-widest text-[10px]"
                 >
                   Save Profile
                 </button>
@@ -197,13 +197,13 @@ export default function SettingsApp() {
                 </div>
                 <div className="flex-1 space-y-3">
                   <input
-                    className="bg-transparent text-xl font-bold text-white border-b border-white/10 focus:border-emerald-500 outline-none w-full pb-1 mb-1"
+                    className="bg-transparent text-xl font-bold text-white border-b border-white/10 focus:border-accent outline-none w-full pb-1 mb-1"
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
                     placeholder="Enter Identity Name"
                   />
                   <textarea
-                    className="w-full min-h-24 bg-black/30 border border-white/10 rounded-2xl p-3 text-sm text-zinc-200 outline-none focus:border-emerald-500/50"
+                    className="w-full min-h-24 bg-black/30 border border-white/10 rounded-2xl p-3 text-sm text-zinc-200 outline-none focus:border-accent/50"
                     value={profileBio}
                     onChange={(e) => setProfileBio(e.target.value)}
                     placeholder="Profile bio, mission, or operational notes"
@@ -213,11 +213,13 @@ export default function SettingsApp() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <div className="text-[10px] text-zinc-500 uppercase font-black mb-2 tracking-widest">Active Model</div>
-                  <div className="text-sm font-bold text-emerald-400">{kernelRules.activeLocalModel || 'Llama-3.2-1B'}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                {kernelRules.activeLocalModel ? (
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase font-black mb-2 tracking-widest">Active Model</div>
+                    <div className="text-sm font-bold text-accent">{kernelRules.activeLocalModel}</div>
+                  </div>
+                ) : null}
+                <div className={`p-4 rounded-2xl bg-white/[0.02] border border-white/5 ${!kernelRules.activeLocalModel ? 'col-span-2' : ''}`}>
                   <div className="text-[10px] text-zinc-500 uppercase font-black mb-2 tracking-widest">Privileges</div>
                   <div className="text-sm font-bold text-white">SYSTEM_ADMIN</div>
                 </div>
@@ -241,7 +243,7 @@ export default function SettingsApp() {
                   </div>
                   <button
                     onClick={() => updateKernelRules({ autonomyEnabled: !kernelRules.autonomyEnabled })}
-                    className={`w-12 h-6 rounded-full transition-all relative ${kernelRules.autonomyEnabled ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-zinc-800'}`}
+                    className={`w-12 h-6 rounded-full transition-all relative ${kernelRules.autonomyEnabled ? 'bg-accent shadow-accent' : 'bg-zinc-800'}`}
                   >
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${kernelRules.autonomyEnabled ? 'left-7' : 'left-1'}`} />
                   </button>
@@ -268,7 +270,7 @@ export default function SettingsApp() {
 
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">
+                    <div className="p-2.5 rounded-xl bg-accent/10 text-accent group-hover:bg-accent/20 transition-colors">
                       <Monitor size={18} />
                     </div>
                     <div>
@@ -278,7 +280,7 @@ export default function SettingsApp() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setUiScale(Math.max(0.7, uiScale - 0.1))} className="px-3 py-1 rounded-lg bg-white/5 text-zinc-300">-</button>
-                    <div className="text-xs font-mono text-emerald-400">{Math.round(uiScale * 100)}%</div>
+                    <div className="text-xs font-mono text-accent">{Math.round(uiScale * 100)}%</div>
                     <button onClick={() => setUiScale(Math.min(1.6, uiScale + 0.1))} className="px-3 py-1 rounded-lg bg-white/5 text-zinc-300">+</button>
                   </div>
                 </div>
@@ -290,7 +292,7 @@ export default function SettingsApp() {
 
                 <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
+                    <div className="p-2.5 rounded-xl bg-accent/10 text-accent">
                       <Database size={18} />
                     </div>
                     <div>
@@ -310,7 +312,7 @@ export default function SettingsApp() {
                       URL.revokeObjectURL(url);
                       addNotification({ title: 'Backup Exported', message: 'VFS backup downloaded', type: 'success' });
                     }}
-                    className="w-full py-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 text-sm font-bold transition-all"
+                    className="w-full py-2.5 rounded-xl bg-accent/15 hover:bg-accent/25 text-accent text-sm font-bold transition-all"
                   >
                     Export Backup
                   </button>
@@ -445,7 +447,7 @@ export default function SettingsApp() {
                         onClick={() => handleAccentChange(acc.name.toLowerCase(), acc.color)}
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                           accentColor === acc.color
-                            ? 'bg-white/5 border-emerald-500/30 ring-1 ring-emerald-500/20'
+                            ? 'bg-white/5 border-accent/30 ring-1 ring-accent/20'
                             : 'border-white/5 hover:border-white/10'
                         }`}
                       >
@@ -497,7 +499,7 @@ export default function SettingsApp() {
                         <div className="text-sm font-bold text-white">Cursor Reactivity</div>
                         <div className="text-xs text-zinc-500">How strongly the live wallpaper shifts with your cursor</div>
                       </div>
-                      <div className="text-xs font-mono text-emerald-400">{Math.round(wallpaperMotionStrength * 100)}%</div>
+                      <div className="text-xs font-mono text-accent">{Math.round(wallpaperMotionStrength * 100)}%</div>
                     </div>
                     <input
                       type="range"
@@ -519,8 +521,8 @@ export default function SettingsApp() {
               <h2 className="text-2xl font-black text-white tracking-tighter uppercase">DAEMON Core Fusion</h2>
 
               {!kernelRules.daemonInjected ? (
-                <div className="p-8 rounded-3xl bg-emerald-500/5 border border-emerald-500/20 text-center space-y-5">
-                  <Zap className="mx-auto text-emerald-400 animate-pulse" size={48} />
+                <div className="p-8 rounded-3xl bg-accent/5 border border-accent/20 text-center space-y-5">
+                  <Zap className="mx-auto text-accent animate-pulse" size={48} />
                   <h3 className="text-xl font-black text-white tracking-wide uppercase">DAEMON IS NOT YET INSTALLED</h3>
                   <p className="text-sm text-zinc-400 max-w-sm mx-auto leading-relaxed">
                     Installing the DAEMON Core integrates the recursive intelligence into the kernel and links it to the OS action graph.
@@ -529,16 +531,16 @@ export default function SettingsApp() {
                   {installing ? (
                     <div className="space-y-3">
                       <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                        <div className="bg-accent h-full transition-all duration-300" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="text-[10px] text-emerald-500 font-mono animate-pulse uppercase tracking-[0.2em]">
+                      <div className="text-[10px] text-accent font-mono animate-pulse uppercase tracking-[0.2em]">
                         {daemonNote} {progress}%
                       </div>
                     </div>
                   ) : (
                     <button
                       onClick={handleInstallDaemon}
-                      className="px-10 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] text-xs rounded-full transition-all active:scale-95 shadow-[0_0_40px_rgba(16,185,129,0.3)]"
+                      className="px-10 py-4 bg-accent hover:bg-accent text-black font-black uppercase tracking-[0.2em] text-xs rounded-full transition-all active:scale-95 shadow-accent"
                     >
                       Initialize Fusion
                     </button>
@@ -546,26 +548,26 @@ export default function SettingsApp() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-4">
-                    <CheckCircle className="text-emerald-400 shrink-0" size={24} />
+                  <div className="p-6 rounded-3xl bg-accent/10 border border-accent/20 flex items-center gap-4">
+                    <CheckCircle className="text-accent shrink-0" size={24} />
                     <div>
                       <div className="text-sm font-black text-white uppercase tracking-widest">DAEMON_CORE_ACTIVE</div>
-                      <div className="text-xs text-emerald-500/70 font-mono mt-0.5">SYSCALL_HOOKS: INJECTED | VECTOR_SPACE: MAPPED</div>
+                      <div className="text-xs text-accent/70 font-mono mt-0.5">SYSCALL_HOOKS: INJECTED | VECTOR_SPACE: MAPPED</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2">
                     <div className="px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
                       <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Autonomy Binding</span>
-                      <span className="text-xs text-emerald-400 font-bold uppercase">{kernelRules.autonomyEnabled ? 'Linked' : 'Disabled'}</span>
+                      <span className="text-xs text-accent font-bold uppercase">{kernelRules.autonomyEnabled ? 'Linked' : 'Disabled'}</span>
                     </div>
                     <div className="px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
                       <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Memory Rewrite</span>
-                      <span className="text-xs text-emerald-400 font-bold uppercase">Fractal Implanted</span>
+                      <span className="text-xs text-accent font-bold uppercase">Fractal Implanted</span>
                     </div>
                     <div className="px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
                       <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Core Injection</span>
-                      <span className="text-xs text-emerald-400 font-bold uppercase">Kernel-Injected DNA</span>
+                      <span className="text-xs text-accent font-bold uppercase">Kernel-Injected DNA</span>
                     </div>
                   </div>
 
@@ -586,9 +588,9 @@ export default function SettingsApp() {
                         {installing ? (
                             <div className="space-y-2">
                                 <div className="w-full bg-zinc-900 rounded-full h-1 overflow-hidden">
-                                    <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                                    <div className="bg-accent h-full transition-all duration-300" style={{ width: `${progress}%` }} />
                                 </div>
-                                <div className="text-[9px] text-emerald-500 font-mono animate-pulse uppercase">
+                                <div className="text-[9px] text-accent font-mono animate-pulse uppercase">
                                     {daemonNote} {progress}%
                                 </div>
                             </div>
@@ -613,7 +615,7 @@ export default function SettingsApp() {
               <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-3">
                 <div className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Command Prompt</div>
                 <textarea
-                  className="w-full min-h-24 bg-black/30 border border-white/10 rounded-2xl p-3 text-sm text-zinc-100 outline-none focus:border-emerald-500/40"
+                  className="w-full min-h-24 bg-black/30 border border-white/10 rounded-2xl p-3 text-sm text-zinc-100 outline-none focus:border-accent/40"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="Ask the DAEMON what to do next, or request a concrete OS action."
@@ -621,7 +623,7 @@ export default function SettingsApp() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={runAIDiagnostic}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black uppercase tracking-widest text-[10px]"
+                    className="px-4 py-2 rounded-xl bg-accent text-black font-black uppercase tracking-widest text-[10px]"
                   >
                     Run AI Diagnostic
                   </button>
@@ -649,7 +651,7 @@ export default function SettingsApp() {
                       setEnableAIAssist(!enableAIAssist);
                       updateKernelRules({ autonomyEnabled: !enableAIAssist });
                     }}
-                    className={`w-12 h-6 rounded-full transition-all relative ${enableAIAssist ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-zinc-800'}`}
+                    className={`w-12 h-6 rounded-full transition-all relative ${enableAIAssist ? 'bg-accent shadow-accent' : 'bg-zinc-800'}`}
                   >
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${enableAIAssist ? 'left-7' : 'left-1'}`} />
                   </button>
@@ -742,7 +744,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
         <div className="relative">
           <button
             onClick={() => setShowAddMenu(!showAddMenu)}
-            className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black uppercase tracking-widest text-[10px] flex items-center gap-2"
+            className="px-4 py-2 rounded-xl bg-accent text-black font-black uppercase tracking-widest text-[10px] flex items-center gap-2"
           >
             <Plus size={12} /> Add Provider
           </button>
@@ -772,9 +774,9 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
 
       {/* Active provider indicator */}
       {activeId && providers.find(p => p.id === activeId && p.enabled) && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
-          <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-          <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+        <div className="p-4 rounded-2xl bg-accent/10 border border-accent/20 flex items-center gap-3">
+          <CheckCircle size={16} className="text-accent shrink-0" />
+          <div className="text-xs font-bold text-accent uppercase tracking-widest">
             Active: {providers.find(p => p.id === activeId)?.name}
           </div>
           <div className="text-[9px] text-zinc-500 ml-auto">All AI inference routed here</div>
@@ -797,15 +799,15 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
             <div
               key={provider.id}
               className={`p-5 rounded-2xl border transition-all ${
-                isActive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+                isActive ? 'bg-accent/5 border-accent/20' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <Globe size={16} className={isActive ? 'text-emerald-400' : 'text-zinc-500'} />
+                  <Globe size={16} className={isActive ? 'text-accent' : 'text-zinc-500'} />
                   <span className="text-sm font-bold text-white">{provider.name}</span>
                   {provider.enabled && (
-                    <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] bg-accent/10 text-accent border border-accent/20">
                       Configured
                     </span>
                   )}
@@ -814,7 +816,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
                   {provider.enabled && !isActive && (
                     <button
                       onClick={() => handleSetActive(provider.id)}
-                      className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-black transition-all"
+                      className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-accent/10 text-accent border border-accent/20 hover:bg-accent hover:text-black transition-all"
                     >
                       Set Active
                     </button>
@@ -822,7 +824,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
                   <button
                     onClick={() => handleTest(provider.id)}
                     disabled={!provider.apiKey || testing === provider.id}
-                    className="p-1.5 text-zinc-500 hover:text-cyan-400 transition-colors disabled:opacity-30"
+                    className="p-1.5 text-zinc-500 hover:text-accent transition-colors disabled:opacity-30"
                     title="Test connection"
                   >
                     {testing === provider.id ? <Loader2 size={14} className="animate-spin" /> : <TestTube2 size={14} />}
@@ -841,7 +843,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
               <div className="flex items-center gap-2">
                 <input
                   type="password"
-                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-emerald-500/40 font-mono placeholder-zinc-600"
+                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-accent/40 font-mono placeholder-zinc-600"
                   placeholder={`Enter ${provider.name} API Key...`}
                   value={provider.apiKey}
                   onChange={e => handleKeyChange(provider.id, e.target.value)}
@@ -867,7 +869,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
                       }}
                       className={`px-2 py-0.5 rounded text-[9px] border transition-all ${
                         provider.defaultModel === m
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-accent/20 text-accent border-accent/30'
                           : 'bg-white/5 text-zinc-400 border-white/5 hover:border-white/15'
                       }`}
                     >
@@ -880,7 +882,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
               {/* Custom model input — type any model name */}
               <div className="mt-2 flex items-center gap-2">
                 <input
-                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-emerald-500/30 font-mono"
+                  className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-accent/30 font-mono"
                   placeholder="Custom model name (e.g. z-ai/glm-5.1)"
                   defaultValue={provider.defaultModel}
                   onKeyDown={(e) => {
@@ -905,7 +907,7 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
               {/* Test result */}
               {result && (
                 <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${
-                  result.success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                  result.success ? 'bg-accent/10 text-accent' : 'bg-rose-500/10 text-rose-400'
                 }`}>
                   {result.success ? '✓' : '✗'} {result.message} {result.latencyMs > 0 && `(${result.latencyMs}ms)`}
                 </div>

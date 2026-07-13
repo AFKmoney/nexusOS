@@ -62,8 +62,8 @@ export default function HabitTracker() {
       {/* Header */}
       <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg">
-            <Target size={20} className="text-emerald-400" />
+          <div className="p-2 bg-accent/20 rounded-lg">
+            <Target size={20} className="text-accent" />
           </div>
           <div>
             <h1 className="text-sm font-black uppercase tracking-[0.2em]">Neural Protocols</h1>
@@ -84,12 +84,12 @@ export default function HabitTracker() {
           {/* Input Area */}
           <form onSubmit={addHabit} className="relative group mb-8">
             <input 
-              className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl py-4 pl-5 pr-16 text-sm outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-500 shadow-inner"
+              className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl py-4 pl-5 pr-16 text-sm outline-none focus:border-accent/50 transition-all placeholder:text-zinc-500 shadow-inner"
               placeholder="Define new protocol..."
               value={newHabit}
               onChange={e => setNewHabit(e.target.value)}
             />
-            <button type="submit" className="absolute right-3 top-2.5 p-2 bg-emerald-500 text-black rounded-xl hover:bg-emerald-400 transition-all shadow-lg active:scale-90">
+            <button type="submit" className="absolute right-3 top-2.5 p-2 bg-accent text-black rounded-xl hover:bg-accent transition-all shadow-lg active:scale-90">
               <Plus size={20} />
             </button>
           </form>
@@ -100,14 +100,14 @@ export default function HabitTracker() {
               <div 
                 key={h.id}
                 onClick={() => toggleHabit(h.id)}
-                className={`group flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${h.completedToday ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                className={`group flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${h.completedToday ? 'bg-accent/10 border-accent/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${h.completedToday ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-black/40 text-zinc-600 border border-white/5'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${h.completedToday ? 'bg-accent text-black shadow-accent' : 'bg-black/40 text-zinc-600 border border-white/5'}`}>
                     {h.completedToday ? <CheckCircle2 size={24} /> : <Circle size={24} />}
                   </div>
                   <div>
-                    <div className={`text-sm font-bold transition-all ${h.completedToday ? 'text-emerald-400' : 'text-zinc-300 group-hover:text-white'}`}>{h.name}</div>
+                    <div className={`text-sm font-bold transition-all ${h.completedToday ? 'text-accent' : 'text-zinc-300 group-hover:text-white'}`}>{h.name}</div>
                     <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mt-0.5">Protocol Tracking active</div>
                   </div>
                 </div>

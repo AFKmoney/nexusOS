@@ -13,9 +13,6 @@ interface ActivityBarProps {
   onToggleAI: () => void;
 }
 
-// Left-most vertical icon strip: file explorer / search / git toggles,
-// plus word-wrap and AI-panel toggles at the bottom. Pure presentational
-// component — all state lives in the parent.
 export const ActivityBar: React.FC<ActivityBarProps> = ({
   sidePanel,
   showSide,
@@ -33,59 +30,56 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   ];
 
   return (
-    <div className="w-14 bg-black/60 backdrop-blur-xl border-r border-white/5 flex flex-col items-center py-4 gap-3 shrink-0 shadow-xl z-20 relative">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-        <Code size={18} className="text-white" />
+    <div className="w-12 bg-[#333333] flex flex-col items-center py-2 gap-2 shrink-0 z-20 relative">
+      <div className="w-8 h-8 rounded flex items-center justify-center mb-2">
+        <Code size={24} className="text-[#007ACC]" />
       </div>
-
       {panels.map(({ id, icon: Icon, title }) => (
         <button
           key={id}
           title={title}
           onClick={() => onTogglePanel(id)}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${
+          className={`w-10 h-10 rounded flex items-center justify-center transition-all relative ${
             sidePanel === id && showSide
-              ? 'bg-white/10 text-white shadow-inner'
-              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'
+              ? 'text-white'
+              : 'text-[#858585] hover:text-white'
           }`}
         >
           {sidePanel === id && showSide && (
-            <div className="absolute left-0 top-2 bottom-2 w-1 bg-blue-500 rounded-r-full shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+            <div className="absolute left-[-4px] top-1 bottom-1 w-0.5 bg-[#007ACC]" />
           )}
-          <Icon size={20} className="group-hover:scale-110 transition-transform" />
+          <Icon size={24} strokeWidth={1.5} />
         </button>
       ))}
-
       <div className="flex-1" />
-
       <button
         title="Toggle Word Wrap"
         onClick={onToggleWordWrap}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+        className={`w-10 h-10 rounded flex items-center justify-center transition-all ${
           wordWrap
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'
+            ? 'text-[#007ACC]'
+            : 'text-[#858585] hover:text-white'
         }`}
       >
-        <WrapText size={18} />
+        <WrapText size={22} strokeWidth={1.5} />
       </button>
       <button
-        title="Toggle Neural Engine"
+        title="Toggle AI Composer (Cmd+L)"
         onClick={onToggleAI}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+        className={`w-10 h-10 rounded flex items-center justify-center transition-all ${
           showAI
-            ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
-            : 'text-zinc-500 hover:text-emerald-400 hover:bg-white/5'
+            ? 'text-[#007ACC]'
+            : 'text-[#858585] hover:text-[#007ACC]'
         }`}
       >
-        <Sparkles size={20} />
+        <Sparkles size={22} strokeWidth={1.5} />
       </button>
       <button
         title="Settings"
         onClick={() => { useOS.getState().openWindow('settings'); }}
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-all mt-2"
+        className="w-10 h-10 rounded flex items-center justify-center text-[#858585] hover:text-white transition-all mt-2"
       >
-        <Settings2 size={20} />
+        <Settings2 size={24} strokeWidth={1.5} />
       </button>
     </div>
   );

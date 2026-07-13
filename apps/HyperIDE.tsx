@@ -13,6 +13,7 @@ import { EditorPane } from './hyperide/EditorPane';
 import { PreviewPane } from './hyperide/PreviewPane';
 import { AIPanel } from './hyperide/AIPanel';
 import { FileContextMenu } from './hyperide/FileContextMenu';
+import { Resizer } from './hyperide/ResizablePanel';
 import { highlight } from './hyperide/syntax';
 import type {
   EditorTab, AiMsg, SearchHit, CursorPos,
@@ -62,6 +63,7 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
 
   // ─── New-file / rename inline forms ──────────────────────────────
   const [showNewFile, setShowNewFile] = useState(false);
+  const [isNewFolder, setIsNewFolder] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [newFileDir, setNewFileDir] = useState('');
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
@@ -83,6 +85,9 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
 
   // ─── Search state ────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
+  const [sideWidth, setSideWidth] = useState(250);
+  const [previewWidth, setPreviewWidth] = useState(300);
+  const [aiWidth, setAiWidth] = useState(350);
   const [replaceQuery, setReplaceQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchHit[]>([]);
 
@@ -169,6 +174,34 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
     addNotification({ title: 'Project opened', message: name, type: 'info' });
   };
 
+  const installProject = () => {
+    if (!project) return;
+    const manifestPath = `${project.rootPath}/manifest.json`;
+    const manifestRaw = vfs.readFile(manifestPath, SYSTEM_VFS_APP_ID);
+    if (!manifestRaw) {
+      addNotification({ title: 'Install Failed', message: 'No manifest.json found in project root.', type: 'error' });
+      return;
+    }
+    try {
+      const manifest = JSON.parse(manifestRaw);
+      if (!manifest.id || !manifest.name) throw new Error('Missing id or name in manifest');
+      const os = useOS.getState();
+      if (typeof (os as any).registerCustomApp === 'function') {
+        (os as any).registerCustomApp({
+          id: manifest.id,
+          name: manifest.name,
+          icon: undefined,
+          defaultSize: manifest.defaultSize || { width: 960, height: 720 },
+          isCustom: true,
+          entryPath: manifest.entryPath || `${project.rootPath}/index.html`
+        });
+        addNotification({ title: 'Installed', message: `${manifest.name} installed in Nexus Start Menu`, type: 'success' });
+      }
+    } catch (e) {
+      addNotification({ title: 'Install Failed', message: 'Invalid manifest.json', type: 'error' });
+    }
+  };
+
   /**
    * Run the current project — if it's a generated app with an entry,
    * open it in a CustomAppRunner window. Otherwise, just preview the
@@ -196,13 +229,42 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
     }
   };
 
+  // ─── App generation ──────────────────────────────────────────────
+  const createNewApp = () => {
+    const id = `app_${Math.random().toString(36).substring(2, 9)}`;
+    const rootPath = `/home/user/workspace/${id}`;
+    vfs.createDirRecursive(rootPath, SYSTEM_VFS_APP_ID);
+    
+    const manifest = {
+      id,
+      name: 'New App',
+      description: 'A new hyper application.',
+      defaultSize: { width: 800, height: 600 }
+    };
+    
+    vfs.writeFile(`${rootPath}/manifest.json`, JSON.stringify(manifest, null, 2), SYSTEM_VFS_APP_ID);
+    vfs.writeFile(`${rootPath}/index.html`, `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1E1E1E; color: white; }
+  </style>
+</head>
+<body>
+  <h1>Hello from ${id}</h1>
+</body>
+</html>`, SYSTEM_VFS_APP_ID);
+
+    openProject(rootPath);
+  };
+
   // ─── File operations ─────────────────────────────────────────────
   const openFile = (path: string) => {
     const existing = tabs.findIndex((t) => t.path === path);
     if (existing >= 0) { setActiveIdx(existing); return; }
     const stat = vfs.stat(path);
     if (stat?.type === 'directory') return;
-    const content = vfs.readFile(path) ?? '';
+    const content = vfs.readFile(path, SYSTEM_VFS_APP_ID) ?? '';
     const name = path.split('/').pop() || path;
     const newTabs = [...tabs, { path, name, content, modified: false }];
     setTabs(newTabs);
@@ -221,7 +283,7 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
 
   const saveFile = useCallback(() => {
     if (!activeTab) return;
-    vfs.writeFile(activeTab.path, activeTab.content);
+    vfs.writeFile(activeTab.path, activeTab.content, SYSTEM_VFS_APP_ID);
     setTabs((prev) => prev.map((t, i) => (i === activeIdx ? { ...t, modified: false } : t)));
     setSavedIndicator(true);
     setTimeout(() => setSavedIndicator(false), 2000);
@@ -247,10 +309,10 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
   };
 
   const createFile = (dir?: string) => {
-    const targetDir = dir || newFileDir || currentDir;
+    const targetDir = dir || newFileDir || project?.rootPath || currentDir;
     if (!newFileName.trim()) return;
     const p = `${targetDir}/${newFileName}`;
-    vfs.writeFile(p, '');
+    vfs.writeFile(p, '', SYSTEM_VFS_APP_ID);
     openFile(p);
     setNewFileName('');
     setShowNewFile(false);
@@ -258,20 +320,20 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
   };
 
   const deleteFile = (path: string) => {
-    vfs.delete(path);
+    vfs.delete(path, SYSTEM_VFS_APP_ID);
     setTabs((prev) => prev.filter((t) => t.path !== path));
     setContextMenu(null);
   };
 
   const duplicateFile = (filePath: string) => {
-    const content = vfs.readFile(filePath) || '';
+    const content = vfs.readFile(filePath, SYSTEM_VFS_APP_ID) || '';
     const parts = filePath.split('/');
     const fileName = parts.pop() || 'file';
     const dir = parts.join('/');
     const ext = fileName.includes('.') ? '.' + fileName.split('.').pop() : '';
     const baseName = ext ? fileName.slice(0, -ext.length) : fileName;
     const newPath = `${dir}/${baseName}_copy${ext}`;
-    vfs.writeFile(newPath, content);
+    vfs.writeFile(newPath, content, SYSTEM_VFS_APP_ID);
     setContextMenu(null);
     addNotification({ title: 'File Duplicated', message: `Created ${baseName}_copy${ext}`, type: 'success' });
   };
@@ -286,9 +348,9 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
     if (!renameTarget || !renameValue.trim()) { setRenameTarget(null); return; }
     const parts = renameTarget.split('/'); parts.pop();
     const newPath = [...parts, renameValue.trim()].join('/');
-    const content = vfs.readFile(renameTarget) || '';
-    vfs.writeFile(newPath, content);
-    vfs.delete(renameTarget);
+    const content = vfs.readFile(renameTarget, SYSTEM_VFS_APP_ID) || '';
+    vfs.writeFile(newPath, content, SYSTEM_VFS_APP_ID);
+    vfs.delete(renameTarget, SYSTEM_VFS_APP_ID);
     setTabs((prev) => prev.map((t) => (t.path === renameTarget ? { ...t, path: newPath, name: renameValue.trim(), modified: true } : t)));
     setRenameTarget(null);
   };
@@ -303,7 +365,7 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
         const fp = `${dir}/${item}`;
         const stat = vfs.stat(fp);
         if (stat?.type === 'directory') { searchDir(fp); return; }
-        const content = vfs.readFile(fp) || '';
+        const content = vfs.readFile(fp, SYSTEM_VFS_APP_ID) || '';
         content.split('\n').forEach((line, i) => {
           if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
             results.push({ path: fp, line: i + 1, text: line.trim().slice(0, 100) });
@@ -390,7 +452,11 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
   };
 
   // ─── Editor utils ────────────────────────────────────────────────
-  const updateCursorPos = () => {
+  const updateCursorPos = (pos?: { line: number, col: number }) => {
+    if (pos) {
+      setCursorPos(pos);
+      return;
+    }
     const ta = editorRef.current;
     if (!ta || !activeTab) return;
     const before = activeTab.content.slice(0, ta.selectionStart);
@@ -417,129 +483,157 @@ export default function HyperIDE({ windowId }: { windowId: string; initPath?: st
         onToggleWordWrap={() => setWordWrap((w) => !w)}
         onToggleAI={() => setShowAI(!showAI)}
       />
-
+      
       {showSide && (
-        <SidePanel
-          sidePanel={sidePanel}
-          showNewFile={showNewFile}
-          newFileName={newFileName}
-          newFileDir={newFileDir}
-          renameTarget={renameTarget}
-          renameValue={renameValue}
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          activeTabPath={activeTab?.path || ''}
-          modifiedTabs={tabs.filter((t) => t.modified)}
-          onNewFileClick={() => { setNewFileDir(''); setShowNewFile(true); }}
-          onSetNewFileName={setNewFileName}
-          onCreateFile={() => createFile()}
-          onCancelNewFile={() => setShowNewFile(false)}
-          onSetRenameValue={setRenameValue}
-          onDoRename={doRename}
-          onCancelRename={() => setRenameTarget(null)}
-          onSetSearchQuery={setSearchQuery}
-          onSearch={handleSearch}
-          onOpenFile={openFile}
-          onContextMenu={handleContextMenu}
-          onClose={() => setShowSide(false)}
-          onNeuralReview={() =>
-            askAI('Review all recently modified files and suggest what I should review before committing, noting any bugs, style issues, or missing tests.')
-          }
-        />
-      )}
-
-      {/* ─── Project toolbar ───────────────────────────────────────── */}
-      {/* Shows the current project name + Run button when a project is open.
-          When no project is open, shows an "Open Project" prompt. */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0d0d12] border-b border-white/5 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <FolderOpen size={14} className="text-emerald-400 shrink-0" />
-          {project ? (
-            <>
-              <span className="text-xs font-bold text-white truncate">{project.name}</span>
-              <span className="text-[10px] text-zinc-500 font-mono truncate">{project.rootPath}</span>
-            </>
-          ) : (
-            <span className="text-xs text-zinc-500">No project open — use OS::OPEN_APP:hyperide with projectRoot, or open a generated app to edit it as a project</span>
-          )}
+        <div style={{ width: sideWidth }} className="shrink-0 flex flex-col min-w-[150px] max-w-[600px] border-r border-[#2D2D2D] bg-[#181818]">
+          <SidePanel
+            sidePanel={sidePanel}
+            project={project}
+            showNewFile={showNewFile}
+            newFileName={newFileName}
+            
+            renameTarget={renameTarget}
+            renameValue={renameValue}
+            searchQuery={searchQuery}
+            searchResults={searchResults}
+            activeTabPath={activeTab?.path || ''}
+            modifiedTabs={tabs.filter((t) => t.modified)}
+            onNewFileClick={() => { setIsNewFolder(false); setNewFileDir(''); setShowNewFile(true); }}
+            onNewFolderClick={() => { setIsNewFolder(true); setNewFileDir(''); setShowNewFile(true); }}
+            isNewFolder={isNewFolder}
+            onSetNewFileName={setNewFileName}
+            onCreateFile={() => createFile()}
+            onCancelNewFile={() => setShowNewFile(false)}
+            onSetRenameValue={setRenameValue}
+            onDoRename={doRename}
+            onCancelRename={() => setRenameTarget(null)}
+            onSetSearchQuery={setSearchQuery}
+            onSearch={handleSearch}
+            onOpenFile={openFile}
+            onContextMenu={handleContextMenu}
+            onClose={() => setShowSide(false)}
+            onNeuralReview={() =>
+              askAI('Review all recently modified files and suggest what I should review before committing, noting any bugs, style issues, or missing tests.')
+            }
+            onCreateProject={createNewApp}
+          />
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {project && (
+      )}
+      {showSide && <Resizer onDrag={(dx) => setSideWidth(w => Math.max(150, Math.min(600, w + dx)))} />}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-[#2D2D2D] border-b border-[#333333] shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <FolderOpen size={14} className="text-[#007ACC] shrink-0" />
+            {project ? (
+              <>
+                <span className="text-xs font-medium text-[#CCCCCC] truncate">{project.name}</span>
+                <span className="text-[10px] text-[#858585] font-mono truncate">{project.rootPath}</span>
+              </>
+            ) : (
+              <span className="text-xs text-[#858585]">No project active. Open a project directory to enable Run/Install.</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {project && (
+              <>
+                <button
+                  onClick={runProject}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#007ACC] hover:bg-[#005A9E] text-white text-[11px] font-bold transition-all shadow-sm"
+                  title="Run project (open in app runner)"
+                >
+                  <Play size={12} fill="currentColor" /> Run
+                </button>
+                <button
+                  onClick={installProject}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#007ACC]/50 hover:bg-[#007ACC]/20 text-[#007ACC] text-[11px] font-bold transition-all"
+                  title="Install to Nexus"
+                >
+                  Install
+                </button>
+                <button
+                  onClick={() => setSidePanel('project')}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/10 text-[#CCCCCC] text-[11px] transition-all"
+                  title="Project overview"
+                >
+                  <Files size={12} /> Overview
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 flex min-h-0">
+          <div className="flex-1 flex flex-col min-w-0">
+            <EditorPane
+              tabs={tabs}
+              activeIdx={activeIdx}
+              activeTab={activeTab}
+              ext={ext}
+              highlighted={highlighted}
+              lineCount={lineCount}
+              cursorPos={cursorPos}
+              wordWrap={wordWrap}
+              showPreview={showPreview}
+              showFindReplace={showFindReplace}
+              savedIndicator={savedIndicator}
+              searchQuery={searchQuery}
+              replaceQuery={replaceQuery}
+              editorRef={editorRef}
+              onSelectTab={setActiveIdx}
+              onCloseTab={closeTab}
+              onSave={saveFile}
+              onTogglePreview={() => setShowPreview(!showPreview)}
+              onToggleFindReplace={() => setShowFindReplace((r) => !r)}
+              onCloseFindReplace={() => setShowFindReplace(false)}
+              onContentChange={updateContent}
+              onCursorChange={updateCursorPos}
+              onSearchQueryChange={setSearchQuery}
+              onReplaceQueryChange={setReplaceQuery}
+              onFindAndReplace={findAndReplace}
+              onBrowseFiles={() => { setShowSide(true); setSidePanel('files'); }}
+              onNewManifest={createNewApp}
+            />
+          </div>
+
+          {showPreview && activeTab && (
             <>
-              <button
-                onClick={runProject}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold transition-all"
-                title="Run project (open in app runner)"
-              >
-                <Play size={12} /> Run
-              </button>
-              <button
-                onClick={() => setSidePanel('project')}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/10 text-zinc-400 text-xs transition-all"
-                title="Project overview"
-              >
-                <Files size={12} /> Overview
-              </button>
+              <Resizer onDrag={(dx) => setPreviewWidth(w => Math.max(200, Math.min(800, w - dx)))} />
+              <div style={{ width: previewWidth }} className="shrink-0 flex flex-col min-w-[200px] max-w-[800px] border-l border-[#2D2D2D] bg-[#1E1E1E]">
+                <PreviewPane content={activeTab.content} previewRef={previewRef} />
+              </div>
+            </>
+          )}
+
+          {showAI && (
+            <>
+              <Resizer onDrag={(dx) => setAiWidth(w => Math.max(250, Math.min(600, w - dx)))} />
+              <div style={{ width: aiWidth }} className="shrink-0 flex flex-col min-w-[250px] max-w-[600px] border-l border-[#2D2D2D] bg-[#1E1E1E]">
+                <AIPanel
+                  aiMessages={aiMessages}
+                  aiInput={aiInput}
+                  isAiThinking={isAiThinking}
+                  activeTab={activeTab}
+                  aiScrollRef={aiScrollRef}
+                  onSetAiInput={setAiInput}
+                  onAsk={askAI}
+                  onAiAction={aiAction}
+                  onCopyCode={copyCode}
+                  onApplyAICode={applyAICode}
+                  onClose={() => setShowAI(false)}
+                />
+              </div>
             </>
           )}
         </div>
       </div>
 
-      <EditorPane
-        tabs={tabs}
-        activeIdx={activeIdx}
-        activeTab={activeTab}
-        ext={ext}
-        highlighted={highlighted}
-        lineCount={lineCount}
-        cursorPos={cursorPos}
-        wordWrap={wordWrap}
-        showPreview={showPreview}
-        showFindReplace={showFindReplace}
-        savedIndicator={savedIndicator}
-        searchQuery={searchQuery}
-        replaceQuery={replaceQuery}
-        editorRef={editorRef}
-        onSelectTab={setActiveIdx}
-        onCloseTab={closeTab}
-        onSave={saveFile}
-        onTogglePreview={() => setShowPreview(!showPreview)}
-        onToggleFindReplace={() => setShowFindReplace((r) => !r)}
-        onCloseFindReplace={() => setShowFindReplace(false)}
-        onContentChange={updateContent}
-        onCursorChange={updateCursorPos}
-        onSearchQueryChange={setSearchQuery}
-        onReplaceQueryChange={setReplaceQuery}
-        onFindAndReplace={findAndReplace}
-        onBrowseFiles={() => { setShowSide(true); setSidePanel('files'); }}
-        onNewManifest={() => { setShowSide(true); setSidePanel('files'); setShowNewFile(true); }}
-      />
-
-      {showPreview && activeTab && (
-        <PreviewPane content={activeTab.content} previewRef={previewRef} />
-      )}
-
-      {showAI && (
-        <AIPanel
-          aiMessages={aiMessages}
-          aiInput={aiInput}
-          isAiThinking={isAiThinking}
-          activeTab={activeTab}
-          aiScrollRef={aiScrollRef}
-          onSetAiInput={setAiInput}
-          onAsk={askAI}
-          onAiAction={aiAction}
-          onCopyCode={copyCode}
-          onApplyAICode={applyAICode}
-          onClose={() => setShowAI(false)}
-        />
-      )}
-
       {contextMenu && (
         <FileContextMenu
           state={contextMenu}
-          onNewFileHere={(path) => { setNewFileDir(path); setShowNewFile(true); setContextMenu(null); }}
-          onOpenFolder={(path) => { openFile(path); setContextMenu(null); }}
+          onNewFileHere={(path) => { setIsNewFolder(false); setNewFileDir(path); setShowNewFile(true); setContextMenu(null); }}
+          onNewFolderHere={(path) => { setIsNewFolder(true); setNewFileDir(path); setShowNewFile(true); setContextMenu(null); }}
+          onOpenFolder={(path) => { openProject(path); setContextMenu(null); }}
           onOpenFile={(path) => { openFile(path); setContextMenu(null); }}
           onRename={startRename}
           onDuplicate={duplicateFile}

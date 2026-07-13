@@ -28,14 +28,14 @@ export const OVERRIDE_META: Record<
   OverrideMode,
   { label: string; cls: string; Icon: React.FC<{ size?: number; className?: string }> }
 > = {
-  active:      { label: 'ACTIVE',    cls: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/20', Icon: ShieldCheck },
+  active:      { label: 'ACTIVE',    cls: 'text-accent border-accent/40 bg-emerald-950/20', Icon: ShieldCheck },
   paused:      { label: 'PAUSED',    cls: 'text-amber-400  border-amber-500/40  bg-amber-950/20',    Icon: Pause       },
   'safe-mode': { label: 'SAFE MODE', cls: 'text-orange-400 border-orange-500/40 bg-orange-950/20',   Icon: ShieldAlert  },
   disabled:    { label: 'DISABLED',  cls: 'text-rose-400   border-rose-500/40   bg-rose-950/20',     Icon: ShieldOff   },
 };
 
 export const HEALTH_CLS: Record<string, string> = {
-  healthy:  'text-emerald-400',
+  healthy:  'text-accent',
   degraded: 'text-amber-400',
   critical: 'text-rose-400',
   disabled: 'text-zinc-500',
@@ -43,40 +43,40 @@ export const HEALTH_CLS: Record<string, string> = {
 
 export const PROPOSAL_STATUS_CLS: Record<ProposalStatus, string> = {
   draft:             'text-zinc-400',
-  validating:        'text-cyan-400',
+  validating:        'text-accent',
   'validation-failed': 'text-rose-400',
   'pending-approval':  'text-amber-400',
-  approved:          'text-emerald-400',
+  approved:          'text-accent',
   denied:            'text-rose-500',
   executing:         'text-cyan-300 animate-pulse',
-  succeeded:         'text-emerald-500',
+  succeeded:         'text-accent',
   failed:            'text-rose-500',
   'rolled-back':     'text-purple-400',
 };
 
 export const TIER_CLS: Record<TrustTier, string> = {
   doc:        'text-zinc-400 border-zinc-700   bg-zinc-900/40',
-  ui:         'text-cyan-400 border-cyan-700/40 bg-cyan-950/20',
+  ui:         'text-accent border-cyan-700/40 bg-cyan-950/20',
   'app-logic': 'text-amber-400 border-amber-600/40 bg-amber-950/20',
   kernel:     'text-rose-400 border-rose-600/40 bg-rose-950/20',
 };
 
 export const STAGE_STATUS_CLS: Record<string, string> = {
   draft:    'text-zinc-400',
-  staged:   'text-cyan-400',
+  staged:   'text-accent',
   sealed:   'text-amber-400',
-  promoted: 'text-emerald-400',
+  promoted: 'text-accent',
   reverted: 'text-purple-400',
 };
 
 export const EVENT_KIND_CLS: Record<string, string> = {
-  'proposal-created':       'text-cyan-400',
-  'proposal-validated':     'text-emerald-400',
+  'proposal-created':       'text-accent',
+  'proposal-validated':     'text-accent',
   'proposal-rejected':      'text-rose-400',
-  'proposal-approved':      'text-emerald-400',
+  'proposal-approved':      'text-accent',
   'proposal-denied':        'text-rose-500',
   'execution-started':      'text-cyan-300',
-  'execution-succeeded':    'text-emerald-400',
+  'execution-succeeded':    'text-accent',
   'execution-failed':       'text-rose-400',
   'rollback-triggered':     'text-purple-400',
   'rollback-succeeded':     'text-purple-300',
@@ -85,13 +85,13 @@ export const EVENT_KIND_CLS: Record<string, string> = {
   'override-deactivated':   'text-emerald-300',
   'policy-decision':        'text-zinc-400',
   'health-degraded':        'text-orange-400',
-  'health-recovered':       'text-emerald-400',
+  'health-recovered':       'text-accent',
   'safe-mode-entered':      'text-orange-400',
   'safe-mode-exited':       'text-emerald-300',
   'staging-artifact-added': 'text-sky-400',
   'staging-artifact-sealed':'text-sky-300',
-  'staging-deploy-started': 'text-cyan-400',
-  'staging-deploy-complete':'text-emerald-400',
+  'staging-deploy-started': 'text-accent',
+  'staging-deploy-complete':'text-accent',
   'staging-deploy-failed':  'text-rose-400',
   'staging-revert-started': 'text-purple-400',
   'staging-revert-complete':'text-purple-300',
@@ -139,7 +139,7 @@ export function MetricRow({
 
 export function ConfidenceBar({ score, health }: { score: number; health: string }) {
   const barCls =
-    health === 'healthy' ? 'bg-emerald-500'
+    health === 'healthy' ? 'bg-accent'
     : health === 'degraded' ? 'bg-amber-500'
     : health === 'critical' ? 'bg-rose-500'
     : 'bg-zinc-600';

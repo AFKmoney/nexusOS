@@ -99,10 +99,10 @@ export default function RecycleBin({ windowId }: { windowId: string }) {
 
       {/* Action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-2 px-5 py-2 bg-emerald-500/5 border-b border-emerald-500/10 shrink-0">
+        <div className="flex items-center gap-2 px-5 py-2 bg-accent/5 border-b border-accent/10 shrink-0">
           <button
             onClick={restoreSelected}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 hover:bg-emerald-500/10 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-accent hover:bg-accent/10 transition-all"
           >
             <RotateCcw size={14} /> Restore Selected ({selected.size})
           </button>
@@ -131,7 +131,7 @@ export default function RecycleBin({ windowId }: { windowId: string }) {
               onClick={toggleSelectAll}
               className="w-full flex items-center gap-2 px-3 py-1.5 mb-2 text-xs text-zinc-500 hover:text-zinc-300 transition-all"
             >
-              <div className={`w-4 h-4 rounded border ${selected.size === items.length ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'} flex items-center justify-center`}>
+              <div className={`w-4 h-4 rounded border ${selected.size === items.length ? 'bg-accent border-accent' : 'border-zinc-600'} flex items-center justify-center`}>
                 {selected.size === items.length && <span className="text-[10px] text-white">✓</span>}
               </div>
               {selected.size === items.length ? 'Deselect all' : 'Select all'}
@@ -144,10 +144,10 @@ export default function RecycleBin({ windowId }: { windowId: string }) {
                   key={item.path}
                   onClick={() => toggleSelect(item.path)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer transition-all ${
-                    isSelected ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                    isSelected ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/5 border border-transparent'
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded border shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'} flex items-center justify-center`}>
+                  <div className={`w-4 h-4 rounded border shrink-0 ${isSelected ? 'bg-accent border-accent' : 'border-zinc-600'} flex items-center justify-center`}>
                     {isSelected && <span className="text-[10px] text-white">✓</span>}
                   </div>
                   <div className="p-1.5 rounded-lg bg-zinc-800/50 shrink-0">
@@ -159,12 +159,12 @@ export default function RecycleBin({ windowId }: { windowId: string }) {
                   </div>
                   {item.trashedAt && (
                     <div className="text-[10px] text-zinc-600 shrink-0">
-                      {new Date(item.trashedAt).toLocaleString()}
+                      {new Date(item.trashedAt).toLocaleString('en-US')}
                     </div>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); const r = vfs.restoreFromTrash(item.path); if (r) { addNotification({ title: 'Restored', message: `${item.name} → ${r}`, type: 'success' }); refresh(); } }}
-                    className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-all shrink-0"
+                    className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-all shrink-0"
                     title="Restore"
                   >
                     <RotateCcw size={14} />

@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useOS } from '../store/osStore';
 import { aiService } from '../services/puterService';
-import { vfs } from '../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../kernel/fileSystem';
 import { Loader2, Send, Trash2, Zap, Copy, ChevronDown, ChevronUp, Terminal, Sparkles, Cpu, Code, RotateCcw, Brain, ArrowLeftRight } from 'lucide-react';
 import { uuid } from '../utils/uuid';
 
@@ -108,10 +109,10 @@ export default function DaemonChat() {
           for (let i = 0; i < parts.length - 1; i++) {
               current += parts[i] + '/';
               if (!vfs.resolveNode(current)) {
-                  try { vfs.createDir(current); } catch {}
+                  try { vfs.createDir(current, SYSTEM_VFS_APP_ID); } catch {}
               }
           }
-          vfs.writeFile(path, code);
+          vfs.writeFile(path, code, SYSTEM_VFS_APP_ID);
           filesInjected++;
           addNotification({ title: 'DAEMON Auto-Code', message: `Injected pipeline: ${path}`, type: 'success' });
         } catch (e: any) {
@@ -161,16 +162,16 @@ export default function DaemonChat() {
     <div className="h-full flex flex-col bg-[#050810] font-mono overflow-hidden" style={{ color: '#e2e8f0' }}>
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 border-b border-emerald-500/10 bg-black/40 shrink-0 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 border-b border-accent/10 bg-black/40 shrink-0 gap-3">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border-emerald-500/30 border flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-              <Cpu size={18} className="text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-accent/20 border-accent/30 border flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+              <Cpu size={18} className="text-accent" />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#050810] animate-pulse bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#050810] animate-pulse bg-accent shadow-[0_0_8px_#10b981]" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-black tracking-widest uppercase truncate text-emerald-400">
+            <div className="text-sm font-black tracking-widest uppercase truncate text-accent">
               DAEMON
             </div>
             <div className="text-xs text-zinc-500 truncate">
@@ -201,7 +202,7 @@ export default function DaemonChat() {
                 key={qp.label}
                 onClick={() => sendMessage(qp.prompt)}
                 disabled={isThinking}
-                className="px-2.5 py-1 rounded-lg bg-white/3 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-500 hover:text-emerald-300 text-xs transition-all disabled:opacity-30"
+                className="px-2.5 py-1 rounded-lg bg-white/3 border border-white/5 hover:border-accent/30 hover:bg-accent/5 text-zinc-500 hover:text-emerald-300 text-xs transition-all disabled:opacity-30"
               >
                 {qp.label}
               </button>
@@ -216,8 +217,8 @@ export default function DaemonChat() {
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             
             {msg.role === 'system' && (
-              <div className="w-full border rounded-xl p-4 border-emerald-500/20 bg-emerald-500/5">
-                <div className="text-xs font-mono text-emerald-400" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+              <div className="w-full border rounded-xl p-4 border-accent/20 bg-accent/5">
+                <div className="text-xs font-mono text-accent" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
               </div>
             )}
 
@@ -226,26 +227,26 @@ export default function DaemonChat() {
                 <div className="bg-zinc-800 text-white text-sm px-4 py-3 rounded-2xl rounded-br-sm leading-relaxed font-sans">
                   {msg.content}
                 </div>
-                <div className="text-xs text-zinc-500 mt-1 text-right">You · {new Date(msg.timestamp).toLocaleTimeString()}</div>
+                <div className="text-xs text-zinc-500 mt-1 text-right">You · {new Date(msg.timestamp).toLocaleTimeString('en-US')}</div>
               </div>
             )}
 
             {msg.role === 'daemon' && (
               <div className="max-w-[92%] group">
-                <div className="text-sm px-4 py-3 rounded-2xl rounded-bl-sm leading-relaxed font-sans relative bg-emerald-500/5 border border-emerald-500/10 text-emerald-100">
+                <div className="text-sm px-4 py-3 rounded-2xl rounded-bl-sm leading-relaxed font-sans relative bg-accent/5 border border-accent/10 text-emerald-100">
                   {msg.isStreaming && !msg.content && (
-                    <span className="inline-flex items-center gap-1 text-emerald-500">
+                    <span className="inline-flex items-center gap-1 text-accent">
                       <span className="animate-pulse">▊</span>
                     </span>
                   )}
                   {formatContent(msg.content)}
-                  {msg.isStreaming && msg.content && <span className="animate-pulse ml-0.5 text-emerald-500">▊</span>}
+                  {msg.isStreaming && msg.content && <span className="animate-pulse ml-0.5 text-accent">▊</span>}
                   <button onClick={() => copyMsg(msg.content)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all text-zinc-600 hover:text-zinc-300 p-0.5">
                     <Copy size={12} />
                   </button>
                 </div>
                 <div className="text-xs text-zinc-500 mt-1 flex items-center gap-1.5">
-                  DAEMON · {new Date(msg.timestamp).toLocaleTimeString()}
+                  DAEMON · {new Date(msg.timestamp).toLocaleTimeString('en-US')}
                   {msg.isStreaming && <span className="ml-1 text-emerald-700">● streaming</span>}
                 </div>
               </div>
@@ -256,8 +257,8 @@ export default function DaemonChat() {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-emerald-500/10 bg-black/20 shrink-0">
-        <div className="flex items-end gap-2 bg-black/60 border focus-within:border-opacity-40 rounded-2xl px-4 py-3 transition-all border-emerald-500/10 focus-within:border-emerald-500/40">
+      <div className="px-4 py-3 border-t border-accent/10 bg-black/20 shrink-0">
+        <div className="flex items-end gap-2 bg-black/60 border focus-within:border-opacity-40 rounded-2xl px-4 py-3 transition-all border-accent/10 focus-within:border-accent/40">
           <Terminal size={14} className="text-emerald-700 shrink-0 mb-0.5" />
           <textarea
             ref={inputRef}
@@ -278,7 +279,7 @@ export default function DaemonChat() {
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || isThinking}
-            className="p-1.5 border rounded-xl disabled:opacity-30 transition-all shrink-0 bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/20 text-emerald-400"
+            className="p-1.5 border rounded-xl disabled:opacity-30 transition-all shrink-0 bg-accent/20 hover:bg-accent/30 border-accent/20 text-accent"
           >
             {isThinking ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
           </button>

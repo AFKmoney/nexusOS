@@ -27,7 +27,7 @@ export const NeuralFieldPanel: React.FC = () => {
   const memCount  = memory.getRecent(100).length;
 
   const POWER_META = {
-    normal:   { label: 'NOMINAL',  cls: 'text-emerald-400 bg-emerald-950/20 border-emerald-500/30' },
+    normal:   { label: 'NOMINAL',  cls: 'text-accent bg-emerald-950/20 border-accent/30' },
     saver:    { label: 'SAVER',    cls: 'text-amber-400   bg-amber-950/20   border-amber-500/30'   },
     critical: { label: 'CRITICAL', cls: 'text-rose-400    bg-rose-950/20    border-rose-500/30'    },
   } as const;
@@ -38,7 +38,7 @@ export const NeuralFieldPanel: React.FC = () => {
       {/* RNF Status */}
       <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Brain size={14} className="text-emerald-400" />
+          <Brain size={14} className="text-accent" />
           <span className="text-xs font-black uppercase tracking-widest text-zinc-300">Recursive Neural Field Engine</span>
         </div>
         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
@@ -51,10 +51,10 @@ export const NeuralFieldPanel: React.FC = () => {
             <div key={label}>
               <div className="flex justify-between text-[10px] mb-1">
                 <span className="text-zinc-500">{label}</span>
-                <span className="text-emerald-400">{value}</span>
+                <span className="text-accent">{value}</span>
               </div>
               <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500/60 rounded-full transition-all duration-700" style={{ width: `${bar * 100}%` }} />
+                <div className="h-full bg-accent/60 rounded-full transition-all duration-700" style={{ width: `${bar * 100}%` }} />
               </div>
             </div>
           ))}
@@ -105,7 +105,7 @@ export const NeuralFieldPanel: React.FC = () => {
       {mostUsed.length > 0 && (
         <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
-            <BarChart2 size={14} className="text-cyan-400" />
+            <BarChart2 size={14} className="text-accent" />
             <span className="text-xs font-black uppercase tracking-widest text-zinc-300">Usage Frequency</span>
           </div>
           <div className="space-y-1.5">
@@ -113,7 +113,7 @@ export const NeuralFieldPanel: React.FC = () => {
               <div key={u.appId} className="flex items-center gap-2 text-xs font-mono">
                 <span className="text-zinc-600 w-4">{i + 1}.</span>
                 <span className="text-zinc-300 flex-1 truncate">{u.appId}</span>
-                <span className="text-cyan-400">{u.count}×</span>
+                <span className="text-accent">{u.count}×</span>
               </div>
             ))}
           </div>

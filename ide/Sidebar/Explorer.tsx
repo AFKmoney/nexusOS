@@ -1,6 +1,7 @@
 
+
 import React from 'react';
-import { vfs } from '../../kernel/fileSystem';
+import { SYSTEM_VFS_APP_ID,  vfs } from '../../kernel/fileSystem';
 import { Folder, FileCode, ChevronRight, ChevronDown, Plus, FilePlus, Trash2 } from 'lucide-react';
 
 interface Props {
@@ -22,7 +23,7 @@ export const Explorer: React.FC<Props> = ({ onFileOpen, currentPath }) => {
   const createNewFile = () => {
     const name = prompt("File name:");
     if (name) {
-      vfs.writeFile(`/home/user/${name}`, "// New script created by HyperIDE");
+      vfs.writeFile(`/home/user/${name}`, "// New script created by HyperIDE", SYSTEM_VFS_APP_ID);
       setRefreshKey(k => k + 1);
     }
   };
@@ -30,7 +31,7 @@ export const Explorer: React.FC<Props> = ({ onFileOpen, currentPath }) => {
   const deleteFile = (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
     if (confirm(`Delete ${path}?`)) {
-      vfs.delete(path);
+      vfs.delete(path, SYSTEM_VFS_APP_ID);
       setRefreshKey(k => k + 1);
     }
   };
@@ -45,7 +46,7 @@ export const Explorer: React.FC<Props> = ({ onFileOpen, currentPath }) => {
       return (
         <div key={fullPath}>
           <div 
-            className={`flex items-center gap-1 py-1 px-2 hover:bg-white/5 cursor-pointer group text-[11px] ${currentPath === fullPath ? 'bg-blue-500/10 text-blue-400' : ''}`}
+            className={`flex items-center gap-1 py-1 px-2 hover:bg-white/5 cursor-pointer group text-[11px] ${currentPath === fullPath ? 'bg-accent/10 text-accent' : ''}`}
             style={{ paddingLeft: `${depth * 12 + 8}px` }}
             onClick={() => isDir ? toggle(fullPath) : onFileOpen(fullPath)}
           >
@@ -53,7 +54,7 @@ export const Explorer: React.FC<Props> = ({ onFileOpen, currentPath }) => {
               expanded.has(fullPath) ? <ChevronDown size={12} className="text-zinc-600" /> : <ChevronRight size={12} className="text-zinc-600" />
             ) : <div className="w-3" />}
             
-            {isDir ? <Folder size={14} className="text-blue-500/60" /> : <FileCode size={14} className="text-zinc-500 group-hover:text-blue-400" />}
+            {isDir ? <Folder size={14} className="text-accent/60" /> : <FileCode size={14} className="text-zinc-500 group-hover:text-accent" />}
             <span className={`truncate flex-1 ${isDir ? 'font-bold text-zinc-400' : 'text-zinc-500 group-hover:text-zinc-200'}`}>{name}</span>
             
             {!isDir && (
