@@ -343,6 +343,20 @@ export class PuterService {
         const osActionResults = await toolForge.executeOsActions(fullResponse);
         if (osActionResults.trim()) {
           if (mode === 'chat') onToken(osActionResults);
+          // Continuation: when the model emitted a read-type OS:: action
+          // (LIST_DIR / READ_FILE / SEARCH_FILES / EXECUTE_JS / WEB_SEARCH …),
+          // feed the action results back to the cloud model so it can answer
+          // the user in natural language. Without this loop cloud users
+          // (Z.AI, OpenAI, …) only ever saw the raw [OS::…] result line and
+          // no follow-up — mirroring ROUTE 2's continuation below.
+          const hasRead = /OS::(LIST_DIR|READ_FILE|SEARCH_FILES|EXECUTE_JS|WEB_SEARCH|BROWSE_STATE|BROWSE_EXTRACT|SEARCH_RAG|GIT_STATUS|GIT_LOG|GIT_DIFF)\b/.test(fullResponse);
+          if (hasRead) {
+            if (mode === 'chat') onToken('\n\n');
+            const continuationPrompt = `[OS_ACTION_RESULTS]\n${osActionResults}\n\nUsing the above results, complete your response to the user.`;
+            await aiGateway.stream(stPrompt, continuationPrompt, (token) => {
+              onToken(token);
+            });
+          }
         }
         return;
       } catch (cloudErr: any) {
