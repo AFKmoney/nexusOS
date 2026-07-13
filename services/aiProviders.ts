@@ -658,7 +658,10 @@ export class AIProviderGateway {
 
     // Browser mode CORS proxy fallback — for providers that don't send
     // CORS headers. Anthropic and Google already work in browser mode.
-    const needsCorsProxy = !hasElectron && provider.type === 'openai-compatible'
+    // Only applies in a real browser (window defined): in Node/server
+    // contexts fetch is not subject to CORS, so direct calls work.
+    const isBrowser = typeof window !== 'undefined';
+    const needsCorsProxy = isBrowser && !hasElectron && provider.type === 'openai-compatible'
       && provider.id !== 'lmstudio' && provider.id !== 'ollama';
     const fetchUrl = needsCorsProxy
       ? `https://corsproxy.io/?url=${encodeURIComponent(url)}`

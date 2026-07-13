@@ -93,7 +93,12 @@ Return ONLY the JSON, nothing else.`;
     let appData: any;
     try {
       const rules = useOS.getState().kernelRules;
-      const response = await aiService.generateOnce(prompt, rules, 'architect');
+      // Use 'json' mode (not 'architect'): the app generator needs a JSON
+      // object with indexHtml/stylesCss/appJs fields. 'architect' mode forces
+      // "OUTPUT HTML ONLY, start with <!DOCTYPE html>" which contradicts the
+      // JSON request — the model returns markdown-wrapped or truncated JSON
+      // and JSON.parse fails, so no app ever gets built.
+      const response = await aiService.generateOnce(prompt, rules, 'json');
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('AI did not return valid JSON');
