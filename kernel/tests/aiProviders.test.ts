@@ -84,3 +84,20 @@ test('aiProviders - every non-custom preset has a positive maxTokens', () => {
     assert.ok((p.maxTokens || 0) > 0, `${p.id} should declare positive maxTokens`);
   }
 });
+
+test('aiProviders - Z.AI disables reasoning for fast responses', () => {
+  // GLM models spend seconds on hidden chain-of-thought by default.
+  // Disabling thinking keeps answer quality for chat/OS control but ~3x
+  // faster (measured 6.3s → 1.9s). If this gets accidentally removed the
+  // whole UI feels sluggish again — so guard it with a test.
+  const p = expectPreset('z-ai');
+  assert.ok(p.requestParams, 'z-ai preset should declare requestParams');
+  assert.deepStrictEqual(p.requestParams, { thinking: { type: 'disabled' } },
+    'z-ai requestParams must disable thinking');
+});
+
+test('aiProviders - Z.AI uses the Coding Plan endpoint (not pay-as-you-go)', () => {
+  const p = expectPreset('z-ai');
+  assert.match(p.baseUrl, /api\.z\.ai\/api\/coding\/paas\/v4/);
+  assert.strictEqual(p.defaultModel, 'glm-4.6');
+});
