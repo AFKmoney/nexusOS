@@ -40,26 +40,54 @@ const MOCK_PROVIDER = {
 // nothing further (this is the exact bug-trigger condition).
 const FIRST_RESPONSE = 'OS::LIST_DIR:/home/user';
 
-(aiGateway as any).getActiveProvider = () => MOCK_PROVIDER;
-(aiGateway as any).stream = async (
-  systemPrompt: string, userPrompt: string, onToken: (t: string) => void,
-) => {
-  streamCalls++;
-  streamArgs.push({ systemPrompt, userPrompt });
-  const text = streamCalls === 1 ? FIRST_RESPONSE : 'You have 2 files: notes.txt, todo.md';
-  onToken(text);
+// Save originals at import time (before any mocking). These singletons are
+// shared across the whole suite. We apply the mocks ONLY inside beforeAll
+// (so they're active solely while this file's tests run) and restore them
+// in afterAll — otherwise the mocked executeOsActions leaks into later
+// files like skillForgePipeline which call the real implementation.
+const _orig = {
+  getActiveProvider: (aiGateway as any).getActiveProvider.bind(aiGateway),
+  stream: (aiGateway as any).stream.bind(aiGateway),
+  getSystemToolContext: (toolForge as any).getSystemToolContext.bind(toolForge),
+  parseAndRegister: (toolForge as any).parseAndRegister.bind(toolForge),
+  executeOsActions: (toolForge as any).executeOsActions.bind(toolForge),
+  ensureLoadedAsync: (toolForge as any).ensureLoadedAsync?.bind(toolForge),
+  recall: (memory as any).recall.bind(memory),
 };
 
-(toolForge as any).getSystemToolContext = async () => '';
-(toolForge as any).parseAndRegister = async () => false;
-(toolForge as any).executeOsActions = async (text: string) => {
-  if (text.includes('LIST_DIR')) {
-    return '[OS::LIST_DIR] → /home/user:\nnotes.txt, todo.md';
-  }
-  return '';
-};
-(toolForge as any).ensureLoadedAsync = async () => {};
-(memory as any).recall = () => [];
+import { beforeAll, afterAll } from 'node:test';
+beforeAll(() => {
+  (aiGateway as any).getActiveProvider = () => MOCK_PROVIDER;
+  (aiGateway as any).stream = async (
+    systemPrompt: string, userPrompt: string, onToken: (t: string) => void,
+  ) => {
+    streamCalls++;
+    streamArgs.push({ systemPrompt, userPrompt });
+    const text = streamCalls === 1 ? FIRST_RESPONSE : 'You have 2 files: notes.txt, todo.md';
+    onToken(text);
+  };
+
+  (toolForge as any).getSystemToolContext = async () => '';
+  (toolForge as any).parseAndRegister = async () => false;
+  (toolForge as any).executeOsActions = async (text: string) => {
+    if (text.includes('LIST_DIR')) {
+      return '[OS::LIST_DIR] → /home/user:\nnotes.txt, todo.md';
+    }
+    return '';
+  };
+  (toolForge as any).ensureLoadedAsync = async () => {};
+  (memory as any).recall = () => [];
+});
+
+afterAll(() => {
+  (aiGateway as any).getActiveProvider = _orig.getActiveProvider;
+  (aiGateway as any).stream = _orig.stream;
+  (toolForge as any).getSystemToolContext = _orig.getSystemToolContext;
+  (toolForge as any).parseAndRegister = _orig.parseAndRegister;
+  (toolForge as any).executeOsActions = _orig.executeOsActions;
+  if (_orig.ensureLoadedAsync) (toolForge as any).ensureLoadedAsync = _orig.ensureLoadedAsync;
+  (memory as any).recall = _orig.recall;
+});
 
 // ─── Test ───────────────────────────────────────────────────────
 

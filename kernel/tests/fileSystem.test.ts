@@ -47,17 +47,19 @@ test('VirtualFileSystem - explicit system appId bypass works', () => {
   assert.strictEqual(content, 'system content', 'Should read file successfully with explicit system appId');
 });
 
-test('VirtualFileSystem - readFile without appId is denied', () => {
+test('VirtualFileSystem - readFile with an unregistered appId is denied', () => {
   const vfs = new VirtualFileSystem();
 
   vfs.writeFile('/home/user/Desktop/test-denied.txt', 'system content', SYSTEM_VFS_APP_ID);
 
   lastConsoleError = '';
   lastConsoleWarn = '';
-  const content = vfs.readFile('/home/user/Desktop/test-denied.txt', SYSTEM_VFS_APP_ID);
-  assert.strictEqual(content, null, 'Should deny read without appId');
-  assert.ok(lastConsoleWarn.includes('Missing appId for permission check (vfs.read)'), 'Should log missing appId warning');
-  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked undefined from reading'), 'Should log permission error');
+  // An appId that is neither SYSTEM_VFS_APP_ID nor in the (empty in test)
+  // app registry must be blocked by the sandbox enforcer.
+  const content = vfs.readFile('/home/user/Desktop/test-denied.txt', 'rogue-app');
+  assert.strictEqual(content, null, 'Should deny read for unregistered appId');
+  assert.ok(lastConsoleError.includes('[Sandbox Enforcer] Blocked rogue-app from reading'),
+    'Should log permission error');
 });
 
 test('VirtualFileSystem - readFile with appId that has vfs.read permission', () => {

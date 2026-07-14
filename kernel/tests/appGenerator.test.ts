@@ -34,10 +34,22 @@ const FAKE_APP_JSON = JSON.stringify({
   readme: '# Test Calc\n\nA generated test app.',
 });
 
-(aiService as any).generateOnce = async (_prompt: string, _rules: any, mode: string) => {
-  capturedMode = mode;
-  return FAKE_APP_JSON;
-};
+// Apply the generateOnce mock only while our tests run, then restore the
+// real implementation so we don't pollute other test files that share the
+// aiService singleton (e.g. skillForgePipeline → executeOsActions →
+// BUILD_APP → appGenerator.generate → generateOnce).
+const _originalGenerateOnce = (aiService as any).generateOnce.bind(aiService);
+import { beforeEach, afterEach } from 'node:test';
+beforeEach(() => {
+  (aiService as any).generateOnce = async (_prompt: string, _rules: any, mode: string) => {
+    capturedMode = mode;
+    return FAKE_APP_JSON;
+  };
+});
+afterEach(() => {
+  (aiService as any).generateOnce = _originalGenerateOnce;
+  capturedMode = undefined;
+});
 
 test('appGenerator.generate uses json mode (not architect) so AI returns valid JSON', async () => {
   capturedMode = undefined;
