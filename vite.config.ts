@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { aiProxyPlugin } from './vite-ai-proxy';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -26,7 +27,7 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Resource-Policy': 'cross-origin',
       },
     },
-    plugins: [react()],
+    plugins: [react(), aiProxyPlugin()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
     },

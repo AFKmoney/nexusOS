@@ -670,23 +670,33 @@ export class AIProviderGateway {
       }
     }
 
-    // Browser mode CORS proxy fallback — for providers that don't send
-    // CORS headers. Anthropic and Google already work in browser mode.
-    // Only applies in a real browser (window defined): in Node/server
-    // contexts fetch is not subject to CORS, so direct calls work.
+    // Browser mode CORS bypass. Most OpenAI-compatible providers return no
+    // CORS headers, so a direct browser fetch is blocked. The public
+    // corsproxy.io service is unreliable (403s), so we route through our own
+    // same-origin dev-server proxy (/api/ai-proxy, mounted by vite-ai-proxy
+    // in dev and the Electron IPC handler in the desktop build). lmstudio /
+    // ollama are local and CORS-friendly, so they're excluded. Only applies
+    // in a real browser (window defined) — Node/server contexts fetch direct.
     const isBrowser = typeof window !== 'undefined';
     const needsCorsProxy = isBrowser && !hasElectron && provider.type === 'openai-compatible'
       && provider.id !== 'lmstudio' && provider.id !== 'ollama';
-    const fetchUrl = needsCorsProxy
-      ? `https://corsproxy.io/?url=${encodeURIComponent(url)}`
-      : url;
 
-    // Direct fetch (works in browser mode for CORS-friendly APIs, or as fallback)
-    const res = await fetch(fetchUrl, {
-      method: 'POST',
-      headers,
-      body: bodyStr,
-    });
+    let res: Response;
+    if (needsCorsProxy) {
+      // POST to same-origin proxy; it forwards server-side (no CORS).
+      const proxyRes = await fetch('/api/ai-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, method: 'POST', headers, body: bodyStr }),
+      });
+      if (!proxyRes.ok) {
+        const errBody = await proxyRes.text().catch(() => '');
+        throw new Error(`${provider.name} API Error ${proxyRes.status} (via proxy): ${errBody.slice(0, 200)}`);
+      }
+      res = proxyRes as unknown as Response;
+    } else {
+      res = await fetch(url, { method: 'POST', headers, body: bodyStr });
+    }
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
