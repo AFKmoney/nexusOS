@@ -82,7 +82,29 @@ const ROLE_PROMPTS: Record<AgentRole, string> = {
   orchestrator: `You are an ORCHESTRATOR agent. The given task is complex. Break it down and delegate to specialist agents (coder, reviewer, tester, researcher). Output your plan as JSON: {"delegations": [{"role": "coder", "task": "..."}]}`,
 };
 
-class AgentOrchestrator {
+export class AgentOrchestrator {
+  /** Parse a planner response into subtasks (testable, pure-ish). Returns [] on
+   *  malformed JSON or a missing/empty "subtasks" array, so callers can retry. */
+  static parsePlan(planResult: string, taskId: string): SubTask[] {
+    try {
+      const jsonMatch = planResult.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return [];
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed.subtasks)) return [];
+      return parsed.subtasks.map((st: any, i: number) => ({
+        id: `${taskId}-sub-${i}`,
+        description: st.description || '',
+        assignedRole: (st.role || 'coder') as AgentRole,
+        status: 'pending' as const,
+        dependsOn: Array.isArray(st.dependsOn)
+          ? st.dependsOn.map((idx: any) => `${taskId}-sub-${idx}`)
+          : [],
+      })).filter((s: SubTask) => s.description);
+    } catch {
+      return [];
+    }
+  }
+
   private agents = new Map<string, Agent>();
   private tasks = new Map<string, OrchestratedTask>();
   private nextAgentId = 0;
@@ -108,26 +130,18 @@ class AgentOrchestrator {
     };
     this.tasks.set(taskId, task);
 
-    const planResult = await this.runAgent('planner', goal, taskId);
+    // Generate the plan, retrying (with a corrective nudge) if the planner
+    // returns non-JSON or JSON with zero subtasks, before falling back to a
+    // single coder subtask. This keeps the dependency graph useful instead of
+    // silently degrading to a one-shot.
     let subtasks: SubTask[] = [];
-
-    try {
-      const jsonMatch = planResult.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed.subtasks)) {
-          subtasks = parsed.subtasks.map((st: any, i: number) => ({
-            id: `${taskId}-sub-${i}`,
-            description: st.description || '',
-            assignedRole: (st.role || 'coder') as AgentRole,
-            status: 'pending' as const,
-            dependsOn: Array.isArray(st.dependsOn)
-              ? st.dependsOn.map((idx: any) => `${taskId}-sub-${idx}`)
-              : [],
-          }));
-        }
-      }
-    } catch {}
+    for (let attempt = 0; attempt < 3 && subtasks.length === 0; attempt++) {
+      const corrective = attempt === 0
+        ? ''
+        : '\n\nYour previous output was not valid JSON with a "subtasks" array. Re-output ONLY JSON: {"subtasks":[{"description":"...","role":"coder","dependsOn":[]}]}. Do not add prose.';
+      const planResult = await this.runAgent('planner', goal + corrective, taskId);
+      subtasks = AgentOrchestrator.parsePlan(planResult, taskId);
+    }
 
     if (subtasks.length === 0) {
       subtasks = [{

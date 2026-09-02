@@ -57,7 +57,7 @@ export default function HyperIDECore({ windowId }: { windowId: string }) {
 
   const saveWorkspaceState = () => {
     const state = { tabs, activeTabId, chatHistory };
-    vfs.writeFile(CONFIG_PATH, JSON.stringify(state, SYSTEM_VFS_APP_ID));
+    vfs.writeFile(CONFIG_PATH, JSON.stringify(state));
   };
 
   useEffect(() => {

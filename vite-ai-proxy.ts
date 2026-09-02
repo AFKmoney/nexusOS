@@ -65,7 +65,7 @@ export function aiProxyPlugin(): Plugin {
           const upstream = await fetch(targetUrl, {
             method: parsed.method || 'POST',
             headers: parsed.headers || { 'Content-Type': 'application/json' },
-            body: parsed.body || undefined,
+            ...(parsed.body ? { body: parsed.body } : {}),
           });
 
           res.statusCode = upstream.status;

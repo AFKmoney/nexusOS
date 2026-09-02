@@ -112,14 +112,14 @@ export default function ForgeSystem({ windowId }: { windowId: string }) {
     const cssRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
     let cssMatch;
     while ((cssMatch = cssRegex.exec(content)) !== null) {
-      cssContent += cssMatch[1].trim() + '\n\n';
+      cssContent += (cssMatch[1] || '').trim() + '\n\n';
     }
     
     const jsRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
     let jsMatch;
     while ((jsMatch = jsRegex.exec(content)) !== null) {
       if (!jsMatch[0].includes('src=')) {
-        jsContent += jsMatch[1].trim() + '\n\n';
+        jsContent += (jsMatch[1] || '').trim() + '\n\n';
       }
     }
     

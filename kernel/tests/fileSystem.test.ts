@@ -36,7 +36,7 @@ console.warn = (...args: any[]) => {
   lastConsoleWarn = args.join(' ');
 };
 
-import { VirtualFileSystem, SYSTEM_VFS_APP_ID } from '../fileSystem.ts';
+import { VirtualFileSystem } from '../fileSystem.ts';
 
 test('VirtualFileSystem - explicit system appId bypass works', () => {
   const vfs = new VirtualFileSystem();

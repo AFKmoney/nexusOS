@@ -27,6 +27,8 @@ const ALLOWED_OPS = new Set([
   'vfs.write',
   'vfs.list',
   'vfs.delete',
+  'vfs.createDir',
+  'vfs.stat',
   'memory.remember',
   'memory.recall',
   'events.emit',
@@ -39,6 +41,7 @@ const ALLOWED_OPS = new Set([
   'ai.stream',
   'fetch',
   'log',
+  'skill.execute',
 ]);
 
 interface SandboxRequest {
@@ -117,6 +120,8 @@ function buildSandboxCtx(args: unknown, argsRaw: string) {
       write: (path: string, content: string) => rpc('vfs.write', path, content),
       list: (path: string) => rpc('vfs.list', path),
       delete: (path: string) => rpc('vfs.delete', path),
+      createDir: (path: string) => rpc('vfs.createDir', path),
+      stat: (path: string) => rpc('vfs.stat', path),
     },
     memory: {
       remember: (content: string, tags: string[] = []) => rpc('memory.remember', content, tags),
@@ -166,6 +171,8 @@ function buildSandboxCtx(args: unknown, argsRaw: string) {
     },
     fetch: (url: string, options: Record<string, unknown> = {}) => rpc('fetch', url, options),
     log: (msg: string) => rpc('log', msg),
+    runSkill: (name: string, argsRaw?: string | Record<string, unknown>) =>
+      rpc('skill.execute', name, typeof argsRaw === 'string' ? argsRaw : JSON.stringify(argsRaw || {})),
   };
 }
 

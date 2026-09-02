@@ -77,7 +77,7 @@ export default function StartMenu() {
   const handleAccentCycle = () => {
     const currentIndex = ACCENTS.findIndex(a => a.color === useOS.getState().accentColor);
     const nextIndex = (currentIndex + 1) % ACCENTS.length;
-    setAccentColor(ACCENTS[nextIndex].color);
+    setAccentColor((ACCENTS[nextIndex] ?? ACCENTS[0])!.color);
   };
 
   return (
@@ -157,7 +157,7 @@ export default function StartMenu() {
                   const currentHex = useOS.getState().accentColor.toLowerCase();
                   const currentIndex = ACCENTS.findIndex(a => a.color.toLowerCase() === currentHex);
                   const nextIndex = (currentIndex + 1) % ACCENTS.length;
-                  setAccentColor(ACCENTS[nextIndex].color);
+                  setAccentColor((ACCENTS[nextIndex] ?? ACCENTS[0])!.color);
                 }}
                 className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-colors text-left">
                 <Layers3 size={14} className="text-accent shrink-0" />

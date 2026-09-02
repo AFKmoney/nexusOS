@@ -157,7 +157,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
 
       case 'mkdir':
         if (!args[1]) { print('mkdir: missing operand'); break; }
-        vfs.createDir(resolvePath(args[1], SYSTEM_VFS_APP_ID));
+        vfs.createDir(resolvePath(args[1]));
         break;
 
       case 'touch':
@@ -167,12 +167,12 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
 
       case 'rm':
         if (!args[1]) { print('rm: missing operand'); break; }
-        vfs.delete(resolvePath(args[1], SYSTEM_VFS_APP_ID));
+        vfs.delete(resolvePath(args[1]));
         break;
 
       case 'cat':
         if (!args[1]) { print('cat: missing operand'); break; }
-        const content = vfs.readFile(resolvePath(args[1], SYSTEM_VFS_APP_ID));
+        const content = vfs.readFile(resolvePath(args[1]));
         if (content === null) print(`cat: ${args[1]}: No such file or directory`);
         else content.split('\n').forEach(l => print(l));
         break;
@@ -197,7 +197,7 @@ export default function UbuntuTerminalApp({ windowId }: { windowId: string }) {
         const term = args[1] ?? '';
         const grepTarget = args[2];
         if (!grepTarget) { print('grep: missing operand'); break; }
-        const gcontent = vfs.readFile(resolvePath(grepTarget, SYSTEM_VFS_APP_ID));
+        const gcontent = vfs.readFile(resolvePath(grepTarget));
         if (gcontent === null) {
             print(`grep: ${grepTarget}: No such file or directory`);
         } else {

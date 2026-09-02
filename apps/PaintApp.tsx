@@ -42,9 +42,9 @@ export default function PaintApp() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = container.clientWidth * dpr;
     canvas.height = container.clientHeight * dpr;
+    const ctx = canvas.getContext('2d');
     ctx?.scale(dpr, dpr);
     
-    const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.fillStyle = '#0a0a0c'; // Dark background
       ctx.fillRect(0, 0, canvas.width, canvas.height);

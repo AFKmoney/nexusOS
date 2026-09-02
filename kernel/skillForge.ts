@@ -26,8 +26,10 @@ import { autonomyEventLog } from './autonomyEventLog';
 import { kernelLog } from './log';
 import { aiService } from '../services/puterService';
 import { useOS } from '../store/osStore';
+import { SKILL_PACK, SKILL_PACK_VERSION } from './skillPack';
 
 const SKILLS_DIR = '/system/skills';
+const PACK_VERSION_PATH = '/system/.skill_pack_version';
 const MAX_SKILL_SIZE = 50_000;        // 50 KB source cap
 const MAX_EXECUTION_MS = 30_000;      // 30 s timeout
 const SAFE_SKILL_NAME = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
@@ -51,6 +53,8 @@ export interface SkillExecutionContext {
     write: (path: string, content: string) => void;
     list: (path: string) => string[];
     delete: (path: string) => boolean;
+    createDir: (path: string) => boolean;
+    stat: (path: string) => { type?: 'directory' | 'file' | 'symlink' } | null;
   };
   memory: {
     remember: (content: string, tags?: string[]) => void;
@@ -72,6 +76,8 @@ export interface SkillExecutionContext {
     stream: (prompt: string, onToken: (t: string) => void, mode?: string) => Promise<void>;
   };
   fetch: (url: string, options?: Record<string, unknown>) => Promise<{ ok: boolean; status: number; text: () => Promise<string>; json: () => Promise<unknown> }>;
+  /** Run another skill, enabling skill-to-skill chaining. Returns a SkillExecutionResult-shaped object. */
+  runSkill: (name: string, argsRaw?: string | Record<string, unknown>) => Promise<SkillExecutionResult | { success: boolean; error?: string }>;
   log: (msg: string) => void;
 }
 
@@ -82,10 +88,13 @@ export interface SkillExecutionResult {
   durationMs: number;
 }
 
+const MAX_CHAIN_DEPTH = 5; // guard against runaway skill→skill recursion
+
 class SkillForgeEngine {
   private skills = new Map<string, Skill>();
   private isLoaded = false;
   private loadPromise: Promise<void> | null = null;
+  private chainDepth = 0;
 
   async load(): Promise<void> {
     if (this.isLoaded) return;
@@ -111,10 +120,10 @@ class SkillForgeEngine {
           kernelLog.info(`[SkillForge] Loaded skill: ${skill.name}`);
         }
       }
-      // If fresh install, seed example skills
-      if (this.skills.size === 0) {
-        await this.seedExampleSkills();
-      }
+      // Seed the curated skill pack (idempotent + upgrade-safe):
+      // only seeds skills that aren't already present, so it never
+      // clobbers the AI's or the user's own customizations.
+      await this.seedFromPack();
       kernelLog.info(`[SkillForge] Loaded ${this.skills.size} skill(s) from VFS`);
       this.isLoaded = true;
     } catch (e: any) {
@@ -124,57 +133,67 @@ class SkillForgeEngine {
   }
 
   /**
-   * IMPORTANT: This is called from inside _doLoad(), so it MUST NOT
-   * call register() (which calls load() → would deadlock on the
-   * in-flight loadPromise). Instead we write directly to the skills
-   * map and the VFS.
+   * Seed the curated skill pack into the VFS / registry.
+   *
+   * IMPORTANT: Called from inside _doLoad(), so it MUST NOT call
+   * register() (which calls load() → would deadlock on the in-flight
+   * loadPromise). Instead we write directly to the skills map and VFS.
+   *
+   * Idempotent + upgrade-safe: it only seeds a pack skill that is NOT
+   * already present in the registry (keyed by name), so it never
+   * overwrites a customized / AI-evolved skill. Bumping SKILL_PACK_VERSION
+   * re-runs the sweep and picks up any newly added pack skills.
    */
-  private async seedExampleSkills(): Promise<void> {
-    const examples = [
-      {
-        name: 'greet_user',
-        description: 'Greet the user by name with a personalized message',
-        code: `const user = useOS.getState().currentUser;\nconst name = user?.name || 'Creator';\nconst hour = new Date().getHours();\nconst greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';\nuseOS.getState().openWindow('daemon_chat', { initialMessage: greeting + ', ' + name + '!' });\nuseOS.getState().addNotification({ title: 'NexusOS AI', message: greeting + ', ' + name + '!', type: 'info' });\nreturn greeting + ', ' + name + '!';`,
-      },
-      {
-        name: 'system_health_report',
-        description: 'Generate a comprehensive system health report and save to Desktop',
-        code: `const os = useOS.getState();\nconst metrics = { timestamp: new Date().toISOString(), uptime: Math.floor(performance.now() / 1000), windows: os.windows.length, apps: os.registry.length, autonomy: os.kernelRules.autonomyEnabled, fullAutonomy: os.kernelRules.fullAutonomy || false, desktopFiles: ctx.vfs.list('/home/user/Desktop').length };\nconst status = metrics.windows < 10 && metrics.desktopFiles < 20 ? 'HEALTHY' : 'BUSY';\nconst report = '# System Health Report\\\\nGenerated: ' + metrics.timestamp + '\\\\n\\\\n' + '- Uptime: ' + metrics.uptime + 's\\\\n' + '- Windows: ' + metrics.windows + '\\\\n' + '- Apps: ' + metrics.apps + '\\\\n' + '- Desktop files: ' + metrics.desktopFiles + '\\\\n' + '- Autonomy: ' + (metrics.autonomy ? 'ENABLED' : 'disabled') + (metrics.fullAutonomy ? ' (FULL)' : '') + '\\\\n' + '- Status: ' + status + '\\\\n';\nconst path = '/home/user/Desktop/health_report_' + Date.now() + '.md';\nctx.vfs.write(path, report);\nos.addNotification({ title: 'Health Report', message: 'Saved to ' + path, type: 'success' });\nreturn report;`,
-      },
-      {
-        name: 'organize_desktop',
-        description: 'Organize desktop files into categorized folders by extension',
-        code: `const vfs = ctx.vfs;\nconst os = useOS.getState();\nconst files = vfs.list('/home/user/Desktop');\nif (files.length === 0) return 'Desktop is already empty.';\nconst categories = { Code: ['.js','.ts','.tsx','.jsx','.py','.go','.rs','.html','.css','.json','.xml','.yml','.yaml'], Notes: ['.md','.txt','.rtf','.doc'], Data: ['.csv','.tsv','.sql','.db'], Images: ['.png','.jpg','.jpeg','.gif','.svg','.webp','.bmp','.ico'], Audio: ['.mp3','.wav','.ogg','.flac','.m4a'], Video: ['.mp4','.webm','.mov','.avi','.mkv'], Archives: ['.zip','.tar','.gz','.rar','.7z'] };\nfunction categorize(f) { const ext = '.' + (f.split('.').pop() || '').toLowerCase(); for (const [cat, exts] of Object.entries(categories)) if (exts.includes(ext)) return cat; return 'Other'; }\nlet count = 0;\nconst moved = {};\nfor (const file of files) { if (file.startsWith('health_report_')) continue; const cat = categorize(file); if (!moved[cat]) moved[cat] = 0; const src = '/home/user/Desktop/' + file; const content = vfs.read(src); if (content === null) continue; vfs.write('/home/user/Desktop/' + cat + '/' + file, content); vfs.delete(src, SYSTEM_VFS_APP_ID); moved[cat]++; count++; }\nconst summary = Object.entries(moved).map(([c,n]) => c + ': ' + n).join(', ');\nos.addNotification({ title: 'Desktop Organized', message: 'Moved ' + count + ' files', type: 'success' });\nreturn 'Organized ' + count + ' files: ' + summary;`,
-      },
-    ];
-
+  private async seedFromPack(): Promise<void> {
     try {
       if (!vfs.stat(SKILLS_DIR)) {
         vfs.createDir(SKILLS_DIR, SYSTEM_VFS_APP_ID);
       }
     } catch {}
 
-    for (const ex of examples) {
-      try {
+    // Read the last-seeded pack version so we can (a) avoid re-checking
+    // on every boot and (b) re-run the sweep when the pack is upgraded.
+    let seededVersion = -1;
+    try {
+      const raw = vfs.readFile(PACK_VERSION_PATH, SYSTEM_VFS_APP_ID);
+      if (raw) seededVersion = parseInt(raw, 10);
+    } catch {}
+
+    // Sweep only when we haven't seeded this pack version yet, OR
+    // still ensure freshness on first run.
+    if (seededVersion !== SKILL_PACK_VERSION) {
+      let seeded = 0;
+      for (const pack of SKILL_PACK) {
+        // Never clobber an existing skill (user/AI customized or custom-named).
+        if (this.skills.has(pack.name)) continue;
         const skill: Skill = {
-          name: ex.name,
-          description: ex.description,
-          code: ex.code,
+          name: pack.name,
+          description: pack.description,
+          code: pack.code,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           invocations: 0,
         };
-        this.skills.set(ex.name, skill);
-        const header = `// @skill ${ex.name}\n// @desc ${ex.description}\n`;
-        vfs.writeFile(`${SKILLS_DIR}/${ex.name}.skill.js`, `${header}\n${ex.code}`, SYSTEM_VFS_APP_ID);
-        kernelLog.info(`[SkillForge] Seeded skill: ${ex.name}`);
-      } catch (e: any) {
-        kernelLog.warn(`[SkillForge] Failed to seed ${ex.name}:`, e?.message);
+        if (pack.expose) skill.exposedAsAction = pack.expose;
+        this.skills.set(pack.name, skill);
+        const header = `// @skill ${pack.name}\n// @desc ${pack.description}\n${pack.expose ? `// @expose ${pack.expose}\n` : ''}`;
+        vfs.writeFile(`${SKILLS_DIR}/${pack.name}.skill.js`, `${header}\n${pack.code}`, SYSTEM_VFS_APP_ID);
+        seeded++;
+        kernelLog.info(`[SkillForge] Seeded pack skill: ${pack.name}`);
       }
+      vfs.writeFile(PACK_VERSION_PATH, String(SKILL_PACK_VERSION), SYSTEM_VFS_APP_ID);
+      kernelLog.info(`[SkillForge] Skill pack v${SKILL_PACK_VERSION} seeded (${seeded} new, ${this.skills.size} total)`);
+      eventBus.emit('skill:pack-seeded', { version: SKILL_PACK_VERSION, seeded });
     }
-    kernelLog.info(`[SkillForge] Seeded ${examples.length} example skills`);
   }
 
+  /**
+   * Legacy seeding kept for backward compatibility against direct
+   * references; now delegates to seedFromPack().
+   */
+  private async seedExampleSkills(): Promise<void> {
+    return this.seedFromPack();
+  }
   private parseSkillFile(content: string, filename: string): Skill | null {
     try {
       const lines = content.split('\n');
@@ -459,6 +478,10 @@ class SkillForgeEngine {
         return vfs.listDir(args[0], SYSTEM_VFS_APP_ID) || [];
       case 'vfs.delete':
         return vfs.delete(args[0], SYSTEM_VFS_APP_ID);
+      case 'vfs.createDir':
+        return vfs.createDirRecursive(args[0], SYSTEM_VFS_APP_ID);
+      case 'vfs.stat':
+        return vfs.stat(args[0]) || null;
       case 'memory.remember':
         return memory.remember(args[0], args[1] || []);
       case 'memory.recall':
@@ -510,8 +533,28 @@ class SkillForgeEngine {
       case 'log':
         kernelLog.info(`[Skill sandbox] ${args[0]}`);
         return undefined;
+      case 'skill.execute':
+        return this.runSkillSafely(args[0], args[1]);
       default:
         throw new Error(`Permission denied: operation '${op}' is not allowed in the sandbox`);
+    }
+  }
+
+  /**
+   * Run another skill from within a skill (chaining). Accepts either a raw
+   * JSON args string or a plain object. Bounded by MAX_CHAIN_DEPTH to prevent
+   * runaway recursion (e.g. a skill calling itself forever).
+   */
+  private async runSkillSafely(name: string, argsRaw?: string | Record<string, unknown>): Promise<SkillExecutionResult | { success: boolean; error?: string }> {
+    if (this.chainDepth >= MAX_CHAIN_DEPTH) {
+      return { success: false, error: 'Max skill chaining depth reached (' + MAX_CHAIN_DEPTH + ')' };
+    }
+    const raw = typeof argsRaw === 'string' ? argsRaw : (argsRaw ? JSON.stringify(argsRaw) : '');
+    this.chainDepth++;
+    try {
+      return await this.execute(name, raw);
+    } finally {
+      this.chainDepth--;
     }
   }
 
@@ -535,6 +578,8 @@ class SkillForgeEngine {
         write: (path: string, content: string) => vfs.writeFile(path, content, SYSTEM_VFS_APP_ID),
         list: (path: string) => vfs.listDir(path, SYSTEM_VFS_APP_ID) || [],
         delete: (path: string) => vfs.delete(path, SYSTEM_VFS_APP_ID),
+        createDir: (path: string) => vfs.createDirRecursive(path, SYSTEM_VFS_APP_ID),
+        stat: (path: string) => vfs.stat(path),
       },
       memory: {
         remember: (content: string, tags: string[] = []) => memory.remember(content, tags),
@@ -585,6 +630,7 @@ class SkillForgeEngine {
         };
       },
       log: (msg: string) => kernelLog.info(`[Skill] ${msg}`),
+      runSkill: (name: string, argsRaw?: string | Record<string, unknown>) => this.runSkillSafely(name, argsRaw),
     } as SkillExecutionContext;
   }
 

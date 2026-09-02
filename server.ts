@@ -68,7 +68,8 @@ async function startServer() {
   app.get("/api/proxy/:protocol/:host/*", async (req, res) => {
     try {
       const { protocol, host } = req.params;
-      const pathSuffix = req.params[0] || "";
+      const params = req.params as unknown as Record<string, string>;
+      const pathSuffix = params['0'] || "";
       const queryStr = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
 
       // Reconstruct target URL

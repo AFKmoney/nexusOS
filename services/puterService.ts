@@ -195,7 +195,11 @@ export class PuterService {
       // ─── PREFERRED PATH: Native function calling ────────────────
       try {
         const { getOsActionTools } = await import('../kernel/aiTools');
-        const tools = getOsActionTools();
+        const { mcpBridge } = await import('../kernel/mcpBridge');
+        const tools = [
+          ...getOsActionTools(),
+          ...mcpBridge.getToolDefinitions(),
+        ];
         const { text: aiText, toolCalls } = await aiGateway.generateWithTools(
           fullSystemPrompt, contextualPrompt, tools
         );

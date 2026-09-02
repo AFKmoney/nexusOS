@@ -36,7 +36,7 @@ export interface SidePanelProps {
 
 export const SidePanel: React.FC<SidePanelProps> = (props) => {
   const {
-    sidePanel, project, showNewFile, newFileName, renameTarget, renameValue,
+    sidePanel, project, showNewFile, isNewFolder, newFileName, renameTarget, renameValue,
     searchQuery, searchResults, activeTabPath, modifiedTabs,
     onNewFileClick, onNewFolderClick, onSetNewFileName, onCreateFile, onCancelNewFile,
     onSetRenameValue, onDoRename, onCancelRename,

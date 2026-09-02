@@ -7,7 +7,7 @@
 // a natural-language follow-up when the model emitted OS::READ_FILE etc.
 // ROUTE 2 (local) already did this continuation correctly.
 
-import test from 'node:test';
+import test, { describe, before, after } from 'node:test';
 import assert from 'node:assert';
 
 if (typeof global.localStorage === 'undefined') {
@@ -55,8 +55,12 @@ const _orig = {
   recall: (memory as any).recall.bind(memory),
 };
 
-import { beforeAll, afterAll } from 'node:test';
-beforeAll(() => {
+// NOTE: the mock hooks live INSIDE a describe() so node:test scopes them to
+// this file's tests only. Under the shared-process runTests harness, a
+// top-level before()/after() would leak the mocks (e.g. a stubbed
+// memory.recall) into every other test file in the same run.
+describe('streamChat cloud continuation', () => {
+before(() => {
   (aiGateway as any).getActiveProvider = () => MOCK_PROVIDER;
   (aiGateway as any).stream = async (
     systemPrompt: string, userPrompt: string, onToken: (t: string) => void,
@@ -79,7 +83,7 @@ beforeAll(() => {
   (memory as any).recall = () => [];
 });
 
-afterAll(() => {
+after(() => {
   (aiGateway as any).getActiveProvider = _orig.getActiveProvider;
   (aiGateway as any).stream = _orig.stream;
   (toolForge as any).getSystemToolContext = _orig.getSystemToolContext;
@@ -116,4 +120,5 @@ test('streamChat cloud path continues after a read-type OS:: action', async () =
     continuation && continuation.userPrompt.includes('notes.txt'),
     'continuation prompt should include the OS action results (notes.txt)',
   );
+});
 });

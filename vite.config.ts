@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       host: '0.0.0.0',
+      allowedHosts: ['.e2b.app', 'localhost', '127.0.0.1'],
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',

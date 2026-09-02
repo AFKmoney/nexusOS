@@ -35,6 +35,7 @@ type VfsModule = {
   moveToTrash: (path: string) => boolean;
   restoreFromTrash: (trashPath: string) => string | null;
   listTrash: () => { name: string; path: string; trashedAt: number | null }[];
+  getStats: (path: string) => { size: number; files: number; folders: number } | null;
 };
 
 type MemoryModule = {
@@ -51,6 +52,7 @@ async function getVfs(): Promise<VfsModule> {
     moveToTrash: (path: string) => vfs.moveToTrash(path),
     restoreFromTrash: (trashPath: string) => vfs.restoreFromTrash(trashPath),
     listTrash: () => vfs.listTrash(),
+    getStats: (path: string) => vfs.getStats(path),
   };
 }
 
@@ -64,6 +66,26 @@ function getArg(raw: unknown, fallback = ''): string {
 
 function toStringArg(value: unknown): string {
   return typeof value === 'string' ? value : '';
+}
+
+/**
+ * The OS:: text medium cannot carry newlines inside a single action arg
+ * (parseOsActions splits on every line). So content-bearing args that may
+ * contain newlines / special characters are JSON-encoded by the native
+ * function-calling path. If a segment looks like a JSON string literal, decode
+ * it; otherwise return it verbatim.
+ */
+function decodeArg(segment: string): string {
+  const trimmed = segment.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      const decoded = JSON.parse(trimmed);
+      if (typeof decoded === 'string') return decoded;
+    } catch {
+      // fall through — not a JSON string after all
+    }
+  }
+  return segment;
 }
 
 function isSafeToolName(name: string): boolean {
@@ -164,6 +186,73 @@ export class ToolForge {
     return fn(...argValues);
   }
 
+  /**
+   * ANALYZE_DATA: try to infer structure from JSON / CSV / TSV / plain text
+   * and return a compact schema + sample summary that the model can reason over.
+   * Pure and side-effect free, so it is safe to unit test.
+   */
+  private analyzeData(data: string): string {
+    const trimmed = (data || '').trim();
+    if (!trimmed) return 'Empty input';
+
+    // JSON: array of objects or single object (possibly with nested arrays)
+    const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+    if (looksJson) {
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        parsed = null;
+      }
+      if (parsed !== null) {
+        if (Array.isArray(parsed)) {
+          const items = parsed;
+          if (items.length === 0) return JSON.stringify({ kind: 'array', length: 0 });
+          const first = items[0];
+          if (first && typeof first === 'object' && !Array.isArray(first)) {
+            const keys = Object.keys(first as Record<string, unknown>);
+            const types: Record<string, string> = {};
+            for (const k of keys) {
+              const sample = (first as Record<string, unknown>)[k];
+              types[k] = Array.isArray(sample) ? `array(${sample.length})` : sample === null ? 'null' : typeof sample;
+            }
+            return JSON.stringify({ kind: 'json-array', length: items.length, fields: keys, types, sample: first }).slice(0, 8000);
+          }
+          return JSON.stringify({ kind: 'json-array', length: items.length, elementType: typeof first }).slice(0, 8000);
+        }
+        if (typeof parsed === 'object') {
+          const keys = Object.keys(parsed as Record<string, unknown>);
+          const types: Record<string, string> = {};
+          for (const k of keys) {
+            const v = (parsed as Record<string, unknown>)[k];
+            types[k] = Array.isArray(v) ? `array(${v.length})` : v === null ? 'null' : typeof v;
+          }
+          return JSON.stringify({ kind: 'json-object', fields: keys, types }).slice(0, 8000);
+        }
+        return JSON.stringify({ kind: 'json-scalar', value: String(parsed).slice(0, 500) });
+      }
+    }
+
+    // CSV / TSV: first line = header
+    const lines = trimmed.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length > 1) {
+      const firstLine = lines[0] || '';
+      const tabCount = firstLine.match(/\t/g)?.length ?? 0;
+      const commaCount = firstLine.match(/,/g)?.length ?? 0;
+      const delim = tabCount >= commaCount ? '\t' : ',';
+      const header = firstLine.split(delim).map(h => h.trim().replace(/^"|"$/g, ''));
+      if (header.length > 1) {
+        const rows = lines.length - 1;
+        const sampleRows = lines.slice(1, 4).map(l => l.split(delim).map(c => c.trim().replace(/^"|"$/g, '')));
+        return JSON.stringify({ kind: delim === '\t' ? 'tsv' : 'csv', columns: header, rows, sample: sampleRows }).slice(0, 8000);
+      }
+    }
+
+    // Plain text fallback
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    return JSON.stringify({ kind: 'text', chars: trimmed.length, words: words.length, lines: lines.length, preview: trimmed.slice(0, 400) });
+  }
+
   public async parseAndRegister(text: string): Promise<boolean> {
     await this.ensureLoadedAsync();
     const rx = /```javascript\s*\/\/\s*@tool\s+([a-zA-Z0-9_]+)\s*\n\/\/\s*@desc\s+(.+)\n([\s\S]+?)```/g;
@@ -197,6 +286,11 @@ export class ToolForge {
     }
     const skillCtx = await skillForge.getSystemSkillContext();
     if (skillCtx) ctx += skillCtx;
+    try {
+      const { mcpBridge } = await import('./mcpBridge');
+      const mcpCtx = mcpBridge.getSystemContext();
+      if (mcpCtx) ctx += mcpCtx;
+    } catch { /* MCP context optional */ }
     return ctx;
   }
 
@@ -1254,6 +1348,266 @@ export class ToolForge {
           break;
         }
 
+        // ─── APPEND_FILE ──────────────────────────────────────────────
+        case 'APPEND_FILE': {
+          const raw = toStringArg(actionArgs[0]);
+          const pipeIdx = raw.indexOf('|');
+          if (pipeIdx > 0) {
+            const path = normalizeOsPath(raw.slice(0, pipeIdx));
+            const append = clampLength(decodeArg(raw.slice(pipeIdx + 1)), 100_000);
+            const fs = await getVfs();
+            const existing = fs.readFile(path);
+            if (existing === null) {
+              result = `[OS::APPEND_FILE] → ⚠ File not found: ${path}`;
+            } else {
+              fs.writeFile(path, existing + append);
+              const mem = await getMemory();
+              mem.remember(`Appended to file: ${path}`, ['file', 'vfs']);
+              result = `[OS::APPEND_FILE] → ✅ ${path} (${append.length} chars appended, total ${existing.length + append.length})`;
+            }
+          } else {
+            result = `[OS::APPEND_FILE] → ⚠ Format: OS::APPEND_FILE:<path>|<content>`;
+          }
+          break;
+        }
+
+        // ─── PATH_INFO ──────────────────────────────────────────────
+        case 'PATH_INFO': {
+          const path = normalizeOsPath(toStringArg(actionArgs[0]));
+          if (path) {
+            const fs = await getVfs();
+            const stat = fs.stat(path);
+            if (stat) {
+              const detail = fs.getStats(path);
+              const info = {
+                path,
+                type: stat.type,
+                files: detail?.files ?? null,
+                folders: detail?.folders ?? null,
+                bytes: detail?.size ?? null,
+              };
+              result = `[OS::PATH_INFO] → ${safeJsonStringify(info)}`;
+            } else {
+              result = `[OS::PATH_INFO] → ⚠ Path not found: ${path}`;
+            }
+          } else {
+            result = `[OS::PATH_INFO] → ⚠ Provide a path`;
+          }
+          break;
+        }
+
+        // ─── COUNT_FILES ─────────────────────────────────────────────
+        case 'COUNT_FILES': {
+          const path = normalizeOsPath(toStringArg(actionArgs[0])) || '/home/user';
+          const fs = await getVfs();
+          let fileCount = 0;
+          let dirCount = 0;
+          let totalBytes = 0;
+          const walk = (dir: string) => {
+            const items = fs.listDir(dir) || [];
+            for (const name of items) {
+              const p = `${dir}/${name}`;
+              const st = fs.stat(p);
+              if (st?.type === 'directory') {
+                dirCount++;
+                walk(p);
+              } else {
+                fileCount++;
+                const detail = fs.getStats(p);
+                totalBytes += (detail?.size ?? 0);
+              }
+            }
+          };
+          walk(path);
+          result = `[OS::COUNT_FILES] → ${safeJsonStringify({ path, files: fileCount, folders: dirCount, bytes: totalBytes })}`;
+          break;
+        }
+
+        // ─── ANALYZE_DATA ────────────────────────────────────────────
+        case 'ANALYZE_DATA': {
+          const data = clampLength(decodeArg(toStringArg(actionArgs[0])), 40_000);
+          if (data) {
+            try {
+              result = `[OS::ANALYZE_DATA] → ${this.analyzeData(data)}`;
+            } catch (e: unknown) {
+              result = `[OS::ANALYZE_DATA] → ⚠ ${e instanceof Error ? e.message : String(e)}`;
+            }
+          } else {
+            result = `[OS::ANALYZE_DATA] → ⚠ Provide JSON, CSV, or plain text to analyze`;
+          }
+          break;
+        }
+
+        // ─── SCHEDULE_CRON ───────────────────────────────────────────
+        case 'SCHEDULE_CRON': {
+          const raw = toStringArg(actionArgs[0]);
+          const pipeIdx = raw.indexOf('|');
+          if (pipeIdx > 0) {
+            const expression = clampLength(raw.slice(0, pipeIdx).trim(), 64);
+            const actionCmd = clampLength(raw.slice(pipeIdx + 1).trim(), 2_048);
+            if (expression && actionCmd) {
+              const { cronScheduler } = await import('./cronScheduler');
+              const jobId = cronScheduler.register(`cron_${Date.now()}`, { expression }, actionCmd);
+              result = `[OS::SCHEDULE_CRON] → ✅ Cron job scheduled (job: ${jobId}, expr: ${expression})`;
+            } else {
+              result = `[OS::SCHEDULE_CRON] → ⚠ Format: OS::SCHEDULE_CRON:<cron-expr>|<actionCommand>`;
+            }
+          } else {
+            result = `[OS::SCHEDULE_CRON] → ⚠ Format: OS::SCHEDULE_CRON:<cron-expr>|<actionCommand>`;
+          }
+          break;
+        }
+
+        // ─── LIST_JOBS ───────────────────────────────────────────────
+        case 'LIST_JOBS': {
+          const { cronScheduler } = await import('./cronScheduler');
+          const jobs = cronScheduler.listJobs();
+          if (jobs.length === 0) {
+            result = `[OS::LIST_JOBS] → No scheduled jobs`;
+          } else {
+            const listing = jobs.map(j =>
+              `${j.enabled ? '🟢' : '⏸️'} ${j.id} [${j.expression || 'interval ' + (j.intervalMs ?? 0) + 'ms'}] → ${j.actionCmd.slice(0, 80)}${j.lastRun ? ` (last: ${new Date(j.lastRun).toISOString()})` : ''}`
+            ).join('\n');
+            result = `[OS::LIST_JOBS] → ${jobs.length} job(s):\n${listing}`;
+          }
+          break;
+        }
+
+        // ─── CANCEL_JOB ──────────────────────────────────────────────
+        case 'CANCEL_JOB': {
+          const jobId = clampLength(toStringArg(actionArgs[0]).trim(), 128);
+          if (jobId) {
+            const { cronScheduler } = await import('./cronScheduler');
+            const job = cronScheduler.getJob(jobId);
+            if (job) {
+              cronScheduler.unregister(jobId);
+              result = `[OS::CANCEL_JOB] → ✅ Cancelled job ${jobId}`;
+            } else {
+              result = `[OS::CANCEL_JOB] → ⚠ Job ${jobId} not found`;
+            }
+          } else {
+            result = `[OS::CANCEL_JOB] → ⚠ Format: OS::CANCEL_JOB:<jobId>`;
+          }
+          break;
+        }
+
+        // ─── SESSION_SAVE ────────────────────────────────────────────
+        case 'SESSION_SAVE': {
+          const name = clampLength(toStringArg(actionArgs[0]).trim(), 64) || `session_${Date.now()}`;
+          const os = useOS.getState();
+          const { sessions } = await import('./sessions');
+          const windowStates = (os.windows || []).map((w: any) => ({
+            appId: w.appId,
+            title: w.title || '',
+            x: w.x ?? 0,
+            y: w.y ?? 0,
+            width: w.width,
+            height: w.height,
+            isMinimized: !!w.isMinimized,
+            props: w.data || {},
+          }));
+          const session = sessions.save(name, windowStates);
+          result = `[OS::SESSION_SAVE] → ✅ Session "${name}" saved (${session.windows.length} window(s), id: ${session.id})`;
+          break;
+        }
+
+        // ─── SESSION_LIST ────────────────────────────────────────────
+        case 'SESSION_LIST': {
+          const { sessions } = await import('./sessions');
+          const list = sessions.list();
+          if (list.length === 0) {
+            result = `[OS::SESSION_LIST] → No saved sessions`;
+          } else {
+            const listing = list.map(s =>
+              `  ${s.id} "${s.name}" — ${s.windows.length} window(s) — ${new Date(s.savedAt).toLocaleString()}`
+            ).join('\n');
+            result = `[OS::SESSION_LIST] → ${list.length} session(s):\n${listing}`;
+          }
+          break;
+        }
+
+        // ─── SESSION_RESTORE ─────────────────────────────────────────
+        case 'SESSION_RESTORE': {
+          const idOrName = clampLength(toStringArg(actionArgs[0]).trim(), 128);
+          if (idOrName) {
+            const { sessions } = await import('./sessions');
+            const list = sessions.list();
+            const target = list.find(s => s.id === idOrName || s.name === idOrName);
+            if (target) {
+              const os = useOS.getState();
+              for (const w of target.windows) {
+                try {
+                  os.openWindow(w.appId, { ...(w.props || {}), title: w.title });
+                } catch (e: any) {
+                  kernelLog.warn(`[OS::SESSION_RESTORE] Could not reopen ${w.appId}: ${e?.message || e}`);
+                }
+              }
+              result = `[OS::SESSION_RESTORE] → ✅ Restored session "${target.name}" (${target.windows.length} window(s))`;
+            } else {
+              result = `[OS::SESSION_RESTORE] → ⚠ Session "${idOrName}" not found`;
+            }
+          } else {
+            result = `[OS::SESSION_RESTORE] → ⚠ Format: OS::SESSION_RESTORE:<id|name>`;
+          }
+          break;
+        }
+
+        // ─── ARRANGE_WINDOWS ─────────────────────────────────────────
+        case 'ARRANGE_WINDOWS': {
+          const mode = clampLength(toStringArg(actionArgs[0]).trim().toLowerCase(), 32) || 'grid';
+          const os = useOS.getState();
+          const wins = (os.windows || []).filter((w: any) => !w.isMinimized);
+          const visible = wins.length > 0 ? wins : (os.windows || []);
+          if (visible.length === 0) {
+            result = `[OS::ARRANGE_WINDOWS] → ✅ No windows to arrange`;
+            break;
+          }
+          const areaW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+          const areaH = typeof window !== 'undefined' ? window.innerHeight : 800;
+          if (mode === 'tile' || mode === 'grid') {
+            const cols = Math.ceil(Math.sqrt(visible.length));
+            const rows = Math.ceil(visible.length / cols);
+            const cw = Math.floor((areaW - 20) / cols);
+            const ch = Math.floor((areaH - 20) / rows);
+            visible.forEach((w: any, i: number) => {
+              const col = i % cols;
+              const row = Math.floor(i / cols);
+              os.updateWindow(w.id, { x: 10 + col * cw, y: 10 + row * ch, width: cw, height: ch });
+            });
+            result = `[OS::ARRANGE_WINDOWS] → ✅ Tiled ${visible.length} window(s) in a ${cols}×${rows} grid`;
+          } else if (mode === 'cascade') {
+            visible.forEach((w: any, i: number) => {
+              os.updateWindow(w.id, { x: 40 + i * 36, y: 40 + i * 36, width: areaW * 0.6, height: areaH * 0.6 });
+            });
+            result = `[OS::ARRANGE_WINDOWS] → ✅ Cascaded ${visible.length} window(s)`;
+          } else {
+            result = `[OS::ARRANGE_WINDOWS] → ⚠ Mode must be 'grid'|'tile'|'cascade'`;
+          }
+          break;
+        }
+
+        // ─── CLIPBOARD_READ ──────────────────────────────────────────
+        case 'CLIPBOARD_READ': {
+          try {
+            let text = '';
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+              text = await navigator.clipboard.readText();
+            }
+            if (!text) {
+              const store = useOS.getState();
+              text = (store.clipboard as any)?.text || '';
+            }
+            if (text) {
+              result = `[OS::CLIPBOARD_READ] → ${clampLength(text, 2_000)}`;
+            } else {
+              result = `[OS::CLIPBOARD_READ] → (clipboard is empty or unavailable)`;
+            }
+          } catch (e: unknown) {
+            result = `[OS::CLIPBOARD_READ] → ⚠ ${e instanceof Error ? e.message : String(e)}`;
+          }
+          break;
+        }
+
         default:
           result = `[OS::${action.type}] → Unknown action type`;
       }
@@ -1274,6 +1628,25 @@ export class ToolForge {
     const results: string[] = [];
     for (const call of toolCalls) {
       const args = call.arguments || {};
+
+      // ─── MCP bridge: route any namespaced `mcp_<server>_<tool>` tool ──
+      if (call.name.startsWith('mcp_')) {
+        try {
+          const { mcpBridge } = await import('./mcpBridge');
+          const parsed = mcpBridge.parseNamespacedTool(call.name);
+          if (parsed && mcpBridge.getConnection(parsed.serverId)) {
+            const out = await mcpBridge.callTool(parsed.serverId, parsed.toolName, args);
+            results.push(out);
+          } else {
+            results.push(`[MCP: ${call.name}] → ⚠ Server not connected. Connect it in Settings → MCP Servers.`);
+          }
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          results.push(`[MCP: ${call.name}] → ⚠ ${message}`);
+        }
+        continue;
+      }
+
       let osAction = '';
       switch (call.name) {
         case 'write_file':
@@ -1344,6 +1717,42 @@ export class ToolForge {
           break;
         case 'take_screenshot':
           osAction = `OS::TAKE_SCREENSHOT`;
+          break;
+        case 'clipboard_read':
+          osAction = `OS::CLIPBOARD_READ`;
+          break;
+        case 'append_file':
+          osAction = `OS::APPEND_FILE:${args.path}|${JSON.stringify(args.content || '')}`;
+          break;
+        case 'path_info':
+          osAction = `OS::PATH_INFO:${args.path}`;
+          break;
+        case 'count_files':
+          osAction = `OS::COUNT_FILES:${args.path || '/home/user'}`;
+          break;
+        case 'analyze_data':
+          osAction = `OS::ANALYZE_DATA:${JSON.stringify(args.data || '')}`;
+          break;
+        case 'schedule_cron':
+          osAction = `OS::SCHEDULE_CRON:${args.expression}|${args.command}`;
+          break;
+        case 'list_jobs':
+          osAction = `OS::LIST_JOBS`;
+          break;
+        case 'cancel_job':
+          osAction = `OS::CANCEL_JOB:${args.jobId}`;
+          break;
+        case 'session_save':
+          osAction = `OS::SESSION_SAVE:${args.name || ''}`;
+          break;
+        case 'session_list':
+          osAction = `OS::SESSION_LIST`;
+          break;
+        case 'session_restore':
+          osAction = `OS::SESSION_RESTORE:${args.idOrName}`;
+          break;
+        case 'arrange_windows':
+          osAction = `OS::ARRANGE_WINDOWS:${args.mode || 'grid'}`;
           break;
         default:
           results.push(`[Unknown tool: ${call.name}]`);

@@ -16,7 +16,7 @@ if (typeof global.localStorage === 'undefined') {
 if (typeof global.window === 'undefined') (global as any).window = {};
 
 import { vfs, SYSTEM_VFS_APP_ID } from '../fileSystem.ts';
-import { useOS } from '../store/osStore.ts';
+import { useOS } from '../../store/osStore.ts';
 import { aiService } from '../../services/puterService.ts';
 import { appGenerator } from '../appGenerator.ts';
 

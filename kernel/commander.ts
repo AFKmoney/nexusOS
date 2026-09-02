@@ -360,7 +360,7 @@ export class Commander {
           const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
           const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'head' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'head: no input';
           return content.split('\n').slice(0, lines).join('\n');
         }
@@ -370,14 +370,14 @@ export class Commander {
           const linesArg = nFlag >= 0 ? args[nFlag + 1] : undefined;
           const lines = linesArg ? parseInt(linesArg) || 10 : 10;
           const filePath = args.find(a => a !== 'tail' && a !== '-n' && !(/^\d+$/.test(a)));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'tail: no input';
           return content.split('\n').slice(-lines).join('\n');
         }
 
         if (command === 'wc') {
           const filePath = args.find(a => a !== 'wc' && !a.startsWith('-'));
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'wc: no input';
           const lineCount = content.split('\n').length;
           const wordCount = content.split(/\s+/).filter(Boolean).length;
@@ -394,7 +394,7 @@ export class Commander {
           const filePath = filteredArgs[1];
           if (!pattern) return 'grep: missing pattern';
           
-          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath, SYSTEM_VFS_APP_ID)) : pipeInput;
+          const content = filePath ? vfs.readFile(this.safeResolvePath(filePath)) : pipeInput;
           if (!content) return 'grep: no input';
           
           const lines = content.split('\n');
@@ -462,8 +462,8 @@ export class Commander {
           const leftArg = args[1];
           const rightArg = args[2];
           if (!leftArg || !rightArg) return 'diff: missing operands';
-          const contentA = vfs.readFile(this.safeResolvePath(leftArg, SYSTEM_VFS_APP_ID)) || '';
-          const contentB = vfs.readFile(this.safeResolvePath(rightArg, SYSTEM_VFS_APP_ID)) || '';
+          const contentA = vfs.readFile(this.safeResolvePath(leftArg)) || '';
+          const contentB = vfs.readFile(this.safeResolvePath(rightArg)) || '';
           if (contentA === contentB) return 'Files are identical.';
           const linesA = contentA.split('\n');
           const linesB = contentB.split('\n');

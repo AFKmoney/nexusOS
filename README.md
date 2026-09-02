@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/AFKmoney/nexusOS/releases"><img src="https://img.shields.io/badge/download-installer-10b981?style=flat-square" alt="Download" /></a>
   <img src="https://img.shields.io/badge/version-2.1-10b981?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/tests-308%20passing-22c55e?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-346%20passing-22c55e?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/OS%3A%3A%20actions-75-8b5cf6?style=flat-square" alt="Actions" />
 </p>
@@ -42,9 +42,11 @@ It's not a wrapper around ChatGPT. It's an OS built from the ground up for auton
 
 | Module | What it does |
 |---|---|
-| **75 `OS::` actions** | Structured tool surface — files, apps, browser, agents, RAG, git, vision, voice, skills, goals |
+| **78 `OS::` actions** | Structured tool surface — files, apps, browser, agents, RAG, git, vision, voice, skills, goals, data analysis, cron scheduling, window sessions |
 | **20 AI providers** | Z.AI Coding Plan (GLM-5.1/5.2, Turbo, Coding Series), OpenAI, Anthropic, Google, Mistral, NVIDIA NIM, Groq, xAI, DeepSeek, Cerebras, Perplexity, local models (LM Studio, Ollama, Wllama) + failover |
+| **MCP (Model Context Protocol)** | Native MCP client over streamable HTTP — connect any MCP server (filesystem, git, PostgreSQL, browser…) and its tools become native function-calls the DAEMON can drive. Configurable in Settings → MCP Servers |
 | **SkillForge v2** | AI writes + persists + executes JS skills in a Web Worker sandbox |
+| **Skill Pack** | 29 curated pre-forged skills shipped on boot (data, advanced CSV, dev, web, a mini persistent JSON database, image-info, structured scraping, skill chaining, productivity, AI-assisted) seeded idempotently without clobbering the AI's own customizations |
 | **AutoPilot** | Goal queue with self-prompting — the AI picks goals and works through them autonomously |
 | **Multi-Agent v2** | Parallel sub-agents with dependency graph + shared workspace + inter-agent messaging |
 | **AppGenerator** | Generates complete multi-file apps (manifest, HTML, CSS, JS, README) from a description |
@@ -73,6 +75,32 @@ Open `http://localhost:3000`. Add an API key in **Settings → AI Providers** (M
 npm run electron:dev
 ```
 
+### DevOps battery (CI-quality gates)
+
+One command runs the full pre-merge battery — typecheck, unit tests, build (+ optional lint & e2e) — and exits non-zero if any fatal gate fails:
+
+```bash
+npm run ci            # typecheck + unit tests + build
+npm run ci:e2e        # also boots the production build under headless Chrome
+```
+
+Select gates explicitly with `DEVOP_BATTERY`, e.g.:
+
+```bash
+DEVOP_BATTERY=typecheck,unit,build,node scripts/devops-battery.mjs
+RUN_E2E=1 DEVOP_BATTERY=all node scripts/devops-battery.mjs
+```
+
+| Gate | Command | Required | Notes |
+|---|---|---|---|
+| `typecheck` | `tsc --noEmit` | fatal | 0 type errors |
+| `unit` | `npm test` | fatal | 0 failing tests |
+| `build` | `vite build` | fatal | must succeed |
+| `lint` | eslint (auto) | report-only | enabled when the eslint toolchain is installed; strict via `DEVOP_BATTERY_STRICT_LINT=1` |
+| `e2e` | headless Chrome smoke | via `RUN_E2E=1` | boots the prod build, opens every app |
+
+The battery is wired into GitHub Actions (`.github/workflows/ci.yml`) and runs on every push / pull request.
+
 ---
 
 ## Try these
@@ -81,6 +109,7 @@ Tell the DAEMON chat:
 
 - *"Build me a pomodoro timer app"* — generates a full multi-file app, registers it, you can run it
 - *"Forge a skill that summarizes my desktop files, then run it"* — AI writes a JS skill, persists it, executes it in the sandbox
+- *"Use csv_inspect on my data, then batch_rename those files"* — the AI can call 14 pre-forged pack skills out of the box (data, filesystem, dev, web, productivity)
 - *"Add a goal to organize my downloads folder, then engage autopilot"* — AI works through the goal autonomously
 - *"What did we talk about yesterday?"* — episodic memory recall via RAG
 
@@ -93,7 +122,7 @@ Tell the DAEMON chat:
 - **Electron** for native mode (Chromium WebContentsView browser, IPC proxy, host fs)
 - **Wllama** for local GGUF inference (runs entirely in-browser)
 - **isomorphic-git** for VFS git operations
-- **308 tests passing** (unit + AI component audit + OS action audit)
+- **346 tests passing** (unit + AI component audit + OS action audit)
 
 ---
 
@@ -102,7 +131,7 @@ Tell the DAEMON chat:
 ```
 User ──► DAEMON Chat ──► puterService ──► aiGateway (19 providers + failover)
                                     │
-                                    ├─► Native Function Calling (22 tools)
+                                    ├─► Native Function Calling (35 tools)
                                     │         │
                                     ▼         ▼
                               toolForge ◄── OS:: actions (75)

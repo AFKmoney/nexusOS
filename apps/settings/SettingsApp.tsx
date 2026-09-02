@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useOS } from '../../store/osStore';
 import {
-  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle, Globe, Plus, Trash2, TestTube2, Loader2, Cloud
+  User, Cpu, Shield, Zap, Palette, Monitor, Brain, CheckCircle, Database, AlertCircle, Globe, Plus, Trash2, TestTube2, Loader2, Cloud, Cable, Link, Plug
 } from 'lucide-react';
 import { aiPipelineBridge } from '../../kernel/aiPipelineBridge';
 import { localBrain } from '../../services/localBrain';
 import { aiGateway, PROVIDER_PRESETS, type AIProvider } from '../../services/aiProviders';
 import { vfs } from '../../kernel/fileSystem';
 import { cloudSync } from '../../kernel/cloudSync';
+import { mcpBridge } from '../../kernel/mcpBridge';
 import ModelManager from '../ModelManager';
 
 export default function SettingsApp() {
@@ -26,7 +27,7 @@ export default function SettingsApp() {
     setWallpaperMotionStrength
   } = useOS();
 
-  const [tab, setTab] = useState<'profile' | 'system' | 'appearance' | 'daemon' | 'ai' | 'models' | 'providers'>('profile');
+  const [tab, setTab] = useState<'profile' | 'system' | 'appearance' | 'daemon' | 'ai' | 'models' | 'providers' | 'mcp'>('profile');
   const [installing, setInstalling] = useState(false);
   const [progress, setProgress] = useState(0);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -60,7 +61,8 @@ export default function SettingsApp() {
     { id: 'models' as const, label: 'Models', icon: Database },
     { id: 'appearance' as const, label: 'Appearance', icon: Palette },
     { id: 'daemon' as const, label: 'DAEMON Core', icon: Zap },
-    { id: 'ai' as const, label: 'AI', icon: Brain }
+    { id: 'ai' as const, label: 'AI', icon: Brain },
+    { id: 'mcp' as const, label: 'MCP Servers', icon: Cable }
   ];
 
   const ACCENTS = [
@@ -667,6 +669,7 @@ export default function SettingsApp() {
           )}
 
           {tab === 'providers' && <AIProvidersTab addNotification={addNotification} />}
+          {tab === 'mcp' && <MCPServersTab addNotification={addNotification} />}
         </div>
       </div>
     </div>
@@ -927,3 +930,98 @@ function AIProvidersTab({ addNotification }: { addNotification: (n: any) => void
     </div>
   );
 }
+
+// ─── MCP Servers tab ───────────────────────────────────────────────
+function MCPServersTab({ addNotification }: { addNotification: (n: any) => void }) {
+  const [servers, setServers] = useState<any[]>([]);
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [status, setStatus] = useState<Record<string, { ready: boolean; tools: number; error?: string }>>({});
+  const { mcpBridge } = useMcpBridge();
+
+  const refresh = () => setServers(mcpBridge.listConfigs());
+  useEffect(() => { refresh(); }, []);
+
+  const add = async () => {
+    if (!name.trim() || !url.trim()) { addNotification({ title: 'MCP', message: 'Name and URL required', type: 'info' }); return; }
+    const headers: Record<string, string> = {};
+    if (token.trim()) headers['Authorization'] = `Bearer ${token.trim()}`;
+    const cfg = mcpBridge.addServer({ name: name.trim(), url: url.trim(), headers, enabled: true });
+    setName(''); setUrl(''); setToken('');
+    refresh();
+    setBusyId(cfg.id);
+    try { await mcpBridge.connect(cfg.id); setStatus(prev => ({ ...prev, [cfg.id]: { ready: true, tools: mcpBridge.getConnection(cfg.id)?.tools.length ?? 0 } })); addNotification({ title: 'MCP', message: `Connected to ${cfg.name}`, type: 'success' }); }
+    catch (e: any) { setStatus(prev => ({ ...prev, [cfg.id]: { ready: false, tools: 0, error: e?.message || String(e) } })); addNotification({ title: 'MCP', message: `Connect failed: ${e?.message || e}`, type: 'error' }); }
+    setBusyId(null);
+  };
+
+  const connect = async (id: string) => {
+    setBusyId(id);
+    try { await mcpBridge.connect(id); const tools = mcpBridge.getConnection(id)?.tools.length ?? 0; setStatus(prev => ({ ...prev, [id]: { ready: true, tools } })); addNotification({ title: 'MCP', message: `Connected (${tools} tools)`, type: 'success' }); }
+    catch (e: any) { setStatus(prev => ({ ...prev, [id]: { ready: false, tools: 0, error: e?.message || String(e) } })); addNotification({ title: 'MCP', message: `Connect failed: ${e?.message || e}`, type: 'error' }); }
+    setBusyId(null);
+  };
+
+  const remove = (id: string) => { mcpBridge.removeServer(id); setStatus(prev => { const n = { ...prev }; delete n[id]; return n; }); refresh(); };
+
+  return (
+    <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tighter uppercase">MCP Servers</h2>
+          <p className="text-sm text-zinc-400 mt-1">Connect any Model Context Protocol server. Its tools become native function-calls the DAEMON AI can use.</p>
+        </div>
+      </div>
+
+      {/* Add form */}
+      <div className="bg-black/30 border border-white/5 rounded-2xl p-5 space-y-3">
+        <div className="text-xs font-bold uppercase tracking-widest text-zinc-500">Add server</div>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Name (e.g. My PostgreSQL)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-accent/50" />
+        <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Base URL — https://host/mcp" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-accent/50" />
+        <input value={token} onChange={e => setToken(e.target.value)} placeholder="Bearer token (optional)" type="password" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-accent/50" />
+        <button onClick={add} disabled={busyId !== null} className="flex items-center gap-2 bg-accent text-black px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 disabled:opacity-40">
+          <Plus size={14} /> Add &amp; Connect
+        </button>
+      </div>
+
+      {/* Server list */}
+      <div className="space-y-3">
+        {servers.length === 0 && <div className="text-sm text-zinc-500">No servers yet. Add one above.</div>}
+        {servers.map(s => {
+          const st = status[s.id] || { ready: false, tools: 0 };
+          return (
+            <div key={s.id} className="bg-black/30 border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${st.ready ? 'bg-emerald-400' : s.enabled ? 'bg-amber-400' : 'bg-zinc-500'}`} />
+                  <span className="font-bold text-white">{s.name}</span>
+                  {st.ready && <span className="text-xs text-emerald-400">~ {st.tools} tools</span>}
+                </div>
+                <div className="text-xs text-zinc-500 truncate">{s.url}</div>
+                {st.error && <div className="text-xs text-rose-400 mt-1 truncate">{st.error}</div>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {busyId === s.id ? (
+                  <Loader2 size={16} className="animate-spin text-accent" />
+                ) : (
+                  <button onClick={() => connect(s.id)} disabled={!s.enabled} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 disabled:opacity-30">
+                    <Link size={12} /> Connect
+                  </button>
+                )}
+                <button onClick={() => remove(s.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/10">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Small hook wrapper so the browser-only mcpBridge import is lazy/safe.
+function useMcpBridge() { return { mcpBridge }; }

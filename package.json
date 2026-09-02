@@ -2,7 +2,7 @@
   "name": "nexusos",
   "private": true,
   "version": "2.0.6",
-  "description": "The Sovereign Neural Operating System — Locally Inferenced, Globally Distributed.",
+  "description": "The Sovereign Neural Operating System \u2014 Locally Inferenced, Globally Distributed.",
   "author": "Philippe-Antoine Robert",
   "main": "electron-main.cjs",
   "type": "commonjs",
@@ -14,7 +14,10 @@
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build && electron-builder",
     "test": "npx tsx kernel/tests/runTests.ts",
-    "e2e": "vite build && node e2e/appSmoke.mjs"
+    "e2e": "vite build && node e2e/appSmoke.mjs",
+    "battery": "node scripts/devops-battery.mjs",
+    "ci": "node scripts/devops-battery.mjs",
+    "ci:e2e": "RUN_E2E=1 node scripts/devops-battery.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",
