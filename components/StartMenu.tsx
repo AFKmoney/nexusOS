@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useOS } from '../store/osStore';
 import { vfs, SYSTEM_VFS_APP_ID } from '../kernel/fileSystem';
 import { PROCEDURAL_WALLPAPERS } from '../appShellConstants';
@@ -18,8 +18,17 @@ export default function StartMenu() {
     setAiManagedStoreEnabled, setAccentColor,
   } = useOS();
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [activeCategory, setActiveCategory] = useState<string>('All);
   const [showControls, setShowControls] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Never auto-focus the search field: on mobile that opens the virtual keyboard
+  // every time the menu opens. The user taps the field when they want to search.
+  useEffect(() => {
+    if (isStartMenuOpen) {
+      searchRef.current?.blur();
+    }
+  }, [isStartMenuOpen]);
 
   const recentFiles = useMemo(() => {
     if (!isStartMenuOpen) return [];
@@ -90,11 +99,11 @@ export default function StartMenu() {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
           <input
+            ref={searchRef}
             className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-sm text-zinc-100 focus:outline-none focus:border-accent/50 transition-colors placeholder:text-zinc-500"
             placeholder="Search apps..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            autoFocus
           />
         </div>
       </div>
@@ -135,7 +144,7 @@ export default function StartMenu() {
                 setWallpaper(next);
                 const label = next.split('/').pop();
                 if (label === 'aurora' || label === 'nebula') setWallpaperEffect(label);
-              }}
+              }
                 className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-colors text-left">
                 <Wallpaper size={14} className="text-accent shrink-0" />
                 <div className="min-w-0">
@@ -158,7 +167,7 @@ export default function StartMenu() {
                   const currentIndex = ACCENTS.findIndex(a => a.color.toLowerCase() === currentHex);
                   const nextIndex = (currentIndex + 1) % ACCENTS.length;
                   setAccentColor((ACCENTS[nextIndex] ?? ACCENTS[0])!.color);
-                }}
+                }
                 className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-colors text-left">
                 <Layers3 size={14} className="text-accent shrink-0" />
                 <div className="min-w-0">
@@ -167,7 +176,8 @@ export default function StartMenu() {
                 </div>
               </button>
               <button onClick={() => setAiManagedStoreEnabled(!aiManagedStoreEnabled)}
-                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors text-left ${aiManagedStoreEnabled ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors text-left ${aiManagedStoreEnabled ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+              >
                 <LaptopMinimalCheck size={14} className={aiManagedStoreEnabled ? 'text-accent shrink-0' : 'text-zinc-500 shrink-0'} />
                 <div className="min-w-0">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-300">AI Store</div>
@@ -191,7 +201,7 @@ export default function StartMenu() {
                 {recentFiles.slice(0, 2).map(file => (
                   <button
                     key={file.path}
-                    onClick={() => { openWindow('notepad', { path: file.path }); toggleStartMenu(); }}
+                    onClick={() => { openWindow('notepad', { path: file.path }); toggleStartMenu(); }
                     className="flex items-center gap-2.5 p-2.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 hover:border-white/15 transition-colors text-left group"
                   >
                     <div className="p-1.5 bg-black/40 rounded-lg text-zinc-400 group-hover:text-accent transition-colors shrink-0">
@@ -199,7 +209,7 @@ export default function StartMenu() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[11px] font-medium text-zinc-200 truncate group-hover:text-white transition-colors">{file.name}</div>
-                      <div className="text-[9px] font-mono text-zinc-500 truncate">{new Date(file.modified).toLocaleTimeString('en-US')}</div>
+                      <div className="text-[9px] font-mono text-zinc-500 truncate">{new Date(file.modified).toLocaleTimeString('en-US)}</div>
                     </div>
                   </button>
                 ))}
@@ -223,7 +233,7 @@ export default function StartMenu() {
               return (
                 <button
                   key={app.id}
-                  onClick={() => { openWindow(app.id); toggleStartMenu(); }}
+                  onClick={() => { openWindow(app.id); toggleStartMenu(); }
                   onContextMenu={(e) => handleAppRightClick(e, app.id)}
                   className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-colors group hover:bg-white/5 border border-transparent hover:border-white/5"
                 >
@@ -251,7 +261,7 @@ export default function StartMenu() {
       <div className="bg-black/40 backdrop-blur-xl px-4 py-3 border-t border-white/10 flex items-center justify-between shrink-0 relative z-20">
         <button
           className="flex items-center gap-3 hover:bg-white/5 p-2 -ml-2 rounded-xl transition-colors group"
-          onClick={() => { openWindow('settings'); toggleStartMenu(); }}
+          onClick={() => { openWindow('settings'); toggleStartMenu(); }
         >
           <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center text-base font-bold text-black border-2 border-[#08080c] group-hover:scale-105 transition-transform">
             {currentUser?.name?.[0] || <User size={20} />}
@@ -270,22 +280,22 @@ export default function StartMenu() {
 
         <div className="flex items-center gap-1.5 p-1.5 bg-black/60 rounded-xl border border-white/10">
           <button
-            onClick={() => { lockShell(); toggleStartMenu(); }}
+            onClick={() => { lockShell(); toggleStartMenu(); }
             className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
             title="Lock"
           >
             <Lock size={16} />
           </button>
           <button
-            onClick={() => { openWindow('appstore'); toggleStartMenu(); }}
+            onClick={() => { openWindow('appstore'); toggleStartMenu(); }
             className="w-9 h-9 flex items-center justify-center hover:bg-accent/20 hover:text-emerald-300 rounded-lg text-zinc-400 transition-colors"
             title="App Store"
           >
             <Store size={16} />
           </button>
           <button
-            onClick={() => { logout(); toggleStartMenu(); }}
-            className="w-9 h-9 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-400 rounded-lg text-zinc-400 transition-colors"
+            onClick={() => { logout(); toggleStartMenu(); }
+            className="w-9 h-9 flex items-center justify-center hover:bg-amber-500/20 hover:text-amber-400 rounded-lg text-zinc-400 hover:text-white transition-colors"
             title="Logout"
           >
             <LogOut size={16} />
